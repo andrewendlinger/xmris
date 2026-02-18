@@ -5,8 +5,6 @@ name: Jupyter Book (via myst) GitHub Pages Deploy
 on:
   push:
     branches: [main]
-env:
-  BASE_URL: /${{ github.event.repository.name }}
 
 permissions:
   contents: read
@@ -33,26 +31,24 @@ jobs:
         with:
           node-version: 18.x
 
+      # 1. Install the correct 'mystmd' package (not jupyter-book)
       - name: Install MyST Markdown
         run: npm install -g mystmd
 
+      # 2. Build the site inside the 'docs' folder
       - name: Build HTML Assets
         working-directory: ./docs
         run: |
-          # Build the site with the correct base URL for GitHub Pages
-          myst build --site --base-url /${{ github.event.repository.name }}
+          # Build the site (Base URL must be set in myst.yml, not CLI)
+          myst build --site
 
-          # CRITICAL: Create .nojekyll to allow folders starting with '_'
+          # CRITICAL: Create .nojekyll so GitHub serves folders starting with '_'
           touch _build/site/.nojekyll
 
-          # Debug: List files to ensure index.html exists in the logs
-          echo "Listing build output:"
-          ls -la _build/site
-
+      # 3. Upload the correct output folder (_build/site)
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # Verify this path matches the 'ls' command above
           path: './docs/_build/site'
 
       - name: Deploy to GitHub Pages
