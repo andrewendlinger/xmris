@@ -34,14 +34,15 @@ jobs:
         run: npm install -g mystmd
 
       - name: Build HTML Assets
-        # We target the folder. MyST will read the base_url from docs/myst.yml
-        run: myst build docs --html
+        # We explicitly set the output directory to 'public' to avoid
+        # any confusion about where the files land.
+        run: myst build docs --html -o public
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # MyST build creates the output inside the source folder
-          path: 'docs/_build/html'
+          # Match the output directory set above
+          path: 'public'
 
       - name: Deploy to GitHub Pages
         id: deployment
