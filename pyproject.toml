@@ -1,0 +1,37 @@
+[project]
+name = "xmris"
+version = "0.1.0"
+description = "An xarray-based MRI and MRS toolbox"
+readme = "README.md"
+authors = [
+    { name = "Andrecho", email = "37243793+andrewendlinger@users.noreply.github.com" }
+]
+requires-python = ">=3.9"
+dependencies = [
+    "numpy>=2.0.2",
+    "xarray>=2024.7.0",
+]
+
+[build-system]
+requires = ["uv_build>=0.9.25,<0.10.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "jupyter-book>=2.1.2",
+    "mypy>=1.19.1",
+    "nbmake>=1.5.5",
+    "pytest>=8.4.2",
+    "ruff>=0.15.1",
+    "sphinxcontrib-mermaid>=1.2.3",
+]
+
+[tool.ruff]
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "NPY", "D"] # Errors, Fatal, Isort, NumPy-specific, Docstrings
+ignore = ["D100", "D104"] # Ignore missing docstrings in public modules/packages for now
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"

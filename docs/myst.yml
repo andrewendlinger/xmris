@@ -1,0 +1,6 @@
+version: 1
+project:
+  title: xmris Documentation
+  description: An xarray-based MRI and MRS toolbox
+site:
+  template: book-theme
