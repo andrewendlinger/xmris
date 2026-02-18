@@ -33,20 +33,27 @@ jobs:
         with:
           node-version: 18.x
 
-      # 1. Install the correct CLI tool
       - name: Install MyST Markdown
         run: npm install -g mystmd
 
-      # 2. Build the site pointing to the 'docs' folder
       - name: Build HTML Assets
-        run: myst build --site
-        working-directory: ./docs  # <--- Crucial: Run inside the docs folder
+        working-directory: ./docs
+        run: |
+          # Build the site with the correct base URL for GitHub Pages
+          myst build --site --base-url /${{ github.event.repository.name }}
 
-      # 3. Upload the correct output folder (_build/site)
+          # CRITICAL: Create .nojekyll to allow folders starting with '_'
+          touch _build/site/.nojekyll
+
+          # Debug: List files to ensure index.html exists in the logs
+          echo "Listing build output:"
+          ls -la _build/site
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: './docs/_build/site' # <--- Crucial: Path to the generated site
+          # Verify this path matches the 'ls' command above
+          path: './docs/_build/site'
 
       - name: Deploy to GitHub Pages
         id: deployment
