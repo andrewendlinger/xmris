@@ -1,11 +1,9 @@
-# Optimized for https://andrewendlinger.github.io/xmris/
 name: MyST GitHub Pages Deploy
 on:
   push:
     branches: [main]
 
 env:
-  # Explicitly setting this ensures MyST and GitHub Actions are in sync
   BASE_URL: /xmris
 
 permissions:
@@ -28,24 +26,28 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Pages
-        uses: actions/configure-pages@v5 # Updated to v5 for 2026 compatibility
+        uses: actions/configure-pages@v5
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20 # Using Node 20 LTS for better performance
+          node-version: 20
 
       - name: Install MyST
         run: npm install -g mystmd
 
       - name: Build HTML Assets
-        # We target the docs folder specifically
-        run: myst build docs --html
+        # Moving into the docs folder ensures MyST reads myst.yml correctly
+        # and avoids the EISDIR error on the folder name itself.
+        run: |
+          cd docs
+          myst build --html
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # MyST builds into the folder provided in the build command
+          # Since we ran 'myst build' inside 'docs',
+          # the output is at docs/_build/html
           path: 'docs/_build/html'
 
       - name: Deploy to GitHub Pages
