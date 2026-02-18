@@ -19,7 +19,6 @@ build-backend = "uv_build"
 [dependency-groups]
 dev = [
     "ipympl>=0.10.0",
-    "jupyter-book>=2.1.2",
     "jupytext>=1.19.1",
     "matplotlib>=3.10.0",
     "mypy>=1.15.0",

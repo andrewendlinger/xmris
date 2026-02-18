@@ -35,25 +35,18 @@ jobs:
       - name: Install MyST Markdown
         run: npm install -g mystmd
 
-      # 2. Build the site inside the 'docs' folder
+# 2. Build the site inside the 'docs' folder
       - name: Build the site
         run: |
-          # 1. Enter the directory where myst.yml lives
           cd docs
-
-          # 2. Build the full Remix site (SPA)
-          myst build --site
-
-          # 3. Create .nojekyll in the output folder
-          touch _build/site/.nojekyll
+          myst build --html
+          touch _build/html/.nojekyll
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # 4. Upload relative to the 'cd docs' context?
-          # NO: Actions steps reset directory context unless strictly chained.
-          # We must specify the full path from the repo root:
-          path: ./docs/_build/site
+          # Point to the html folder instead of site
+          path: ./docs/_build/html
 
       - name: Deploy to GitHub Pages
         id: deployment
