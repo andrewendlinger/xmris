@@ -4,3 +4,9 @@ project:
   description: An xarray-based MRI and MRS toolbox
 site:
   template: book-theme
+  parts:
+    footer: assets/footer.md
+  options:
+    folders: true
+    launch_buttons: false
+    download_buttons: true

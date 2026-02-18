@@ -18,7 +18,10 @@ build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
+    "ipympl>=0.10.0",
     "jupyter-book>=2.1.2",
+    "jupytext>=1.19.1",
+    "matplotlib>=3.9.4",
     "mypy>=1.19.1",
     "nbmake>=1.5.5",
     "pytest>=8.4.2",
@@ -35,3 +38,11 @@ ignore = ["D100", "D104"] # Ignore missing docstrings in public modules/packages
 
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"
+
+[tool.jupytext]
+formats = "ipynb,py:percent"
+notebook_metadata_filter = "-all"
+cell_metadata_filter = "all,-trusted"
+
+[project.scripts]
+docs = "xmris._scripts:docs_main"
