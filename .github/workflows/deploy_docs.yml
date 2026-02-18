@@ -39,17 +39,14 @@ jobs:
       - name: Build HTML Assets
         working-directory: ./docs
         run: |
-          # Build the site (Base URL must be set in myst.yml, not CLI)
-          myst build --site
-
-          # CRITICAL: Create .nojekyll so GitHub serves folders starting with '_'
-          touch _build/site/.nojekyll
+          myst build --html   # 2. Use --html instead of --site for a reliable static build
+          touch _build/html/.nojekyll # 3. Place .nojekyll in the HTML output folder
 
       # 3. Upload the correct output folder (_build/site)
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: './_build/site'
+          path: './docs/_build/site'
 
       - name: Deploy to GitHub Pages
         id: deployment
