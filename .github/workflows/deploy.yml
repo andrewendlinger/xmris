@@ -3,6 +3,9 @@ on:
   push:
     branches: [main]
 
+env:
+  BASE_URL: /xmris
+
 permissions:
   contents: read
   pages: write
@@ -33,16 +36,19 @@ jobs:
       - name: Install MyST
         run: npm install -g mystmd
 
-      - name: Build Site
+      - name: Build HTML Assets
+        # Moving into the docs folder ensures MyST reads myst.yml correctly
+        # and avoids the EISDIR error on the folder name itself.
         run: |
-          # Build from root, pointing to the docs folder
-          myst build docs --site
+          cd docs
+          myst build --html
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # The output will stay relative to the docs folder
-          path: 'docs/_build/site'
+          # Since we ran 'myst build' inside 'docs',
+          # the output is at docs/_build/html
+          path: 'docs/_build/html'
 
       - name: Deploy to GitHub Pages
         id: deployment

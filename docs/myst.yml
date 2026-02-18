@@ -4,12 +4,10 @@ project:
   description: An xarray-based MRI and MRS toolbox
 site:
   template: book-theme
-  # Move base_url here to stop the warning
-  options:
-    base_url: /xmris
-    folders: true
   parts:
     footer: assets/footer.md
-# Explicitly ignore non-content directories
-exclude:
-  - assets/**
+  options:
+    folders: true
+    launch_buttons: false
+    download_buttons: true
+    base_url: /xmris
