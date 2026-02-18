@@ -10,4 +10,4 @@ site:
     folders: true
     launch_buttons: false
     download_buttons: true
-  base_url: /xmris
+    base_url: /xmris
