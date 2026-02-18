@@ -4,10 +4,10 @@ project:
   description: An xarray-based MRI and MRS toolbox
 site:
   template: book-theme
+  base_url: /xmris  # Move this out of 'options'
   parts:
     footer: assets/footer.md
   options:
     folders: true
     launch_buttons: false
     download_buttons: true
-    base_url: /xmris

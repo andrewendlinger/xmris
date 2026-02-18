@@ -4,6 +4,7 @@ on:
     branches: [main]
 
 env:
+  # This MUST match your repository name exactly
   BASE_URL: /xmris
 
 permissions:
@@ -37,17 +38,15 @@ jobs:
         run: npm install -g mystmd
 
       - name: Build HTML Assets
-        # Moving into the docs folder ensures MyST reads myst.yml correctly
-        # and avoids the EISDIR error on the folder name itself.
+        # We pass the BASE_URL directly to the command line to override
+        # any local config issues and ensure the paths are hardcoded correctly.
         run: |
           cd docs
-          myst build --html
+          myst build --html --base-url ${{ env.BASE_URL }}
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # Since we ran 'myst build' inside 'docs',
-          # the output is at docs/_build/html
           path: 'docs/_build/html'
 
       - name: Deploy to GitHub Pages
