@@ -34,15 +34,16 @@ jobs:
         run: npm install -g mystmd
 
       - name: Build Site
-        # By using 'myst build --site', we tell MyST to build the
-        # project defined in docs/myst.yml and output it to the
-        # default folder: docs/_build/site
-        run: myst build --site docs
+        # CRITICAL FIX: We move into the folder so MyST doesn't try to
+        # "read" the directory itself. We use '.' to refer to the current dir.
+        run: |
+          cd docs
+          myst build --site .
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # In 'site' mode, MyST outputs to _build/site
+          # Since we built inside 'docs', the output is strictly here:
           path: 'docs/_build/site'
 
       - name: Deploy to GitHub Pages
