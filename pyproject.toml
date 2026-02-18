@@ -6,14 +6,14 @@ readme = "README.md"
 authors = [
     { name = "Andrecho", email = "37243793+andrewendlinger@users.noreply.github.com" }
 ]
-requires-python = ">=3.9"
+requires-python = ">=3.11"
 dependencies = [
-    "numpy>=2.0.2",
-    "xarray>=2024.7.0",
+    "numpy>=2.2.0",      # Numpy 2.x is the standard in 2026
+    "xarray>=2025.11.0", # Recent stable xarray
 ]
 
 [build-system]
-requires = ["uv_build>=0.9.25,<0.10.0"]
+requires = ["uv_build>=0.10.0,<0.11.0"]
 build-backend = "uv_build"
 
 [dependency-groups]
@@ -21,20 +21,22 @@ dev = [
     "ipympl>=0.10.0",
     "jupyter-book>=2.1.2",
     "jupytext>=1.19.1",
-    "matplotlib>=3.9.4",
-    "mypy>=1.19.1",
+    "matplotlib>=3.10.0",
+    "mypy>=1.15.0",
     "nbmake>=1.5.5",
-    "pytest>=8.4.2",
-    "ruff>=0.15.1",
+    "pytest>=8.4.0",
+    "ruff>=0.9.0",
     "sphinxcontrib-mermaid>=1.2.3",
 ]
 
 [tool.ruff]
 line-length = 88
+target-version = "py312"  # Matches your requires-python
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "NPY", "D"] # Errors, Fatal, Isort, NumPy-specific, Docstrings
-ignore = ["D100", "D104"] # Ignore missing docstrings in public modules/packages for now
+# Added "UP" (pyupgrade) to automatically modernize syntax
+select = ["E", "F", "I", "NPY", "D", "UP"]
+ignore = ["D100", "D104"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"

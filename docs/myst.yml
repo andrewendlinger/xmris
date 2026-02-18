@@ -2,9 +2,6 @@ version: 1
 project:
   title: xmris Documentation
   description: An xarray-based MRI and MRS toolbox
-  exports:
-      - format: html
-        output: _build/site
 site:
   template: book-theme
   parts:
