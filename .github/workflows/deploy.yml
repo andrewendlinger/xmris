@@ -3,10 +3,6 @@ on:
   push:
     branches: [main]
 
-env:
-  # This MUST match your repository name exactly
-  BASE_URL: /xmris
-
 permissions:
   contents: read
   pages: write
@@ -38,15 +34,13 @@ jobs:
         run: npm install -g mystmd
 
       - name: Build HTML Assets
-        # We pass the BASE_URL directly to the command line to override
-        # any local config issues and ensure the paths are hardcoded correctly.
-        run: |
-          cd docs
-          myst build --html --base-url ${{ env.BASE_URL }}
+        # We target the folder. MyST will read the base_url from docs/myst.yml
+        run: myst build docs --html
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
+          # MyST build creates the output inside the source folder
           path: 'docs/_build/html'
 
       - name: Deploy to GitHub Pages
