@@ -34,16 +34,14 @@ jobs:
         run: npm install -g mystmd
 
       - name: Build Site
-        # CRITICAL FIX: We move into the folder so MyST doesn't try to
-        # "read" the directory itself. We use '.' to refer to the current dir.
         run: |
-          cd docs
-          myst build --site .
+          # Build from root, pointing to the docs folder
+          myst build docs --site
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # Since we built inside 'docs', the output is strictly here:
+          # The output will stay relative to the docs folder
           path: 'docs/_build/site'
 
       - name: Deploy to GitHub Pages
