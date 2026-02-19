@@ -6,7 +6,8 @@ This module registers the `.xmr` namespace on xarray DataArrays.
 
 import xarray as xr
 
-from xmris.signal import fft, fftc, fftshift, ifft, ifftc, ifftshift
+from xmris.apodization import apodize_exp, apodize_lg
+from xmris.fourier import fft, fftc, fftshift, ifft, ifftc, ifftshift
 
 
 @xr.register_dataarray_accessor("xmr")
@@ -100,3 +101,51 @@ class XmrisAccessor:
         the DC component is centered. Optionally renames dimensions using `out_dim`.
         """
         return ifftc(self._obj, dim=dim, out_dim=out_dim)
+
+    # --- Apodization ---
+
+    def apodize_exp(self, dim: str = "Time", lb: float = 1.0) -> xr.DataArray:
+        """
+        Multiply the time-domain signal by a decreasing mono-exponential filter.
+
+        This improves the Signal-to-Noise Ratio (SNR) by applying a line
+        broadening factor parameterized in Hz.
+
+        Parameters
+        ----------
+        dim : str, optional
+            The dimension corresponding to time, by default "Time".
+        lb : float, optional
+            The desired line broadening factor in Hz, by default 1.0.
+
+        Returns
+        -------
+        xr.DataArray
+            A new apodized DataArray, preserving coordinates and attributes.
+        """
+        return apodize_exp(self._obj, dim=dim, lb=lb)
+
+    def apodize_lg(
+        self, dim: str = "Time", lb: float = 1.0, gb: float = 1.0
+    ) -> xr.DataArray:
+        """
+        Apply a Lorentzian-to-Gaussian transformation filter.
+
+        This applies the filter to the time-domain signal for resolution
+        enhancement, parameterized in Hz.
+
+        Parameters
+        ----------
+        dim : str, optional
+            The dimension corresponding to time, by default "Time".
+        lb : float, optional
+            The Lorentzian line broadening to cancel in Hz, by default 1.0.
+        gb : float, optional
+            The Gaussian line broadening to apply in Hz, by default 1.0.
+
+        Returns
+        -------
+        xr.DataArray
+            A new apodized DataArray, preserving coordinates and attributes.
+        """
+        return apodize_lg(self._obj, dim=dim, lb=lb, gb=gb)
