@@ -7,6 +7,7 @@ This module registers the `.xmr` namespace on xarray DataArrays.
 import xarray as xr
 
 from xmris.apodization import apodize_exp, apodize_lg
+from xmris.fid import to_fid, to_spectrum
 from xmris.fourier import fft, fftc, fftshift, ifft, ifftc, ifftshift
 
 
@@ -149,3 +150,47 @@ class XmrisAccessor:
             A new apodized DataArray, preserving coordinates and attributes.
         """
         return apodize_lg(self._obj, dim=dim, lb=lb, gb=gb)
+
+    # --- FID Specific Operations ---
+
+    def to_spectrum(
+        self, dim: str = "Time", out_dim: str = "Frequency"
+    ) -> xr.DataArray:
+        """
+        Convert a time-domain FID to a frequency-domain spectrum.
+
+        Applies a Fast Fourier Transform (FFT) and centers the zero-frequency component.
+
+        Parameters
+        ----------
+        dim : str, optional
+            The time dimension to transform, by default "Time".
+        out_dim : str, optional
+            The name of the resulting frequency dimension, by default "Frequency".
+
+        Returns
+        -------
+        xr.DataArray
+            The frequency-domain spectrum.
+        """
+        return to_spectrum(self._obj, dim=dim, out_dim=out_dim)
+
+    def to_fid(self, dim: str = "Frequency", out_dim: str = "Time") -> xr.DataArray:
+        """
+        Convert a frequency-domain spectrum to a time-domain FID.
+
+        Applies an inverse shift and Inverse Fast Fourier Transform (IFFT).
+
+        Parameters
+        ----------
+        dim : str, optional
+            The frequency dimension to transform, by default "Frequency".
+        out_dim : str, optional
+            The name of the resulting time dimension, by default "Time".
+
+        Returns
+        -------
+        xr.DataArray
+            The time-domain FID data.
+        """
+        return to_fid(self._obj, dim=dim, out_dim=out_dim)

@@ -77,8 +77,10 @@ ignore = ["D100", "D104"]
 convention = "numpy"
 
 [tool.ruff.lint.per-file-ignores]
-# Ignore "Line too long" (E501) in all notebook scripts
-"docs/01_notebooks/*.py" = ["E501"]
+# Ignore "Line too long" (E501) in all notebook (scripts)
+# Ignore any 'Unused import' usually due to 'import xmris' to activate the accessor
+"docs/01_notebooks/*.py" = ["E501", "F401"]
+"docs/01_notebooks/*.ipynb" = ["E501", "F401"]
 
 # --- Jupytext ---
 [tool.jupytext]

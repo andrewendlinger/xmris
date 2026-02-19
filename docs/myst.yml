@@ -12,10 +12,14 @@ project:
     - title: Notebooks
       children:
         - file: 01_notebooks/01_tutorial_fft.ipynb
+        - file: 01_notebooks/02_apodisation.ipynb
+        - file: 01_notebooks/03_fid_transformations.ipynb
     - title: API Reference
       file: api_reference/index.md
       children:
-        - file: api_reference/signal.md
+        - file: api_reference/fourier.md
+        - file: api_reference/fid.md
+        - file: api_reference/apodization.md
         - file: api_reference/accessor.md
     - title: Contribute
       children:

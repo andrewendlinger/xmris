@@ -1,5 +1,5 @@
 # %% [markdown]
-# # Apodization (Time-Domain Filtering)
+# # Apodization
 #
 # Apodization, or time-domain filtering, is a processing step applied prior to the Fourier transformation to enhance the Signal-to-Noise Ratio (SNR) and/or the spectral resolution of MR spectra.
 #
@@ -125,3 +125,5 @@ np.testing.assert_array_equal(
     da_lg.coords["Time"].values, da_fid.coords["Time"].values, err_msg="Coords altered."
 )
 assert da_lg.attrs == da_fid.attrs, "Attributes dropped."
+
+# %%

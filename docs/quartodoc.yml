@@ -2,10 +2,18 @@ quartodoc:
   package: xmris
   dir: api_reference
   sections:
-    - title: Signal Processing
-      desc: Core MRI and MRS signal functions.
+    - title: Fourier Transfroms
+      desc: Core MRI and MRS fourier transform functions.
       contents:
-        - signal
+        - fourier
+    - title: FID Specific Signal Processing
+      desc: Core FID signal functions.
+      contents:
+        - fid
+    - title: Apodization
+      desc: Common implementations of apodization, also known as linebroadening.
+      contents:
+        - apodization
     - title: Data Accessors
       desc: Custom xarray accessors.
       contents:

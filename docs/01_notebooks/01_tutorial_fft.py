@@ -5,7 +5,7 @@
 #
 # Standard `numpy.fft` functions place the zero-frequency (DC) component at the edges of the array, requiring manual `fftshift` operations. They also scale the signal amplitude by the number of points, which breaks energy conservation between domains.
 #
-# The `xmris.signal` module provides a modular approach to solve this:
+# The `xmris.fourier` module provides a modular approach to solve this:
 #
 #
 # 1. **Pure Transforms (`fft` / `ifft`):** Performs orthogonal, N-dimensional transforms with NO shifting.
