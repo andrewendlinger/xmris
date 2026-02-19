@@ -3,7 +3,7 @@ from . import accessor as accessor
 
 # 2. Optionally, expose core functions at the top level for users who
 # prefer functional programming over method chaining.
-from .signal import fftc, ifftc
+from .fourier import fftc, ifftc
 
 __all__ = [
     "fftshift",
