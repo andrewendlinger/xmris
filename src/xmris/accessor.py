@@ -6,8 +6,7 @@ This module registers the `.xmr` namespace on xarray DataArrays.
 
 import xarray as xr
 
-from xmris.apodization import apodize_exp, apodize_lg
-from xmris.fid import to_fid, to_spectrum
+from xmris.fid import apodize_exp, apodize_lg, to_fid, to_spectrum
 from xmris.fourier import fft, fftc, fftshift, ifft, ifftc, ifftshift
 
 

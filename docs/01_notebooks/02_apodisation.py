@@ -1,21 +1,9 @@
 # %% [markdown]
-# # Apodization
+# # FID - Apodization
 #
 # Apodization, or time-domain filtering, is a processing step applied prior to the Fourier transformation to enhance the Signal-to-Noise Ratio (SNR) and/or the spectral resolution of MR spectra.
 #
 # During apodization, the time-domain Free Induction Decay (FID) signal, $f(t)$, is multiplied by a filter function, $f_{filter}(t)$.
-#
-# ```mermaid
-# flowchart LR
-#     A[Raw FID Data\nxarray.DataArray] --> B(Apodization Filter)
-#     B --> C[Filtered FID]
-#     C --> D(Fast Fourier Transform)ƒ
-#     D --> E[MR Spectrum]
-#
-#     style A fill:#e1f5fe,stroke:#01579b
-#     style C fill:#e1f5fe,stroke:#01579b
-#     style E fill:#e8f5e9,stroke:#2e7d32
-# ```
 
 # %%
 import matplotlib.pyplot as plt
@@ -29,7 +17,7 @@ import xmris
 # ## 1. Generating Synthetic Data
 # Let's generate a synthetic FID consisting of a single decaying resonance with added Gaussian noise, packed into an `xarray.DataArray` to preserve physical coordinates.
 
-# %%
+# %% tags=["hide-input"]
 # Acquisition parameters
 dwell_time = 0.001  # 1 ms
 n_points = 1024
@@ -51,6 +39,14 @@ plt.title("Raw FID (Real Part)")
 plt.show()
 
 # %% [markdown]
+# Resulting in the following, noisy spectrum.
+
+# %%
+da_fid.xmr.to_spectrum().real.plot(figsize=(8,3))
+plt.title("Spectrum from raw FID (Real Part)")
+plt.show()
+
+# %% [markdown]
 # ## 2. Exponential Apodization (Line Broadening)
 #
 # A common filter function is the decreasing mono-exponential weighting: $f_{filter}(t) = e^{-t/T_L}$.
@@ -63,8 +59,21 @@ plt.show()
 # Apply 5 Hz of line broadening
 da_exp = da_fid.xmr.apodize_exp(dim="Time", lb=5.0)
 
-da_exp.real.plot(figsize=(8, 3))
+da_fid.real.plot(figsize=(8, 3), color='lightgray')
+da_exp.real.plot()
+
 plt.title("Exponentially Apodized FID (LB = 5 Hz)")
+plt.show()
+
+# %% [markdown]
+# Resulting in the following spectrum:
+
+# %%
+fig, ax = plt.subplots(figsize=(8,3))
+
+da_fid.xmr.to_spectrum().real.plot(ax=ax, color='lightgray')
+da_exp.xmr.to_spectrum().real.plot(ax=ax)
+plt.title("Apodized vs. raw spectrum (Real Part)")
 plt.show()
 
 # %% tags=["remove-cell"]
@@ -100,8 +109,19 @@ assert da_exp.attrs == da_fid.attrs, "Attributes dropped."
 # Cancel 3 Hz of Lorentzian broadening and apply 4 Hz of Gaussian broadening
 da_lg = da_fid.xmr.apodize_lg(dim="Time", lb=3.0, gb=4.0)
 
-da_lg.real.plot(figsize=(8, 3))
+da_fid.real.plot(figsize=(8, 3), color='lightgray')
+da_lg.real.plot()
+
 plt.title("Lorentzian-to-Gaussian Apodized FID (LB=3, GB=4)")
+plt.show()
+
+# %% [markdown]
+# Resulting in the following spectrum:
+
+# %%
+da_fid.xmr.to_spectrum().real.plot(figsize=(8,3), color='lightgray')
+da_lg.xmr.to_spectrum().real.plot()
+plt.title("Apodized vs. raw spectrum (Real Part)")
 plt.show()
 
 # %% tags=["remove-cell"]

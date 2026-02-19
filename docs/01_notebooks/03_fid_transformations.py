@@ -1,5 +1,5 @@
 # %% [markdown]
-# # FID Transformations
+# # FID - Transformations
 #
 # In Magnetic Resonance Spectroscopy (MRS), the raw data acquired by the scanner is a time-domain Free Induction Decay (FID).
 #
@@ -7,17 +7,18 @@
 #
 # ```mermaid
 # flowchart LR
-#     A[Time-Domain FID\n`to_spectrum`] --> B(FFT)
-#     B --> C(fftshift)
-#     C --> D[Frequency-Domain Spectrum]
+#     A[Time-Domain / FID] --> B(FFT) --> C(fftshift) --> D[Frequency-Domain / Spectrum]
 #
-#     D --> E(ifftshift)
-#     E --> F(IFFT)
-#     F --> G[Time-Domain FID\n`to_fid`]
+#     style A fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+#     style D fill:#e8f5e9,stroke:#2e7d32,s
 #
-#     style A fill:#e1f5fe,stroke:#01579b
-#     style D fill:#e8f5e9,stroke:#2e7d32
-#     style G fill:#e1f5fe,stroke:#01579b
+# ```
+# ```mermaid
+# flowchart LR
+#     D[Frequency-Domain / Spectrum] --> E(ifftshift) --> F(IFFT) --> A[Time-Domain / FID]
+#
+#     style D fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+#     style A fill:#e1f5fe,stroke:#01579b,stroke-width:2px
 # ```
 
 # %%

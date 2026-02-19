@@ -1,5 +1,5 @@
 # %% [markdown] vscode={"languageId": "plaintext"}
-# # 01 Fourier Transforms
+# # Basics - Fourier Transform
 #
 # In MRI and MRS, we constantly move between the time domain (FID) and frequency domain (Spectrum), or between $k$-space and image space.
 #
