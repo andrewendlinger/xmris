@@ -62,6 +62,7 @@ ipython_config.py
 docs/_build/
 docs/.jupyter_cache/
 docs/api_reference/
+docs/objects.json
 _build/
 
 # ==============================================================================
