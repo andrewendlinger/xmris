@@ -33,17 +33,27 @@ def docs_api():
             # 1. Fix internal file extensions
             content = content.replace(".qmd", ".md")
 
-            # 2. Scrub Quarto CSS classes (handles {.doc}, {.doc .doc-index}, etc.)
+            # 2. Scrub Quarto CSS classes
             content = re.sub(r"\{\.doc.*?\}", "", content)
 
-            # 3. THE MAGIC FIX: Translate Quarto Anchors to MyST Targets
-            # Converts: "## fft { #xmris.signal.fft }"
-            # Into:     "(xmris.signal.fft)=\n## fft"
+            # 3. Translate Quarto Anchors to MyST Targets
             content = re.sub(
                 r"^(#+)\s+(.*?)\s*\{\s*#([\w\.\-]+)[^\}]*\}",
                 r"(\3)=\n\1 \2",
                 content,
                 flags=re.MULTILINE,
+            )
+
+            # 👇 NEW: 4. Auto-link Xarray type hints using MyST xref syntax
+            content = re.sub(
+                r"\b(xr\.DataArray|xarray\.DataArray)\b",
+                r"[\1](xref:xarray#xarray.DataArray)",
+                content,
+            )
+            content = re.sub(
+                r"\b(xr\.Dataset|xarray\.Dataset)\b",
+                r"[\1](xref:xarray#xarray.Dataset)",
+                content,
             )
 
             md_file = qmd_file.with_suffix(".md")

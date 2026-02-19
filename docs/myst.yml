@@ -1,26 +1,42 @@
 version: 1
-
 project:
-  title: xmris Documentation
+  title: xmris
   description: An xarray-based MRI and MRS toolbox
+  github: https://github.com/andrewendlinger/xmris
+  references:
+    xarray:
+      url: https://docs.xarray.dev/en/stable/
+
   toc:
     - file: index.md
-    - title: Notebooks
+    - title: Tutorials
       children:
         - file: 01_notebooks/01_tutorial_fft.ipynb
     - title: API Reference
-      file: api_reference/index.md    # This becomes the section landing page
+      file: api_reference/index.md
       children:
-        - pattern: api_reference/*.md
+        - file: api_reference/signal.md
+        - file: api_reference/accessor.md
     - title: Contribute
       children:
         - file: 02_Contribute/01_contribute.md
         - file: 02_Contribute/02_setup.md
+        - file: 02_Contribute/03_ai_context.md
 
 site:
   template: book-theme
+  title: xmris
   options:
-    folders: true
-    launch_buttons: false
-    download_buttons: true
-    base_url: /xmris
+    # logo_text: xmris
+    logo: assets/logo.svg
+  nav:
+    - title: Home
+      url: /index
+    - title: Tutorials
+      url: /01_notebooks/01_tutorial_fft
+    - title: API
+      url: /api_reference/index
+
+  actions:
+    - title: GitHub
+      url: https://github.com/andrewendlinger/xmris
