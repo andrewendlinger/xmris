@@ -6,15 +6,20 @@
 # Standard `numpy.fft` functions place the zero-frequency (DC) component at the edges of the array, requiring manual `fftshift` operations. They also scale the signal amplitude by the number of points, which breaks energy conservation between domains.
 #
 # The `xmris.signal` module provides a modular approach to solve this:
+#
+#
 # 1. **Pure Transforms (`fft` / `ifft`):** Performs orthogonal, N-dimensional transforms with NO shifting.
-# 2. **Centered Transforms (`fftc` / `ifftc`):** Convenience wrappers for symmetric data (like imaging) that shift data *before* and *after* the transform.
-# 3. **Explicit Shifts (`fftshift` / `ifftshift`):** Safely rolls both the data and the coordinate axes.
+# 2. **Explicit Shifts (`fftshift` / `ifftshift`):** Safely rolls both the data and the coordinate axes.
+# 3. **Centered Transforms (`fftc` / `ifftc`):** Convenience wrappers for symmetric data (like imaging) that shift data *before* and *after* the transform.
+#
+# ```mermaid
+# flowchart TD
+#     subgraph Centered Transform
+#         D2[(Input Data)] --> S1[ifftshift] --> F2[xmris.fft] --> S2[fftshift] --> O2[(Centered Output)]
+#     end
+# ```
 
 # %%
-# # %load_ext autoreload
-# # %autoreload 2
-# # %matplotlib widget
-
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
@@ -26,8 +31,9 @@ plt.style.use("default")
 
 # %% [markdown]
 # ## 1. 1D Signal: Time Domain to Frequency Domain
-# Let's generate a synthetic Free Induction Decay (FID) signal. It will consist of a single oscillating frequency that decays exponentially over time.
+# Let's generate a synthetic Free Induction Decay (FID) signal. Mathematically, a basic FID can be modeled as a complex exponential oscillating at a frequency offset $f_0$, decaying with a time constant $T_2^*$:
 #
+# $$ S(t) = e^{-t/T_2^*} e^{i 2\pi f_0 t} $$
 
 # %%
 # Create a synthetic 1D FID (Time domain)
@@ -53,9 +59,9 @@ ax.set_title("Time Domain: Free Induction Decay (Real Part)")
 plt.show()
 
 # %% [markdown]
-# Now, we transform the signal. **Crucial:** Because this signal starts exactly at $t=0$, we *cannot* use the centered wrapper `fftc` (which applies an `ifftshift` to the input and would physically split our $t=0$ point to the center of the array, ruining the phase).
+# Now, we transform the signal. **Crucial:** Because this signal starts exactly at t=0, we *cannot* use the centered wrapper `fftc` (which applies an `ifftshift` to the input and would physically split our t=0 point to the center of the array, ruining the phase).
 #
-# Instead, we use the pure `.xmr.fft()` followed by an explicit `.xmr.fftshift()`. By providing `out_dim="Frequency"`, the toolbox will automatically calculate the reciprocal coordinate values (Hz) based on the input dwell time!
+# Instead, we use the pure `.xmr.fft()` followed by an explicit `.xmr.fftshift()`. The toolbox automatically calculates the reciprocal coordinate values (Hz) based on the input dwell time, and by providing `out_dim="Frequency"`, it conveniently renames the dimension for us in the same step!
 #
 # *(Note: The `xmris.mrs` module provides a semantic wrapper `da.xmr.to_spectrum()` that does this exact method chain under the hood).*
 
@@ -66,12 +72,15 @@ da_spectrum = da_fid.xmr.fft(dim="Time", out_dim="Frequency").xmr.fftshift(
 )
 
 # Plot the real part of the spectrum
-fig, ax = plt.subplots(figsize=(10,3))
-da_spectrum.real.plot( ax=ax)
+fig, ax = plt.subplots(figsize=(10, 3))
+da_spectrum.real.plot(ax=ax)
 ax.set_title("Frequency Domain: Spectrum (Real Part)")
 plt.show()
 
+# %% tags=["remove-cell"]
 # --- AUTOMATED TESTS (Pytest-nbmake) ---
+# This cell is hidden in the MyST docs but executed in CI.
+
 # 1. Metadata Preservation & Coordinate Transformation
 assert "Frequency" in da_spectrum.dims, "Dimension was not renamed!"
 assert "Time" not in da_spectrum.dims
@@ -90,7 +99,6 @@ assert np.isclose(energy_time, energy_freq), "FFT energy conservation failed!"
 # %% [markdown]
 # ## 2. Imaging: 2D $k$-space to Image Space
 # The true power of `xarray` + `xmris` shines in multi-dimensional data. Let's create a synthetic 2D $k$-space. We will use a simple 2D rectangle, which analytically transforms into a 2D sinc function in the image domain.
-#
 
 # %%
 # Create a synthetic 2D k-space (64x64 matrix)
@@ -126,7 +134,10 @@ ax.imshow(np.abs(da_image.values), cmap="gray", extent=[-32, 31, -32, 31])
 ax.set_title("Image Space (2D Sinc)")
 plt.show()
 
+# %% tags=["remove-cell"]
 # --- AUTOMATED TESTS (Pytest-nbmake) ---
+# This cell is hidden in the MyST docs but executed in CI.
+
 # 1. Coordinate mapping
 assert da_image.dims == ("x", "y"), "Dimensions were not renamed to x and y!"
 
