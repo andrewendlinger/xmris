@@ -1,1 +1,0 @@
-<a href="https://github.com/andrewendlinger/xmris/" target="_blank">Repository</a>

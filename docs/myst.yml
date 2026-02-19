@@ -1,11 +1,24 @@
 version: 1
+
 project:
   title: xmris Documentation
   description: An xarray-based MRI and MRS toolbox
+  toc:
+    - file: index.md
+    - title: Notebooks
+      children:
+        - file: 01_notebooks/01_tutorial_fft.ipynb
+    - title: API Reference
+      file: api_reference/index.md    # This becomes the section landing page
+      children:
+        - pattern: api_reference/*.md
+    - title: Contribute
+      children:
+        - file: 02_Contribute/01_contribute.md
+        - file: 02_Contribute/02_setup.md
+
 site:
   template: book-theme
-  parts:
-    footer: assets/footer.md
   options:
     folders: true
     launch_buttons: false

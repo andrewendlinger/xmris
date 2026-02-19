@@ -1,0 +1,12 @@
+quartodoc:
+  package: xmris
+  dir: api_reference
+  sections:
+    - title: Signal Processing
+      desc: Core MRI and MRS signal functions.
+      contents:
+        - signal
+    - title: Data Accessors
+      desc: Custom xarray accessors.
+      contents:
+        - accessor
