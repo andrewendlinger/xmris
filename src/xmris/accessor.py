@@ -8,6 +8,7 @@ import xarray as xr
 
 from xmris.fid import apodize_exp, apodize_lg, to_fid, to_spectrum, zero_fill
 from xmris.fourier import fft, fftc, fftshift, ifft, ifftc, ifftshift
+from xmris.phase import autophase, phase
 
 
 @xr.register_dataarray_accessor("xmr")
@@ -223,3 +224,52 @@ class XmrisAccessor:
         return zero_fill(
             self._obj, dim=dim, target_points=target_points, position=position
         )
+
+    # --- Phase Correction ---
+
+    def phase(self, p0: float = 0.0, p1: float = 0.0) -> xr.DataArray:
+        """
+        Apply zero- and first-order phase correction to the spectrum.
+
+        Parameters
+        ----------
+        p0 : float, optional
+            Zero-order phase angle in degrees, by default 0.0.
+        p1 : float, optional
+            First-order phase angle in degrees, by default 0.0.
+
+        Returns
+        -------
+        xr.DataArray
+            The phase-corrected spectrum with p0 and p1 stored in the attributes.
+        """
+        return phase(self._obj, p0=p0, p1=p1)
+
+    def autophase(
+        self, dim: str = "Frequency", lb: float = 5.0, temp_time_dim: str = "Time"
+    ) -> xr.DataArray:
+        """
+        Automatically calculate and apply phase correction to a spectrum.
+
+        Uses a hidden "sacrificial apodization" step to improve SNR temporarily
+        for the optimizer, calculating the correct phase angles, and applying
+        them to the raw, input spectrum.
+
+        Parameters
+        ----------
+        dim : str, optional
+            The frequency dimension, by default "Frequency".
+        lb : float, optional
+            The line broadening (in Hz) used for the sacrificial apodization.
+            Higher values suppress more noise. By default 10.0.
+        temp_time_dim : str, optional
+            The name used for the temporary time dimension during the inverse
+            transform. By default "Time".
+
+        Returns
+        -------
+        xr.DataArray
+            The phased high-resolution spectrum. Phase angles are stored in
+            `DataArray.attrs['p0']` and `DataArray.attrs['p1']`.
+        """
+        return autophase(self._obj, dim=dim, lb=lb, temp_time_dim=temp_time_dim)
