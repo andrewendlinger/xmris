@@ -6,7 +6,7 @@ This module registers the `.xmr` namespace on xarray DataArrays.
 
 import xarray as xr
 
-from xmris.fid import apodize_exp, apodize_lg, to_fid, to_spectrum
+from xmris.fid import apodize_exp, apodize_lg, to_fid, to_spectrum, zero_fill
 from xmris.fourier import fft, fftc, fftshift, ifft, ifftc, ifftshift
 
 
@@ -193,3 +193,33 @@ class XmrisAccessor:
             The time-domain FID data.
         """
         return to_fid(self._obj, dim=dim, out_dim=out_dim)
+
+    def zero_fill(
+        self,
+        dim: str = "Time",
+        target_points: int = 1024,
+        position: str = "end",
+    ) -> xr.DataArray:
+        """
+        Pad the specified dimension with zero amplitude points.
+
+        Artificially extend the data with zeros and increase digital resolution.
+
+        Parameters
+        ----------
+        dim : str, optional
+            The dimension along which to pad zeros, by default "Time".
+        target_points : int, optional
+            The total number of points desired after padding, by default 1024.
+        position : {"end", "symmetric"}, optional
+            Where to apply the zeros. Use "end" for time-domain FIDs, and
+            "symmetric" for spatial frequency domains like k-space. By default "end".
+
+        Returns
+        -------
+        xr.DataArray
+            A new DataArray padded with zeros to the target length, preserving metadata.
+        """
+        return zero_fill(
+            self._obj, dim=dim, target_points=target_points, position=position
+        )

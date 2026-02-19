@@ -14,6 +14,7 @@ project:
         - file: 01_notebooks/01_tutorial_fft.ipynb
         - file: 01_notebooks/02_apodisation.ipynb
         - file: 01_notebooks/03_fid_transformations.ipynb
+        - file: 01_notebooks/04_zeropadding.ipynb
     - title: API Reference
       file: api_reference/index.md
       children:
