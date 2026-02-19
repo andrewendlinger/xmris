@@ -9,7 +9,7 @@ project:
 
   toc:
     - file: index.md
-    - title: Tutorials
+    - title: Notebooks
       children:
         - file: 01_notebooks/01_tutorial_fft.ipynb
     - title: API Reference

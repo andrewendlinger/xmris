@@ -76,6 +76,10 @@ ignore = ["D100", "D104"]
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"
 
+[tool.ruff.lint.per-file-ignores]
+# Ignore "Line too long" (E501) in all notebook scripts
+"docs/01_notebooks/*.py" = ["E501"]
+
 # --- Jupytext ---
 [tool.jupytext]
 formats = "ipynb,py:percent"
