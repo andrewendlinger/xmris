@@ -1,49 +1,75 @@
+# ==============================================================================
+# 1. PROJECT METADATA
+# ==============================================================================
 [project]
 name = "xmris"
 version = "0.1.0"
 description = "An xarray-based MRI and MRS toolbox"
 readme = "README.md"
+requires-python = ">=3.11"
 authors = [
     { name = "Andrecho", email = "37243793+andrewendlinger@users.noreply.github.com" }
 ]
-requires-python = ">=3.11"
 dependencies = [
     "numpy>=2.2.0",      # Numpy 2.x is the standard in 2026
     "xarray>=2025.11.0", # Recent stable xarray
 ]
 
+[project.scripts]
+# Exposes `uv run docs` to trigger the standalone MyST docs build
+docs = "xmris._scripts:docs_main"
+
+# ==============================================================================
+# 2. BUILD SYSTEM
+# ==============================================================================
 [build-system]
 requires = ["uv_build>=0.10.0,<0.11.0"]
 build-backend = "uv_build"
 
+# ==============================================================================
+# 3. DEVELOPMENT DEPENDENCIES
+# ==============================================================================
 [dependency-groups]
 dev = [
     "ipympl>=0.10.0",
     "jupytext>=1.19.1",
     "matplotlib>=3.10.0",
     "mypy>=1.15.0",
-    "nbmake>=1.5.5",
+    "mystmd>=1.3.0",    # Python MyST CLI for docs building
+    "nbmake>=1.5.5",    # Pytest plugin to treat Jupyter notebooks as unit tests
     "pytest>=8.4.0",
     "ruff>=0.9.0",
-    "sphinxcontrib-mermaid>=1.2.3",
 ]
 
+# ==============================================================================
+# 4. TOOL CONFIGURATIONS
+# ==============================================================================
+
+# --- Pytest & Nbmake ---
+[tool.pytest.ini_options]
+# Automatically append --nbmake so `uv run pytest` tests both .py and .ipynb files
+addopts = "--nbmake"
+# Explicitly state where pytest should look to speed up test discovery
+testpaths = [
+    "tests",          # Standard Python unit tests (assuming you create this folder)
+    "docs/01_notebooks",   # Your Jupyter notebook tutorials
+]
+
+# --- Ruff (Linter & Formatter) ---
 [tool.ruff]
 line-length = 88
-target-version = "py312"  # Matches your requires-python
+target-version = "py312"  # Ensure this matches your expected runtime target
 
 [tool.ruff.lint]
-# Added "UP" (pyupgrade) to automatically modernize syntax
+# Select rules: Errors (E), Failures (F), isort (I), NumPy (NPY), Docstrings (D), pyupgrade (UP)
 select = ["E", "F", "I", "NPY", "D", "UP"]
 ignore = ["D100", "D104"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"
 
+# --- Jupytext ---
 [tool.jupytext]
 formats = "ipynb,py:percent"
 notebook_metadata_filter = "-all"
 cell_metadata_filter = "all,-trusted"
-
-[project.scripts]
-docs = "xmris._scripts:docs_main"
