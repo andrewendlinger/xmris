@@ -4,8 +4,6 @@ Xarray accessor for the xmris toolbox.
 This module registers the `.xmr` namespace on xarray DataArrays.
 """
 
-from typing import Union
-
 import xarray as xr
 
 from xmris.signal import fft, fftc, fftshift, ifft, ifftc, ifftshift
@@ -33,7 +31,7 @@ class XmrisAccessor:
 
     # --- Shifts ---
 
-    def fftshift(self, dim: Union[str, list[str]]) -> xr.DataArray:
+    def fftshift(self, dim: str | list[str]) -> xr.DataArray:
         """
         Apply fftshift by rolling data and coordinates along specified dimensions.
 
@@ -41,7 +39,7 @@ class XmrisAccessor:
         """
         return fftshift(self._obj, dim=dim)
 
-    def ifftshift(self, dim: Union[str, list[str]]) -> xr.DataArray:
+    def ifftshift(self, dim: str | list[str]) -> xr.DataArray:
         """
         Apply ifftshift by rolling data and coordinates along specified dimensions.
 
@@ -53,8 +51,8 @@ class XmrisAccessor:
 
     def fft(
         self,
-        dim: Union[str, list[str]] = "Time",
-        out_dim: Union[str, list[str], None] = None,
+        dim: str | list[str] = "Time",
+        out_dim: str | list[str] | None = None,
     ) -> xr.DataArray:
         """
         Perform a standard N-dimensional FFT (no shifts).
@@ -65,8 +63,8 @@ class XmrisAccessor:
 
     def ifft(
         self,
-        dim: Union[str, list[str]] = "Time",
-        out_dim: Union[str, list[str], None] = None,
+        dim: str | list[str] = "Time",
+        out_dim: str | list[str] | None = None,
     ) -> xr.DataArray:
         """
         Perform a standard N-dimensional Inverse FFT (no shifts).
@@ -79,8 +77,8 @@ class XmrisAccessor:
 
     def fftc(
         self,
-        dim: Union[str, list[str]] = "Time",
-        out_dim: Union[str, list[str], None] = None,
+        dim: str | list[str] = "Time",
+        out_dim: str | list[str] | None = None,
     ) -> xr.DataArray:
         """
         Perform an N-dimensional centered FFT.
@@ -92,8 +90,8 @@ class XmrisAccessor:
 
     def ifftc(
         self,
-        dim: Union[str, list[str]] = "Time",
-        out_dim: Union[str, list[str], None] = None,
+        dim: str | list[str] = "Time",
+        out_dim: str | list[str] | None = None,
     ) -> xr.DataArray:
         """
         Perform an N-dimensional centered Inverse FFT.

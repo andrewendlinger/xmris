@@ -6,14 +6,14 @@ import xarray as xr
 # --- 1. Shifting Utilities ---
 
 
-def fftshift(da: xr.DataArray, dim: Union[str, list[str]]) -> xr.DataArray:
+def fftshift(da: xr.DataArray, dim: str | list[str]) -> xr.DataArray:
     """Apply fftshift by rolling data and coordinates along the given dimension(s)."""
     dims = [dim] if isinstance(dim, str) else dim
     shifts = {d: da.sizes[d] // 2 for d in dims}
     return da.roll(shifts, roll_coords=True)
 
 
-def ifftshift(da: xr.DataArray, dim: Union[str, list[str]]) -> xr.DataArray:
+def ifftshift(da: xr.DataArray, dim: str | list[str]) -> xr.DataArray:
     """Apply ifftshift by rolling data and coordinates along the given dimension(s)."""
     dims = [dim] if isinstance(dim, str) else dim
     shifts = {d: (da.sizes[d] + 1) // 2 for d in dims}
@@ -46,8 +46,8 @@ def _convert_fft_coords(
 
 def fft(
     da: xr.DataArray,
-    dim: Union[str, list[str]] = "Time",
-    out_dim: Union[str, list[str], None] = None,
+    dim: str | list[str] = "Time",
+    out_dim: str | list[str] | None = None,
 ) -> xr.DataArray:
     """Perform N-dimensional FFT (Ortho normalized, no shifts)."""
     dims = [dim] if isinstance(dim, str) else dim
@@ -79,8 +79,8 @@ def fft(
 
 def ifft(
     da: xr.DataArray,
-    dim: Union[str, list[str]] = "Time",
-    out_dim: Union[str, list[str], None] = None,
+    dim: str | list[str] = "Time",
+    out_dim: str | list[str] | None = None,
 ) -> xr.DataArray:
     """Perform N-dimensional IFFT (Ortho normalized, no shifts)."""
     # (Implementation is identical to fft, just using np.fft.ifftn)
@@ -104,8 +104,8 @@ def ifft(
 
 def fftc(
     da: xr.DataArray,
-    dim: Union[str, list[str]] = "Time",
-    out_dim: Union[str, list[str], None] = None,
+    dim: str | list[str] = "Time",
+    out_dim: str | list[str] | None = None,
 ) -> xr.DataArray:
     """Centered N-dimensional FFT (ifftshift -> fft -> fftshift)."""
     # Look how beautiful and explicit this functional chain is!
@@ -120,8 +120,8 @@ def fftc(
 
 def ifftc(
     da: xr.DataArray,
-    dim: Union[str, list[str]] = "Time",
-    out_dim: Union[str, list[str], None] = None,
+    dim: str | list[str] = "Time",
+    out_dim: str | list[str] | None = None,
 ) -> xr.DataArray:
     """Centered N-dimensional IFFT (ifftshift -> ifft -> fftshift)."""
     new_dims = out_dim if out_dim is not None else dim
