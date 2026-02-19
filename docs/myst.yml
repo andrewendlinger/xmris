@@ -15,11 +15,13 @@ project:
         - file: 01_notebooks/02_fid_transformations.ipynb
         - file: 01_notebooks/03_fid_zerofill.ipynb
         - file: 01_notebooks/04_fid_apodization.ipynb
+        - file: 01_notebooks/05_phase.ipynb
     - title: API Reference
       file: api_reference/index.md
       children:
         - file: api_reference/fourier.md
         - file: api_reference/fid.md
+        - file: api_reference/phase.md
         - file: api_reference/accessor.md
     - title: Contribute
       children:

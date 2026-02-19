@@ -10,6 +10,10 @@ quartodoc:
       desc: Core FID signal functions.
       contents:
         - fid
+    - title: Phase Correction
+      desc: Manual and automatic phase correction of MR spectra (based on nmrglue)
+      contents:
+        - phase
     - title: Data Accessors
       desc: Custom xarray accessors.
       contents:
