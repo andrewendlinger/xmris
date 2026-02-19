@@ -7,9 +7,10 @@
     "editor.formatOnSave": true,
     "editor.defaultFormatter": "charliermarsh.ruff",
     "editor.codeActionsOnSave": {
-      "source.fixAll.ruff": "explicit",
-      "source.organizeImports.ruff": "explicit"
+      "source.fixAll.ruff": true,
+      "source.organizeImports.ruff": true
     }
   },
+
   "ruff.nativeServer": "on"
 }
