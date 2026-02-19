@@ -19,7 +19,6 @@ project:
       children:
         - file: api_reference/fourier.md
         - file: api_reference/fid.md
-        - file: api_reference/apodization.md
         - file: api_reference/accessor.md
     - title: Contribute
       children:

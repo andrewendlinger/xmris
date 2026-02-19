@@ -10,10 +10,6 @@ quartodoc:
       desc: Core FID signal functions.
       contents:
         - fid
-    - title: Apodization
-      desc: Common implementations of apodization, also known as linebroadening.
-      contents:
-        - apodization
     - title: Data Accessors
       desc: Custom xarray accessors.
       contents:
