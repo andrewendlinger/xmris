@@ -29,20 +29,18 @@ jobs:
       - name: Setup GitHub Pages
         uses: actions/configure-pages@v5
 
-      # Replace Node.js setup with Astral's uv setup
       - name: Setup uv
         uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
 
       - name: Install dependencies
-        # Syncs your dev environment, which now includes mystmd
         run: uv sync --only-group dev
 
       - name: Build MyST Site
         run: |
+          uv run docs-api
           cd docs
-          # Run the locally installed myst CLI
           uv run myst build --html
 
       - name: Upload Build Artifacts
