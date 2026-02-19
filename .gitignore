@@ -61,6 +61,7 @@ ipython_config.py
 # Ignore the generated HTML and caches from building the docs
 docs/_build/
 docs/.jupyter_cache/
+docs/api_reference/
 _build/
 
 # ==============================================================================
