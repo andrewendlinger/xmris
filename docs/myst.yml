@@ -9,38 +9,55 @@ project:
 
   toc:
     - file: index.md
-    - title: Notebooks
+
+    # 1. GROUP: Core concepts and basic usage
+    - title: Basics
       children:
         - file: 01_notebooks/01_basics_fft.ipynb
+          title: Basics of FFT
         - file: 01_notebooks/02_fid_transformations.ipynb
-        - file: 01_notebooks/03_fid_zerofill.ipynb
-        - file: 01_notebooks/04_fid_apodization.ipynb
-        - file: 01_notebooks/05_phase.ipynb
+          title: FID to Spectrum
+
+    # 2. GROUP: A chronological processing pipeline
+    - title: Processing Pipeline
+      children:
         - file: 01_notebooks/06_bruker_digital_filter.ipynb
+          title: 1. Bruker Digital Filter  # Shortened title
+        - file: 01_notebooks/03_fid_zerofill.ipynb
+          title: 2. Zero Filling
+        - file: 01_notebooks/04_fid_apodization.ipynb
+          title: 3. Apodization
+        - file: 01_notebooks/05_phase.ipynb
+          title: 4. Phase Correction
+
+    # 3. API Ref: Put the Accessor first, as it's the main user entry point
     - title: API Reference
       file: api_reference/index.md
       children:
+        - file: api_reference/accessor.md
+          title: .xmr Accessor
         - file: api_reference/fourier.md
         - file: api_reference/fid.md
         - file: api_reference/phase.md
-        - file: api_reference/accessor.md
+        - file: api_reference/bruker.md
+
     - title: Contribute
       children:
         - file: 02_Contribute/01_contribute.md
+          title: Contributing Guide
         - file: 02_Contribute/02_setup.md
+          title: Environment Setup
         - file: 02_Contribute/03_ai_context.md
+          title: AI Context
 
 site:
   template: book-theme
   title: xmris
   options:
-    # logo_text: xmris
     logo: assets/logo.svg
   nav:
     - title: Home
       url: /index
-    - title: Tutorials
-      url: /01_notebooks/01_tutorial_fft
     - title: API
       url: /api_reference/index
 

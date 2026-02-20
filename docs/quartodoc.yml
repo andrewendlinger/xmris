@@ -14,6 +14,10 @@ quartodoc:
       desc: Manual and automatic phase correction of MR spectra (based on nmrglue)
       contents:
         - phase
+    - title: Bruker Related Processing
+      desc: Digital filter group delay removal of Bruker FIDs.
+      contents:
+        - bruker
     - title: Data Accessors
       desc: Custom xarray accessors.
       contents:
