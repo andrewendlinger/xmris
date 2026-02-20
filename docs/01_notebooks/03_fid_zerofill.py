@@ -1,3 +1,13 @@
+# %% tags=["remove-cell"]
+import matplotlib.pyplot as plt
+import matplotlib_inline.backend_inline
+
+# 1. Use retina for crisp, PDF-like text that never disappears in HTML
+matplotlib_inline.backend_inline.set_matplotlib_formats("retina")
+
+# 2. Set a high baseline DPI
+plt.rcParams["figure.dpi"] = 150
+
 # %% [markdown]
 # # FID - Zero Filling
 #
@@ -104,7 +114,7 @@ spec_zf_norm = spec_zf / spec_zf.max()
 spec_zf_norm.plot(
     ax=ax2,
     color="black",
-    marker='.',
+    marker=".",
     linewidth=1.5,
     label=f"Zero-filled ({target_points} pts, BW={bw_sampled:.0f}Hz)",
 )
@@ -117,9 +127,9 @@ spec_sampled_norm.plot(
     label=f"Sampled ({n_points_sampled} pts, BW={bw_sampled:.0f}Hz)",
 )
 
-cf = 50 # centerfreq
-ax2.set_xlim(cf-70, cf+70)
-ax2.axvline(cf, color='gray', zorder=-10)
+cf = 50  # centerfreq
+ax2.set_xlim(cf - 70, cf + 70)
+ax2.axvline(cf, color="gray", zorder=-10)
 ax2.set_title(
     f"Frequency Domain (Normalized) | Constant BW = {bw_sampled:.0f}Hz ($\Delta t$={dwell_time * 1000:.1f}ms)"
 )

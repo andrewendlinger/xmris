@@ -16,6 +16,7 @@ project:
         - file: 01_notebooks/03_fid_zerofill.ipynb
         - file: 01_notebooks/04_fid_apodization.ipynb
         - file: 01_notebooks/05_phase.ipynb
+        - file: 01_notebooks/06_bruker_digital_filter.ipynb
     - title: API Reference
       file: api_reference/index.md
       children:

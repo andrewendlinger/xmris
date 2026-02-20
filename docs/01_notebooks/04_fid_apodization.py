@@ -1,3 +1,13 @@
+# %% tags=["remove-cell"]
+import matplotlib.pyplot as plt
+import matplotlib_inline.backend_inline
+
+# 1. Use retina for crisp, PDF-like text that never disappears in HTML
+matplotlib_inline.backend_inline.set_matplotlib_formats("retina")
+
+# 2. Set a high baseline DPI
+plt.rcParams["figure.dpi"] = 150
+
 # %% [markdown]
 # # FID - Apodization
 #
@@ -42,7 +52,7 @@ plt.show()
 # Resulting in the following, noisy spectrum.
 
 # %%
-da_fid.xmr.to_spectrum().real.plot(figsize=(8,3))
+da_fid.xmr.to_spectrum().real.plot(figsize=(8, 3))
 plt.title("Spectrum from raw FID (Real Part)")
 plt.show()
 
@@ -59,7 +69,7 @@ plt.show()
 # Apply 5 Hz of line broadening
 da_exp = da_fid.xmr.apodize_exp(dim="Time", lb=5.0)
 
-da_fid.real.plot(figsize=(8, 3), color='lightgray')
+da_fid.real.plot(figsize=(8, 3), color="lightgray")
 da_exp.real.plot()
 
 plt.title("Exponentially Apodized FID (LB = 5 Hz)")
@@ -69,9 +79,9 @@ plt.show()
 # Resulting in the following spectrum:
 
 # %%
-fig, ax = plt.subplots(figsize=(8,3))
+fig, ax = plt.subplots(figsize=(8, 3))
 
-da_fid.xmr.to_spectrum().real.plot(ax=ax, color='lightgray')
+da_fid.xmr.to_spectrum().real.plot(ax=ax, color="lightgray")
 da_exp.xmr.to_spectrum().real.plot(ax=ax)
 plt.title("Apodized vs. raw spectrum (Real Part)")
 plt.show()
@@ -109,7 +119,7 @@ assert da_exp.attrs == da_fid.attrs, "Attributes dropped."
 # Cancel 3 Hz of Lorentzian broadening and apply 4 Hz of Gaussian broadening
 da_lg = da_fid.xmr.apodize_lg(dim="Time", lb=3.0, gb=4.0)
 
-da_fid.real.plot(figsize=(8, 3), color='lightgray')
+da_fid.real.plot(figsize=(8, 3), color="lightgray")
 da_lg.real.plot()
 
 plt.title("Lorentzian-to-Gaussian Apodized FID (LB=3, GB=4)")
@@ -119,7 +129,7 @@ plt.show()
 # Resulting in the following spectrum:
 
 # %%
-da_fid.xmr.to_spectrum().real.plot(figsize=(8,3), color='lightgray')
+da_fid.xmr.to_spectrum().real.plot(figsize=(8, 3), color="lightgray")
 da_lg.xmr.to_spectrum().real.plot()
 plt.title("Apodized vs. raw spectrum (Real Part)")
 plt.show()

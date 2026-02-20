@@ -1,3 +1,12 @@
+# %% tags=["remove-cell"]
+import matplotlib.pyplot as plt
+import matplotlib_inline.backend_inline
+
+# 1. Use retina for crisp, PDF-like text that never disappears in HTML
+matplotlib_inline.backend_inline.set_matplotlib_formats("retina")
+
+# 2. Set a high baseline DPI
+plt.rcParams["figure.dpi"] = 150
 # %% [markdown]
 # # FID - Transformations
 #
