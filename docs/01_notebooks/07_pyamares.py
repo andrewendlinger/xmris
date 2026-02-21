@@ -121,12 +121,16 @@ plt.show()
 #
 # Under the hood, `xmris` evaluates the Signal-to-Noise Ratio (SNR) of all 5 voxels, picks the one with the highest SNR to safely initialize the `pyAMARES` template, and then parallelizes the fitting across your CPU cores.
 
-# %% tags=["remove-stdout"]
-# The accessor returns a beautiful, fully aligned xarray.Dataset
+# %% tags=["skip-execution"]
+# We use num_workers=4 to parallelize the fitting across our spatial dimensions!
 ds_fit = da_mrsi.xmr.fit_amares(
     prior_knowledge_file=pk_path, method="least_squares", num_workers=4
 )
-
+# %% tags=["remove-cell"]
+# Hidden cell for pytest-cov tracking, has to be a single thread with one worker only!
+ds_fit = da_mrsi.xmr.fit_amares(
+    prior_knowledge_file=pk_path, method="least_squares", num_workers=1
+)
 # %% [markdown]
 # ### Exploring the Resulting Dataset
 #

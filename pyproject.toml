@@ -59,6 +59,8 @@ dev = [
     "griffe<0.40.0",     # temporary explicit import to fix the quartodoc parsing bug
     "quartodoc>=0.11.1", # Docs: converts code docstrings to markdown files for myst
     "ruff>=0.9.0",
+    "pytest-cov>=5.0.0,<7.0.0", # Pin below 7.0.0 to fix nbmake subprocess tracking,
+    "pytest-xdist>=3.8.0",
 ]
 
 # ==============================================================================
@@ -67,17 +69,22 @@ dev = [
 
 # --- Pytest & Nbmake ---
 [tool.pytest.ini_options]
-# Automatically append --nbmake so `uv run pytest` tests both .py and .ipynb files
-addopts = "--nbmake"
-# Explicitly state where pytest should look to speed up test discovery
+# Explanation of addopts:
+# --nbmake: treat notebooks as tests
+# --cov=xmris: track coverage specifically for your package source code
+# --cov-report=term-missing: print coverage % in the terminal and list missing line numbers
+# --cov-report=html: generate a clickable HTML report in a folder named `htmlcov`
+# -n auto: use all available CPU cores to run tests in parallel
+addopts = "--nbmake --cov=xmris --cov-report=term-missing --cov-report=html -n auto --cov-config=pyproject.toml"
+
 testpaths = [
-    "tests",          # Standard Python unit tests (assuming you create this folder)
-    "docs/01_notebooks",   # Your Jupyter notebook tutorials
+    "tests",
+    "docs/01_notebooks",
 ]
 
 # --- Ruff (Linter & Formatter) ---
 [tool.ruff]
-line-length = 88
+line-length = 90
 target-version = "py312"  # Ensure this matches your expected runtime target
 
 [tool.ruff.lint]
@@ -103,4 +110,31 @@ notebook_metadata_filter = "-all"
 cell_metadata_filter = "all,-trusted"
 
 [tool.uv.sources]
-pyamares = { path = "../pyAMARES" }
+# Uncomment the local repository for simultaneous development of both packages
+# (longterm a uv workspace might be better)
+pyamares = { git = "https://github.com/andrewendlinger/pyAMARES", branch = "xmris-compatible" }
+# pyamares = { path = "../pyAMARES", editable = true } # (local dependency development workflow)
+
+# ==============================================================================
+# 5. COVERAGE CONFIGURATION
+# ==============================================================================
+[tool.coverage.run]
+# Tell coverage to look inside the src directory
+source = ["xmris"]
+disable_warnings = ["no-data-collected"]
+
+omit = [
+    "*/tests/*",
+    "*/docs/*",
+    "*/_scripts.py", # This wildcard will catch it anywhere
+]
+
+[tool.coverage.report]
+# Automatically ignore lines that match these patterns
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if TYPE_CHECKING:",       # Ignore typing imports
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+]

@@ -4,7 +4,6 @@ Xarray accessor for the xmris toolbox.
 This module registers the `.xmr` namespace on xarray DataArrays.
 """
 
-import pathlib as Path
 from pathlib import Path
 
 import numpy as np
@@ -277,8 +276,6 @@ class XmrisAccessor:
             `DataArray.attrs['p0']` and `DataArray.attrs['p1']`.
         """
         return autophase(self._obj, dim=dim, lb=lb, temp_time_dim=temp_time_dim)
-
-    # --- Fitting ---
 
     # --- Fitting ---
 

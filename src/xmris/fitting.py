@@ -129,17 +129,36 @@ def fit_amares(
         preview=False,
     )
 
-    # 5. Execute Parallel Batch Fitting
-    result_list = run_parallel_fitting_with_progress(
-        fid_arrs,
-        FIDobj_shared=shared_obj,
-        initial_params=shared_obj.initialParams,
-        method=method,
-        initialize_with_lm=initialize_with_lm,
-        num_workers=num_workers,
-        notebook=False,
-        logfilename=os.devnull,
-    )
+    # 5. Execute Fitting
+    if num_workers == 1:
+        # BYPASS multiprocessing entirely for testing/single-core execution
+        # This allows pytest-cov to track the execution properly
+        from pyAMARES.util.multiprocessing import fit_dataset
+
+        result_list = []
+        for i in range(fid_arrs.shape[0]):
+            res = fit_dataset(
+                fid_arrs[i, :],
+                FIDobj_shared=shared_obj,
+                initial_params=shared_obj.initialParams,
+                method=method,
+                initialize_with_lm=initialize_with_lm,
+            )
+            result_list.append(res)
+    else:
+        # Use pyAMARES multiprocessing for normal execution
+        from pyAMARES.util.multiprocessing import run_parallel_fitting_with_progress
+
+        result_list = run_parallel_fitting_with_progress(
+            fid_arrs,
+            FIDobj_shared=shared_obj,
+            initial_params=shared_obj.initialParams,
+            method=method,
+            initialize_with_lm=initialize_with_lm,
+            num_workers=num_workers,
+            notebook=False,
+            logfilename=os.devnull,
+        )
 
     # 6. Extract Parameters and Reconstruct Time-Domain Fits
     metabolites = result_list[0].index.values
