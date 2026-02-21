@@ -391,3 +391,27 @@ class XmrisAccessor:
         return remove_digital_filter(
             self._obj, group_delay=group_delay, dim=dim, keep_length=keep_length
         )
+
+    # --- Utility / Formatting ---
+
+    def to_real_imag(
+        self, dim: str = "Complex", labels: tuple[str, str] = ("Real", "Imag")
+    ) -> xr.DataArray:
+        """Convert a complex-valued array into a real-valued array with an extra
+        dimension for the real and imaginary components.
+        """
+        # Note: adjust the import based on where you put the helper functions
+        from xmris.utils import to_real_imag as _to_real_imag
+
+        return _to_real_imag(self._obj, dim=dim, labels=labels)
+
+    def to_complex(
+        self, dim: str = "Complex", labels: tuple[str, str] = ("Real", "Imag")
+    ) -> xr.DataArray:
+        """
+        Convert a real-valued array with separated components back into a
+        standard complex-valued array.
+        """
+        from xmris.utils import to_complex as _to_complex
+
+        return _to_complex(self._obj, dim=dim, labels=labels)
