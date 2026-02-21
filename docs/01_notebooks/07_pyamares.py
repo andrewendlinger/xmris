@@ -79,6 +79,9 @@ atp_freq = -7.5 * mhz
 decay_pcr = 15.0 * np.pi
 decay_atp = 20.0 * np.pi
 
+# Initialize random number generator
+rng = np.random.default_rng()
+
 for v in range(n_voxels):
     # PCr amplitude increases across voxels (10 to 50)
     amp_pcr = 10.0 * (v + 1)
@@ -95,7 +98,7 @@ for v in range(n_voxels):
 
     # Combine and add noise
     signal = fid_pcr + fid_atp
-    noise = np.random.normal(0, 0.5, n_points) + 1j * np.random.normal(0, 0.5, n_points)
+    noise = rng.normal(0, 0.5, n_points) + 1j * rng.normal(0, 0.5, n_points)
     data[v, :] = signal + noise
 
 # Package into an xarray DataArray
@@ -209,9 +212,7 @@ ax.plot(
     alpha=0.5,
     label="Raw Data",
 )
-ax.plot(
-    spec_fit.coords["Frequency"], spec_fit.real, color="tab:red", label="AMARES Fit"
-)
+ax.plot(spec_fit.coords["Frequency"], spec_fit.real, color="tab:red", label="AMARES Fit")
 ax.plot(
     spec_res.coords["Frequency"],
     spec_res.real - 50,
@@ -241,9 +242,7 @@ assert ds_fit.amplitude.dims == ("Voxel", "Metabolite"), (
 assert ds_fit.fit_data.dims == ("Voxel", "Time"), (
     "Reconstructed fit dimensions are incorrect"
 )
-assert len(ds_fit.coords["Metabolite"]) == 2, (
-    "Should have found 2 metabolites (PCr, ATP)"
-)
+assert len(ds_fit.coords["Metabolite"]) == 2, "Should have found 2 metabolites (PCr, ATP)"
 
 # 3. Check Fit Accuracy (Quantitative)
 fitted_pcr_amps = ds_fit.amplitude.sel(Metabolite="PCr").values

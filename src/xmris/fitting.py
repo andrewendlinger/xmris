@@ -10,7 +10,6 @@ from pyAMARES import (
     initialize_FID,
     multieq6,
     result_pd_to_params,
-    run_parallel_fitting_with_progress,
     uninterleave,
 )
 

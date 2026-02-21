@@ -64,7 +64,7 @@ site:
     - title: Home
       url: /index
     - title: API
-      url: /api_reference/index
+      url: /index-1
 
   actions:
     - title: GitHub

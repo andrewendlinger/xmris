@@ -156,9 +156,7 @@ class XmrisAccessor:
 
     # --- FID Specific Operations ---
 
-    def to_spectrum(
-        self, dim: str = "Time", out_dim: str = "Frequency"
-    ) -> xr.DataArray:
+    def to_spectrum(self, dim: str = "Time", out_dim: str = "Frequency") -> xr.DataArray:
         """
         Convert a time-domain FID to a frequency-domain spectrum.
 
@@ -316,19 +314,21 @@ class XmrisAccessor:
         method : {"leastsq", "least_squares"}, optional
             Fitting method. Defaults to 'leastsq' (Levenberg-Marquardt).
         initialize_with_lm : bool, optional
-            Run an internal Levenberg-Marquardt initializer before fitting. Defaults to True.
+            Run an internal Levenberg-Marquardt initializer before fitting.
+            Defaults to True.
         num_workers : int, optional
             Number of parallel processes to spawn. Defaults to 4.
         init_fid : np.ndarray, optional
-            A 1D complex array to use as the template for pyAMARES initialization. If None,
-            the function automatically selects the spectrum with the highest SNR.
+            A 1D complex array to use as the template for pyAMARES initialization.
+            If None, the function automatically selects the spectrum with the highest SNR.
 
         Returns
         -------
         xr.Dataset
             A dataset containing the original data, the fitted FIDs, the residuals,
-            and the quantified parameters (amplitude, chem_shift, linewidth, phase, CRLB, SNR)
-            mapped across the original dimensions and the new 'Metabolite' dimension.
+            and the quantified parameters (amplitude, chem_shift, linewidth, phase,
+            CRLB, SNR) mapped across the original dimensions and the new 'Metabolite'
+            dimension.
 
         Raises
         ------
