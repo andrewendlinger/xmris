@@ -1,3 +1,9 @@
+# %% [markdown] vscode={"languageId": "plaintext"}
+# ---
+# title: Bruker - Digital Filter Group Delay
+# ---
+
+
 # %% tags=["remove-cell"]
 import matplotlib.pyplot as plt
 import matplotlib_inline.backend_inline
@@ -9,7 +15,6 @@ matplotlib_inline.backend_inline.set_matplotlib_formats("retina")
 plt.rcParams["figure.dpi"] = 150
 
 # %% [markdown]
-# # Bruker - Digital Filter Group Delay
 #
 # If you have ever loaded raw Bruker spectroscopy data and wondered why your Free Induction Decay (FID) starts with a strange, wavy flatline instead of a sharp peak — or why your uncorrected spectrum looks like a spinning corkscrew  — you have encountered the **digital filter group delay**.
 #

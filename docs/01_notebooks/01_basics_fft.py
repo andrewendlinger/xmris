@@ -1,3 +1,8 @@
+# %% [markdown] vscode={"languageId": "plaintext"}
+# ---
+# title: Basics - Fourier Transform
+# ---
+
 # %% tags=["remove-cell"]
 import matplotlib.pyplot as plt
 import matplotlib_inline.backend_inline
@@ -9,8 +14,6 @@ matplotlib_inline.backend_inline.set_matplotlib_formats("retina")
 plt.rcParams["figure.dpi"] = 150
 
 # %% [markdown] vscode={"languageId": "plaintext"}
-# # Basics - Fourier Transform
-#
 # In MRI and MRS, we constantly move between the time domain (FID) and frequency domain (Spectrum), or between $k$-space and image space.
 #
 # Standard `numpy.fft` functions place the zero-frequency (DC) component at the edges of the array, requiring manual `fftshift` operations. They also scale the signal amplitude by the number of points, which breaks energy conservation between domains.

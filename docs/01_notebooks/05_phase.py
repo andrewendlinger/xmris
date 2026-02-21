@@ -1,3 +1,8 @@
+# %% [markdown] vscode={"languageId": "plaintext"}
+# ---
+# title: Spectrum - Phase Correction
+# ---
+
 # %% tags=["remove-cell"]
 import matplotlib.pyplot as plt
 import matplotlib_inline.backend_inline
@@ -9,7 +14,6 @@ matplotlib_inline.backend_inline.set_matplotlib_formats("retina")
 plt.rcParams["figure.dpi"] = 150
 
 # %% [markdown]
-# # Spectrum - Phase Correction
 #
 # Phase correction is a crucial frequency-domain operation applied after the Fourier Transform.
 # Due to hardware delays, filter group delays, and off-resonance effects, the real part of
@@ -50,9 +54,7 @@ rng = np.random.default_rng(42)
 clean_fid = np.exp(-t / 0.05) * (
     np.exp(1j * 2 * np.pi * 50 * t) + 0.6 * np.exp(1j * 2 * np.pi * -150 * t)
 )
-noise = rng.normal(scale=0.08, size=n_points) + 1j * rng.normal(
-    scale=0.08, size=n_points
-)
+noise = rng.normal(scale=0.08, size=n_points) + 1j * rng.normal(scale=0.08, size=n_points)
 raw_fid = clean_fid + noise
 
 # Xarray construction and FFT

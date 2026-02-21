@@ -1,5 +1,20 @@
+# %% [markdown] vscode={"languageId": "plaintext"}
+# ---
+# title: Time-Domain Fitting with AMARES
+# ---
+
+
+# %% tags=["remove-cell"]
+import matplotlib.pyplot as plt
+import matplotlib_inline.backend_inline
+
+# 1. Use retina for crisp, PDF-like text that never disappears in HTML
+matplotlib_inline.backend_inline.set_matplotlib_formats("retina")
+
+# 2. Set a high baseline DPI
+plt.rcParams["figure.dpi"] = 150
+
 # %% [markdown]
-# # Time-Domain Fitting with AMARES
 #
 # While Fourier transforms and phase corrections are essential for visualizing spectra, quantitative Magnetic Resonance Spectroscopy (MRS) requires extracting exact metabolite concentrations. Time-domain fitting is the gold standard for this, especially for *in vivo* data where peaks strongly overlap or are distorted by baseline effects.
 #

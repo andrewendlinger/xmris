@@ -1,3 +1,8 @@
+# %% [markdown] vscode={"languageId": "plaintext"}
+# ---
+# title: FID - Transformations
+# ---
+
 # %% tags=["remove-cell"]
 import matplotlib.pyplot as plt
 import matplotlib_inline.backend_inline
@@ -8,8 +13,6 @@ matplotlib_inline.backend_inline.set_matplotlib_formats("retina")
 # 2. Set a high baseline DPI
 plt.rcParams["figure.dpi"] = 150
 # %% [markdown]
-# # FID - Transformations
-#
 # In Magnetic Resonance Spectroscopy (MRS), the raw data acquired by the scanner is a time-domain Free Induction Decay (FID).
 #
 # To visualize the chemical resonances, this digital FID signal is processed by a discrete Fourier transformation (DFT) to produce a digital MR spectrum. Because an FID conventionally starts at $t=0$, we perform a standard Fast Fourier Transform (FFT) followed by a frequency-domain shift (`fftshift`) to center the zero-frequency (DC) component.

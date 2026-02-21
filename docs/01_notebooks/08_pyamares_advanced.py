@@ -1,5 +1,19 @@
+# %% [markdown] vscode={"languageId": "plaintext"}
+# ---
+# title: Frequency-Selective AMARES
+# ---
+
+# %% tags=["remove-cell"]
+import matplotlib.pyplot as plt
+import matplotlib_inline.backend_inline
+
+# 1. Use retina for crisp, PDF-like text that never disappears in HTML
+matplotlib_inline.backend_inline.set_matplotlib_formats("retina")
+
+# 2. Set a high baseline DPI
+plt.rcParams["figure.dpi"] = 150
+
 # %% [markdown]
-# # Frequency-Selective AMARES
 #
 # In *in vivo* Magnetic Resonance Spectroscopy, you often encounter massive confounding signals. For example, in 1H-MRS, the water peak at 4.7 ppm is usually thousands of times larger than the neurochemical peaks (like NAA at 2.0 ppm).
 #
@@ -95,7 +109,7 @@ plt.show()
 
 # %%
 def apply_mpfir_wrapper(fid_1d, dt, mhz, ppm_range):
-    """Wrapper function to adapt MPFIR for xarray."""
+    """Wrapps MPFIR function for xarray."""
     return MPFIR(fid_1d, dwelltime=dt, MHz=mhz, ppm_range=ppm_range)
 
 
@@ -166,9 +180,7 @@ pk_path = Path("selective_pk.csv")
 pk_path.write_text(pk_csv_content)
 
 # Fit the filtered DataArray using xmris
-ds_fit = da_filtered.xmr.fit_amares(
-    prior_knowledge_file=pk_path, method="least_squares"
-)
+ds_fit = da_filtered.xmr.fit_amares(prior_knowledge_file=pk_path, method="least_squares")
 
 # %% [markdown]
 # ### Evaluate the Fit

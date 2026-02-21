@@ -1,3 +1,8 @@
+# %% [markdown] vscode={"languageId": "plaintext"}
+# ---
+# title: FID - Apodization
+# ---
+
 # %% tags=["remove-cell"]
 import matplotlib.pyplot as plt
 import matplotlib_inline.backend_inline
@@ -9,7 +14,6 @@ matplotlib_inline.backend_inline.set_matplotlib_formats("retina")
 plt.rcParams["figure.dpi"] = 150
 
 # %% [markdown]
-# # FID - Apodization
 #
 # Apodization, or time-domain filtering, is a processing step applied prior to the Fourier transformation to enhance the Signal-to-Noise Ratio (SNR) and/or the spectral resolution of MR spectra.
 #
@@ -146,9 +150,7 @@ _weight_gaussian = np.exp(-(_t**2) / (_t_g**2))
 _expected_lg_vals = da_fid.values * (_weight_lorentzian * _weight_gaussian)
 
 # Prove math
-np.testing.assert_allclose(
-    da_lg.values, _expected_lg_vals, err_msg="L-to-G math failed."
-)
+np.testing.assert_allclose(da_lg.values, _expected_lg_vals, err_msg="L-to-G math failed.")
 # Prove metadata preservation
 assert da_lg.dims == da_fid.dims, "Dimensions altered."
 np.testing.assert_array_equal(

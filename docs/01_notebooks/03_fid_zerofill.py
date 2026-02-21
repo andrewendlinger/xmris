@@ -1,3 +1,7 @@
+# %% [markdown] vscode={"languageId": "plaintext"}
+# ---
+# title: FID - Zero Filling
+# ---
 # %% tags=["remove-cell"]
 import matplotlib.pyplot as plt
 import matplotlib_inline.backend_inline
@@ -7,9 +11,7 @@ matplotlib_inline.backend_inline.set_matplotlib_formats("retina")
 
 # 2. Set a high baseline DPI
 plt.rcParams["figure.dpi"] = 150
-
 # %% [markdown]
-# # FID - Zero Filling
 #
 # In Magnetic Resonance, **zero filling** involves artificially extending a dataset in the time domain (FID) or spatial-frequency domain (k-space) by padding it with zeros.
 #
