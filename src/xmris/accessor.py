@@ -9,6 +9,7 @@ from pathlib import Path
 import numpy as np
 import xarray as xr
 
+from xmris.bruker import remove_digital_filter
 from xmris.fid import apodize_exp, apodize_lg, to_fid, to_spectrum, zero_fill
 from xmris.fourier import fft, fftc, fftshift, ifft, ifftc, ifftshift
 from xmris.phase import autophase, phase
@@ -355,4 +356,38 @@ class XmrisAccessor:
             num_workers=num_workers,
             init_fid=init_fid,
             **kwargs,
+        )
+
+    # --- Vendor Specific ---
+
+    def remove_digital_filter(
+        self, group_delay: float, dim: str = "Time", keep_length: bool = True
+    ) -> xr.DataArray:
+        """
+        Remove the hardware digital filter group delay from Bruker FID data.
+
+        Bruker consoles use a cascade of digital FIR filters during analog-to-digital
+        conversion. Because these filters calculate a moving average, they require time
+        to "wake up", introducing a causality delay at the start of the Free Induction Decay
+        (FID). This manifests as a time-shift, effectively prepending the actual signal with
+        a specific number of filter transient points.
+
+        Parameters
+        ----------
+        group_delay : float
+            The exact delay value to remove. This should be read directly from the
+            Bruker `ACQ_RxFilterInfo` parameter array.
+        dim : str, optional
+            The time dimension along which to apply the correction, by default "Time".
+        keep_length : bool, optional
+            If True, appends pure zeros to the end of the FID to replace the truncated
+            startup points, maintaining the original length. By default True.
+
+        Returns
+        -------
+        xr.DataArray
+            The corrected FID data with the filter transient stripped and phase aligned.
+        """
+        return remove_digital_filter(
+            self._obj, group_delay=group_delay, dim=dim, keep_length=keep_length
         )
