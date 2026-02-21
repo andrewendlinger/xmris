@@ -3,6 +3,14 @@ name: Tests
 on:
   push:
     branches: [ main ]
+    # Only run if files in these paths change
+    paths:
+      - "xmris/**"                # Core logic
+      - "tests/**"                # Unit tests
+      - "docs/01_notebooks/**"    # Notebook-based tests
+      - "pyproject.toml"          # Dependencies/Config
+      - "uv.lock"                 # Exact dependency versions
+      - ".github/workflows/**"    # CI configuration
   pull_request:
     branches: [ main ]
 
@@ -21,6 +29,7 @@ jobs:
         uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
+          cache-dependency-glob: "**/pyproject.toml"
 
       - name: Set up Python
         run: uv python install ${{ matrix.python-version }}
