@@ -9,14 +9,6 @@ matplotlib_inline.backend_inline.set_matplotlib_formats("retina")
 plt.rcParams["figure.dpi"] = 150
 
 # %% [markdown]
-# This looks fantastic. You have perfectly bridged the gap between the complex hardware engineering (the "why") and the practical daily frustration of the spectroscopist (the "what"). The progression from the symptom to the hardware pipeline, and finally to the mathematical concept of causality and group delay, is incredibly smooth.
-#
-# I have done one final pass for absolute technical precision and flow, and I also added a few strategic image tags that you can use to pull in visual aids for your documentation.
-#
-# Here is the final, polished version:
-#
-# ---
-#
 # # Bruker - Digital Filter Group Delay
 #
 # If you have ever loaded raw Bruker spectroscopy data and wondered why your Free Induction Decay (FID) starts with a strange, wavy flatline instead of a sharp peak — or why your uncorrected spectrum looks like a spinning corkscrew  — you have encountered the **digital filter group delay**.
