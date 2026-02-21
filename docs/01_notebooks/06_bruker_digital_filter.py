@@ -71,9 +71,6 @@ import xarray as xr
 # Ensure the accessor is imported so .xmr is registered
 import xmris
 
-# Import the vendor-specific data sanitization function as a standalone tool
-from xmris.bruker import remove_digital_filter
-
 # %% [markdown]
 # ## 1. Generate Synthetic Bruker-like Data (Hardware Simulation)
 # Let's create an FID with a known group delay of 76.125 points.
@@ -132,12 +129,12 @@ plt.show()
 
 # %% [markdown]
 # ## 2. Apply xmris Correction
-# Because this is a hardware-specific data sanitization step, we do *not* use the universal `.xmr` accessor. Instead, we pass the raw data through the standalone `remove_digital_filter` function immediately after ingestion. We use `keep_length=True` to pad the end with pure zeros, maintaining our exact array length for FFTs.
+# We can easily sanitize this hardware-specific data using the `.xmr.remove_digital_filter()` method. We use `keep_length=True` to pad the end with pure zeros, maintaining our exact array length for FFTs. This approach allows us to chain operations directly on the ingested array.
 
 # %%
-# 1. Sanitize the vendor-specific data
-da_clean = remove_digital_filter(
-    da_raw, group_delay=delay_points, dim="Time", keep_length=True
+# 1. Sanitize the vendor-specific data using the accessor
+da_clean = da_raw.xmr.remove_digital_filter(
+    group_delay=delay_points, dim="Time", keep_length=True
 )
 
 # Plotting the Time Domain Result
@@ -175,7 +172,6 @@ ax2.set_title("xmris FT (Corrected)\nPure Absorptive Peak")
 plt.tight_layout()
 plt.show()
 
-# %% tags=["remove-cell"]
 # %% tags=["remove-cell"]
 # CRITICAL ASSERTIONS FOR NBMAKE CI
 # 1. Purity & Lineage checks
