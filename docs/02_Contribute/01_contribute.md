@@ -1,4 +1,4 @@
-# 01 Contributing to `xmris`
+# Contributing to `xmris`
 
 Welcome! `xmris` is built on a strict **"xarray in, xarray out"** philosophy. Our goal is to make MR imaging and spectroscopy processing functional, robust, and N-dimensional.
 

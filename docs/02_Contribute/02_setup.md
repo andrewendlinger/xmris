@@ -1,4 +1,5 @@
-## 02 Recommended Setup
+# Recommended Setup
+
 
 We use modern, Rust-based tooling to keep the development environment blisteringly fast, completely reproducible, and free of dependency conflicts.
 

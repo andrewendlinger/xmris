@@ -1,4 +1,4 @@
-## 03 Context for AI
+# Context for AI
 
 **System Instructions for the LLM:**
 You are an expert Python developer assisting a human in building and maintaining `xmris`.
