@@ -4,29 +4,14 @@
   <h1></h1>
   <p><b>A modern, N-dimensional, <code>xarray</code>-based toolbox for Magnetic Resonance Imaging and Spectroscopy.</b></p>
 
-  <a href="https://github.com/andrewendlinger/xmris/actions/workflows/deploy.yml">
-    <img src="https://github.com/andrewendlinger/xmris/actions/workflows/deploy.yml/badge.svg" alt="MyST GitHub Pages Deploy">
-  </a>
-  <a href="https://github.com/andrewendlinger/xmris/actions/workflows/tests.yml">
-    <img src="https://github.com/andrewendlinger/xmris/actions/workflows/tests.yml/badge.svg" alt="Tests">
-  </a>
-  <a href="https://codecov.io/gh/andrewendlinger/xmris">
-    <img src="https://codecov.io/gh/andrewendlinger/xmris/graph/badge.svg" alt="codecov">
-  </a>
+  <a href="https://github.com/andrewendlinger/xmris/actions/workflows/deploy.yml"><img src="https://github.com/andrewendlinger/xmris/actions/workflows/deploy.yml/badge.svg" alt="MyST GitHub Pages Deploy"></a>
+  <a href="https://github.com/andrewendlinger/xmris/actions/workflows/tests.yml"><img src="https://github.com/andrewendlinger/xmris/actions/workflows/tests.yml/badge.svg" alt="Tests"></a>
+  <a href="https://codecov.io/gh/andrewendlinger/xmris"><img src="https://codecov.io/gh/andrewendlinger/xmris/graph/badge.svg" alt="codecov"></a>
   <br>
-  <a href="https://github.com/astral-sh/uv">
-    <img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json" alt="uv">
-  </a>
-  <a href="https://github.com/astral-sh/ruff">
-    <img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json" alt="Ruff">
-  </a>
-  <a href="https://www.python.org/">
-    <img src="https://img.shields.io/badge/python-3.11%20%7C%203.12-blue.svg" alt="Python Versions">
-  </a>
-  <a href="https://www.gnu.org/licenses/agpl-3.0">
-    <img src="https://img.shields.io/badge/License-AGPL_v3-blue.svg" alt="License: AGPL v3">
-  </a>
-  <h1></h1>
+  <a href="https://github.com/astral-sh/uv"><img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json" alt="uv"></a>
+  <a href="https://github.com/astral-sh/ruff"><img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json" alt="Ruff"></a>
+  <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.11%20%7C%203.12-blue.svg" alt="Python Versions"></a>
+  <a href="https://www.gnu.org/licenses/agpl-3.0"><img src="https://img.shields.io/badge/License-AGPL_v3-blue.svg" alt="License: AGPL v3"></a>
 </div>
 
 
