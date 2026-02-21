@@ -6,15 +6,26 @@ name = "xmris"
 version = "0.1.0"
 description = "An xarray-based MRI and MRS toolbox"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.11,<3.13"# TEMP FIX FOR PYAMARES
 authors = [
     { name = "Andrecho", email = "37243793+andrewendlinger@users.noreply.github.com" }
 ]
 dependencies = [
     "nmrglue>=0.11",
-    "numpy>=2.2.0",      # Numpy 2.x is the standard in 2026
-    "xarray>=2025.11.0", # Recent stable xarray
+    "numpy>=1.26.0",
+    "pyamares",
+    "xarray<2025.11.0", # FIX-pyamares
 ]
+classifiers = [
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Medical Science Apps.",
+]
+
+[project.urls]
+Repository = "https://github.com/Andrecho/xmris"
+Documentation = "https://andrecho.github.io/xmris/"
 
 [project.scripts]
 # Run 'uv run docs-api' to update Python API references
@@ -90,3 +101,6 @@ convention = "numpy"
 formats = "ipynb,py:percent"
 notebook_metadata_filter = "-all"
 cell_metadata_filter = "all,-trusted"
+
+[tool.uv.sources]
+pyamares = { path = "../pyAMARES" }

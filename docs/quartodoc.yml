@@ -18,6 +18,10 @@ quartodoc:
       desc: Digital filter group delay removal of Bruker FIDs.
       contents:
         - bruker
+    - title: Spectral fitting with pyAMARES
+      desc: Spectral NMR fitting based on pyAMARES.
+      contents:
+        - fitting
     - title: Data Accessors
       desc: Custom xarray accessors.
       contents:

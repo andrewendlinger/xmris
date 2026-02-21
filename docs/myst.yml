@@ -29,6 +29,10 @@ project:
           title: 3. Apodization
         - file: 01_notebooks/05_phase.ipynb
           title: 4. Phase Correction
+        - file: 01_notebooks/07_pyamares.ipynb
+          title: 5. Spectral Fitting
+        - file: 01_notebooks/08_pyamares_advanced.ipynb
+          title: 6. Spectral Fitting (Advanced)
 
     # 3. API Ref: Put the Accessor first, as it's the main user entry point
     - title: API Reference
@@ -40,6 +44,7 @@ project:
         - file: api_reference/fid.md
         - file: api_reference/phase.md
         - file: api_reference/bruker.md
+        - file: api_reference/fitting.md
 
     - title: Contribute
       children:
