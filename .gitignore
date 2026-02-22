@@ -34,8 +34,9 @@ wheels/
 *.egg
 
 # ==============================================================================
-# 3. Tooling Caches (Ruff, MyPy, Pytest)
+# 3. Tooling Caches (vscode, Ruff, MyPy, Pytest)
 # ==============================================================================
+.vscode
 .ruff_cache/
 .mypy_cache/
 .pytest_cache/
