@@ -113,7 +113,7 @@ class PlotRidgeConfig(BasePlotConfig):
         default=0.0,
         metadata={
             "group": "Stack Labels",
-            "description": "Vertical adjustment for stack labels (fraction of offset_step).",
+            "description": "Vertical adjustment for stack labels (fraction of offset_step).",  # noqa: E501
         },
     )
     labelsize: int = field(
@@ -136,7 +136,7 @@ class PlotRidgeConfig(BasePlotConfig):
         default=None,
         metadata={
             "group": "x-Axis",
-            "description": "x-axis label. If None (default), uses the xarray dimension name.",
+            "description": "x-axis label. If None (default), uses the xarray dimension name.",  # noqa: E501
         },
     )
 
@@ -168,7 +168,7 @@ class PlotRidgeConfig(BasePlotConfig):
         default="Absorption Mode",
         metadata={
             "group": "Annotations",
-            "description": "Text annotation placed in the top left corner. Set to None to hide.",
+            "description": "Text annotation placed in the top left corner. Set to None to hide.",  # noqa: E501
         },
     )
 

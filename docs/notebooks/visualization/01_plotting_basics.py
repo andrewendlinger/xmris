@@ -38,12 +38,14 @@ from xmris.visualization.plot import PlotRidgeConfig
 # Let's simulate a standard 1D spectrum over a time series where one metabolite decays and another grows. Notice how we attach units to the `xarray.DataArray` metadata; `xmris` plotting functions will extract these automatically.
 
 # %% tags=["hide-cell"]
+rng = np.random.default_rng()
 ppm = np.linspace(190, 160, 500)
 time = np.linspace(0, 132, 40)
 spectra = np.zeros((len(time), len(ppm)))
 
 
 def gaussian(x, mu, sigma, A):
+    """Calculate simple gaussian curve."""
     return A * np.exp(-((x - mu) ** 2) / (2 * sigma**2))
 
 
@@ -53,7 +55,7 @@ for i, t in enumerate(time):
     spectra[i, :] = (
         gaussian(ppm, 183, 0.8, 10 * decay)
         + gaussian(ppm, 171, 0.6, 8 * growth)
-        + np.random.normal(0, 0.15, len(ppm))
+        + rng.normal(0, 0.15, len(ppm))
     )
 
 da_kinetic = xr.DataArray(
