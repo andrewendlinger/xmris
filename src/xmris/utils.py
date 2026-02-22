@@ -10,8 +10,25 @@ def to_real_imag(
     coords: tuple[str, str] | None = None,
 ) -> xr.DataArray:
     """
-    Convert a complex-valued DataArray into a real-valued DataArray
-    with an extra dimension for the real and imaginary components.
+    Convert a complex DataArray into a real-valued DataArray.
+
+    Stacks the real and imaginary components along a new dimension.
+
+    Parameters
+    ----------
+    da : xr.DataArray
+        The complex-valued input DataArray.
+    dim : str, optional
+        The name of the new dimension for components. Defaults to
+        DEFAULTS.component.dim.
+    coords : tuple of str, optional
+        The labels for the real and imaginary components. Defaults to
+        DEFAULTS.component.coords (e.g., ("real", "imag")).
+
+    Returns
+    -------
+    xr.DataArray
+        Real-valued DataArray with an additional trailing dimension.
     """
     dim = dim or DEFAULTS.component.dim
     coords = coords or DEFAULTS.component.coords
@@ -31,8 +48,30 @@ def to_complex(
     coords: tuple[str, str] | None = None,
 ) -> xr.DataArray:
     """
-    Convert an xarray DataArray with separate real and imaginary components
-    back into a complex-valued DataArray.
+    Merge separated real and imag components back into complex numbers.
+
+    Reconstructs complex values by selecting specific coordinates from
+    a component dimension.
+
+    Parameters
+    ----------
+    da : xr.DataArray
+        The real-valued input DataArray containing component parts.
+    dim : str, optional
+        The dimension name to reduce. Defaults to DEFAULTS.component.dim.
+    coords : tuple of str, optional
+        The coordinate names corresponding to (real, imag). Defaults to
+        DEFAULTS.component.coords.
+
+    Returns
+    -------
+    xr.DataArray
+        Complex-valued DataArray with the component dimension removed.
+
+    Raises
+    ------
+    ValueError
+        If the specified `dim` is not present in the input DataArray.
     """
     dim = dim or DEFAULTS.component.dim
     coords = coords or DEFAULTS.component.coords

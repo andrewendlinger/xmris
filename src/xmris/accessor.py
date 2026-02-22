@@ -9,10 +9,10 @@ from pathlib import Path
 import numpy as np
 import xarray as xr
 
-from xmris.bruker import remove_digital_filter
-from xmris.fid import apodize_exp, apodize_lg, to_fid, to_spectrum, zero_fill
-from xmris.fourier import fft, fftc, fftshift, ifft, ifftc, ifftshift
-from xmris.phase import autophase, phase
+from xmris.processing.fid import apodize_exp, apodize_lg, to_fid, to_spectrum, zero_fill
+from xmris.processing.fourier import fft, fftc, fftshift, ifft, ifftc, ifftshift
+from xmris.processing.phase import autophase, phase
+from xmris.vendor.bruker import remove_digital_filter
 
 
 @xr.register_dataarray_accessor("xmr")
@@ -337,7 +337,7 @@ class XmrisAccessor:
             If the `pyAMARES` package is not installed.
         """
         try:
-            from xmris.fitting import fit_amares as _internal_fit_amares
+            from xmris.fitting.amares import fit_amares as _internal_fit_amares
         except ImportError as e:
             raise ImportError(
                 "The '.fit_amares()' method requires the optional 'pyAMARES' package. "
@@ -368,9 +368,9 @@ class XmrisAccessor:
 
         Bruker consoles use a cascade of digital FIR filters during analog-to-digital
         conversion. Because these filters calculate a moving average, they require time
-        to "wake up", introducing a causality delay at the start of the Free Induction Decay
-        (FID). This manifests as a time-shift, effectively prepending the actual signal with
-        a specific number of filter transient points.
+        to "wake up", introducing a causality delay at the start of the Free Induction
+        Decay (FID). This manifests as a time-shift, effectively prepending the actual
+        signal with a specific number of filter transient points.
 
         Parameters
         ----------
@@ -394,12 +394,10 @@ class XmrisAccessor:
 
     # --- Utility / Formatting ---
 
-    # --- Utility / Formatting ---
-
     def to_real_imag(
         self, dim: str | None = None, coords: tuple[str, str] | None = None
     ) -> xr.DataArray:
-        """Split a complex array into a real-valued array with an extra component dimension."""
+        """Split a complex array into a real-valued array with an extra component dimension."""  # noqa: E501
         from xmris.utils import to_real_imag as _to_real_imag
 
         return _to_real_imag(self._obj, dim=dim, coords=coords)

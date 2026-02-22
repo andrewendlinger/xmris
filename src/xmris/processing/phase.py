@@ -1,7 +1,7 @@
 import nmrglue as ng
 import xarray as xr
 
-from xmris.fid import apodize_exp, to_fid, to_spectrum
+from xmris.processing.fid import apodize_exp, to_fid, to_spectrum
 
 
 def phase(da: xr.DataArray, p0: float = 0.0, p1: float = 0.0) -> xr.DataArray:

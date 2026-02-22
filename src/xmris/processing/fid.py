@@ -1,7 +1,7 @@
 import numpy as np
 import xarray as xr
 
-from xmris.fourier import fft, fftshift, ifft, ifftshift
+from xmris.processing.fourier import fft, fftshift, ifft, ifftshift
 
 
 def to_spectrum(

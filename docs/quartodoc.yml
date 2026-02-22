@@ -2,32 +2,32 @@ quartodoc:
   package: xmris
   dir: api_reference
   sections:
-    - title: Fourier Transfroms
+    - title: Fourier Transforms
       desc: Core MRI and MRS fourier transform functions.
       contents:
-        - fourier
+        - processing.fourier
     - title: FID Specific Signal Processing
       desc: Core FID signal functions.
       contents:
-        - fid
+        - processing.fid
     - title: Phase Correction
-      desc: Manual and automatic phase correction of MR spectra (based on nmrglue)
+      desc: Manual and automatic phase correction of MR spectra.
       contents:
-        - phase
+        - processing.phase
     - title: Bruker Related Processing
       desc: Digital filter group delay removal of Bruker FIDs.
       contents:
-        - bruker
+        - vendor.bruker
     - title: Spectral fitting with pyAMARES
       desc: Spectral NMR fitting based on pyAMARES.
       contents:
-        - fitting
+        - fitting.amares
     - title: Custom utility functions
       desc: Custom utilities for xarray, such as improved complex number handling.
       contents:
         - utils
     - title: Configuration
-      desc: Naming conventions for dimensions, coordiantes etc.
+      desc: Naming conventions for dimensions, coordinates etc.
       contents:
         - config
     - title: Data Accessors

@@ -7,7 +7,7 @@ on:
     paths:
       - "xmris/**"                # Core logic
       - "tests/**"                # Unit tests
-      - "docs/01_notebooks/**"    # Notebook-based tests
+      - "docs/notebooks/**"    # Notebook-based tests
       - "pyproject.toml"          # Dependencies/Config
       - "uv.lock"                 # Exact dependency versions
       - ".github/workflows/**"    # CI configuration

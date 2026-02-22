@@ -13,49 +13,47 @@ project:
     # 1. GROUP: Core concepts and basic usage
     - title: Basics
       children:
-        - file: 01_notebooks/01_basics_fft.ipynb
+        - file: notebooks/basics/fft.ipynb
           title: Basics of FFT
-        - file: 01_notebooks/02_fid_transformations.ipynb
+        - file: notebooks/basics/fid_transformations.ipynb
           title: FID to Spectrum
-        - file: 01_notebooks/03_architecture_and_formatting.ipynb
+        - file: notebooks/basics/conventions.ipynb
           title: Core Conventions
+
     # 2. GROUP: A chronological processing pipeline
     - title: Processing Pipeline
       children:
-        - file: 01_notebooks/06_bruker_digital_filter.ipynb
-          title: 1. Bruker Digital Filter  # Shortened title
-        - file: 01_notebooks/03_fid_zerofill.ipynb
+        - file: notebooks/pipeline/bruker_filter.ipynb
+          title: 1. Bruker Digital Filter
+        - file: notebooks/pipeline/zero_fill.ipynb
           title: 2. Zero Filling
-        - file: 01_notebooks/04_fid_apodization.ipynb
+        - file: notebooks/pipeline/apodization.ipynb
           title: 3. Apodization
-        - file: 01_notebooks/05_phase.ipynb
+        - file: notebooks/pipeline/phase.ipynb
           title: 4. Phase Correction
-        - file: 01_notebooks/07_pyamares.ipynb
+
+    # 3. GROUP: Advanced Quantification
+    - title: Spectral Fitting
+      children:
+        - file: notebooks/fitting/pyamares.ipynb
           title: 5. Spectral Fitting
-        - file: 01_notebooks/08_pyamares_advanced.ipynb
+        - file: notebooks/fitting/pyamares_advanced.ipynb
           title: 6. Spectral Fitting (Advanced)
 
-    # 3. API Ref: Put the Accessor first, as it's the main user entry point
+    # 4. API Ref
     - title: API Reference
       file: api_reference/index.md
       children:
-        - file: api_reference/accessor.md
-          title: .xmr Accessor
-        - file: api_reference/fourier.md
-        - file: api_reference/fid.md
-        - file: api_reference/phase.md
-        - file: api_reference/bruker.md
-        - file: api_reference/fitting.md
-        - file: api_reference/config.md
-        - file: api_reference/utils.md
+        - pattern: api_reference/*.md
 
+    # 5. Contribute
     - title: Contribute
       children:
-        - file: 02_Contribute/01_contribute.md
+        - file: contributing/guide.md
           title: Contributing Guide
-        - file: 02_Contribute/02_setup.md
+        - file: contributing/setup.md
           title: Environment Setup
-        - file: 02_Contribute/03_ai_context.md
+        - file: contributing/ai_context.md
           title: AI Context
 
 site:
