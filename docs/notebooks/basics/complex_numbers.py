@@ -28,6 +28,28 @@ import xmris
 # %% [markdown]
 # ### 1. Splitting Complex Data into Channels
 #
+# ```mermaid
+# flowchart LR
+#     %% Define Nodes
+#     A["<b>da_complex</b><br>Shape: (time: 512)<br>Dtype: complex128<br>Values: a + bi"]
+#     
+#     B["<b>da_split</b><br>Shape: (time: 512, component: 2)<br>Dtype: float64"]
+#     
+#     C(["component: 'real' (a)"])
+#     D(["component: 'imag' (b)"])
+#     
+#     E["<b>da_recon</b><br>Shape: (time: 512)<br>Dtype: complex128<br>Values: a + bi"]
+#
+#     %% Flow Connections
+#     A -- "Expands dimension via .xmr.to_real_imag()" --> B
+#     
+#     B -.-> C
+#     B -.-> D
+#     
+#     C -. "Collapses dimension via .xmr.to_complex()" .-> E
+#     D -. "see above" .-> E
+# ```
+#
 # Let's generate a synthetic complex Free Induction Decay (FID) signal.
 
 # %%
