@@ -6,6 +6,7 @@ This module registers the `.xmr` namespace on xarray DataArrays.
 
 from pathlib import Path
 
+import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 
@@ -13,6 +14,49 @@ from xmris.processing.fid import apodize_exp, apodize_lg, to_fid, to_spectrum, z
 from xmris.processing.fourier import fft, fftc, fftshift, ifft, ifftc, ifftshift
 from xmris.processing.phase import autophase, phase
 from xmris.vendor.bruker import remove_digital_filter
+
+# Import the config type for type-hinting, but defer the actual plotting function
+from xmris.visualization.plot import PlotHeatmapConfig, PlotRidgeConfig
+
+
+class XmrisPlotAccessor:
+    """Sub-accessor for xmris plotting functionalities (accessed via .xmr.plot)."""
+
+    def __init__(self, obj: xr.DataArray):
+        self._obj = obj
+
+    def ridge(
+        self,
+        x_dim: str | None = None,
+        stack_dim: str | None = None,
+        ax: plt.Axes | None = None,
+        config: PlotRidgeConfig | None = None,
+    ) -> plt.Axes:
+        """Generate a ridge plot (2D waterfall) of stacked 1D spectra."""
+        # Deferred import to keep main package load times fast
+        from xmris.visualization.plot import plot_ridge as _plot_ridge
+
+        return _plot_ridge(
+            da=self._obj,
+            x_dim=x_dim,
+            stack_dim=stack_dim,
+            ax=ax,
+            config=config,
+        )
+
+    def heatmap(
+        self,
+        x_dim: str | None = None,
+        stack_dim: str | None = None,
+        ax: plt.Axes | None = None,
+        config: PlotHeatmapConfig | None = None,
+    ) -> plt.Axes:
+        """Generate a 2D heatmap plot of stacked 1D spectra."""
+        from xmris.visualization.plot.plot_heatmap import plot_heatmap as _plot_heatmap
+
+        return _plot_heatmap(
+            da=self._obj, x_dim=x_dim, stack_dim=stack_dim, ax=ax, config=config
+        )
 
 
 @xr.register_dataarray_accessor("xmr")
@@ -34,6 +78,16 @@ class XmrisAccessor:
     def __init__(self, xarray_obj: xr.DataArray):
         """Initialize the accessor with the xarray object."""
         self._obj = xarray_obj
+        self._plot = None  # Cache for the plot sub-accessor
+
+    # --- Plotting Sub-Accessor ---
+    @property
+    def plot(self) -> XmrisPlotAccessor:
+        """Access xmris plotting functionalities."""
+        # Lazy initialization: only create the object if the user asks for it
+        if self._plot is None:
+            self._plot = XmrisPlotAccessor(self._obj)
+        return self._plot
 
     # --- Shifts ---
 

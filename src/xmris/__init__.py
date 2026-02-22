@@ -21,6 +21,9 @@ from .vendor.bruker import remove_digital_filter
 # 6. Fitting
 from .fitting.amares import fit_amares
 
+# 7. Visualisation
+from .visualization.plot import PlotRidgeConfig
+
 # Explicitly define the public API.
 __all__ = [
     # --- Submodules (Required for quartodoc to build the pages) ---
@@ -58,4 +61,6 @@ __all__ = [
     "remove_digital_filter",
     # Fitting
     "fit_amares",
+    # Visualization - Plotting
+    "PlotRidgeConfig",
 ]
