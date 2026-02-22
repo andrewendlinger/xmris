@@ -17,6 +17,8 @@ project:
           title: Basics of FFT
         - file: notebooks/basics/fid_transformations.ipynb
           title: FID to Spectrum
+        - file: notebooks/basics/complex_numbers.ipynb
+          title: Complex Numbers
         - file: notebooks/basics/conventions.ipynb
           title: Core Conventions
 
