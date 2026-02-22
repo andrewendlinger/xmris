@@ -34,6 +34,10 @@ quartodoc:
       desc: Ridge plot for 1D NMR time series.
       contents:
         - visualization.plot.plot_ridge
+    - title: Visualization - Heatmap Plot
+      desc: Heatmap plot for 1D NMR time series.
+      contents:
+        - visualization.plot._base_config
     - title: Visualization - Config
       desc: The plotting configuration base class.
       contents:

@@ -16,7 +16,7 @@ from xmris.processing.phase import autophase, phase
 from xmris.vendor.bruker import remove_digital_filter
 
 # Import the config type for type-hinting, but defer the actual plotting function
-from xmris.visualization.plot import PlotRidgeConfig
+from xmris.visualization.plot import PlotHeatmapConfig, PlotRidgeConfig
 
 
 class XmrisPlotAccessor:
@@ -42,6 +42,20 @@ class XmrisPlotAccessor:
             stack_dim=stack_dim,
             ax=ax,
             config=config,
+        )
+
+    def heatmap(
+        self,
+        x_dim: str | None = None,
+        stack_dim: str | None = None,
+        ax: plt.Axes | None = None,
+        config: PlotHeatmapConfig | None = None,
+    ) -> plt.Axes:
+        """Generate a 2D heatmap plot of stacked 1D spectra."""
+        from xmris.visualization.plot.plot_heatmap import plot_heatmap as _plot_heatmap
+
+        return _plot_heatmap(
+            da=self._obj, x_dim=x_dim, stack_dim=stack_dim, ax=ax, config=config
         )
 
 

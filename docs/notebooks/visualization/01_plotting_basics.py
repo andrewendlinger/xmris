@@ -30,7 +30,6 @@ import xarray as xr
 
 # Import the global configuration and the RidgePlotConfig object
 import xmris
-from xmris.config import DEFAULTS
 from xmris.visualization.plot import PlotRidgeConfig
 
 # %% [markdown]
@@ -60,13 +59,13 @@ for i, t in enumerate(time):
 
 da_kinetic = xr.DataArray(
     spectra,
-    dims=[DEFAULTS.time.dim, DEFAULTS.chemical_shift.dim],
-    coords={DEFAULTS.time.dim: time, DEFAULTS.chemical_shift.dim: ppm},
+    dims=["time", "chemical_shift"],
+    coords={"time": time, "chemical_shift": ppm},
     name="Signal",
 )
 
-da_kinetic.coords[DEFAULTS.time.dim].attrs["units"] = "s"
-da_kinetic.coords[DEFAULTS.chemical_shift.dim].attrs["units"] = "ppm"
+da_kinetic.coords["time"].attrs["units"] = "s"
+da_kinetic.coords["chemical_shift"].attrs["units"] = "ppm"
 
 da_kinetic
 
