@@ -17,7 +17,7 @@
 
 ## 📖 Documentation
 
-Comprehensive documentation, tutorials, and API reference can be found **[here](https://andrewendlinger.github.io/xmris/)**.
+Documentation, tutorials, and API reference can be found **[here](https://andrewendlinger.github.io/xmris/)**.
 
 
 
