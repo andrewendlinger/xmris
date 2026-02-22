@@ -6,7 +6,7 @@ name = "xmris"
 version = "0.1.0"
 description = "An xarray-based MRI and MRS toolbox"
 readme = "README.md"
-requires-python = ">=3.11,<3.13"# TEMP FIX FOR PYAMARES
+requires-python = ">=3.10,<=3.13"# TEMP FIX FOR PYAMARES
 authors = [
     { name = "Andrecho", email = "37243793+andrewendlinger@users.noreply.github.com" }
 ]
