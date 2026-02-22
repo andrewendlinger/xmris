@@ -22,6 +22,14 @@ quartodoc:
       desc: Spectral NMR fitting based on pyAMARES.
       contents:
         - fitting
+    - title: Custom utility functions
+      desc: Custom utilities for xarray, such as improved complex number handling.
+      contents:
+        - utils
+    - title: Configuration
+      desc: Naming conventions for dimensions, coordiantes etc.
+      contents:
+        - config
     - title: Data Accessors
       desc: Custom xarray accessors.
       contents:

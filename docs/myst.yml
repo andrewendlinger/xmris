@@ -17,7 +17,8 @@ project:
           title: Basics of FFT
         - file: 01_notebooks/02_fid_transformations.ipynb
           title: FID to Spectrum
-
+        - file: 01_notebooks/03_architecture_and_formatting.ipynb
+          title: Core Conventions
     # 2. GROUP: A chronological processing pipeline
     - title: Processing Pipeline
       children:
@@ -45,6 +46,8 @@ project:
         - file: api_reference/phase.md
         - file: api_reference/bruker.md
         - file: api_reference/fitting.md
+        - file: api_reference/config.md
+        - file: api_reference/utils.md
 
     - title: Contribute
       children:
