@@ -19,7 +19,7 @@ class PlotRidgeConfig(BasePlotConfig):
     """
 
     # --- Figure & Canvas ---
-    fig_size: tuple[float, float] = field(
+    figsize: tuple[float, float] = field(
         default=(8, 6),
         metadata={
             "group": "Figure & Canvas",
@@ -33,7 +33,7 @@ class PlotRidgeConfig(BasePlotConfig):
             "description": "Matplotlib style sheet used for the underlying canvas.",
         },
     )
-    font_family: str = field(
+    fontfamily: str = field(
         default="sans-serif",
         metadata={
             "group": "Figure & Canvas",
@@ -49,11 +49,11 @@ class PlotRidgeConfig(BasePlotConfig):
             "description": "Vertical shift between consecutive stacked spectra.",
         },
     )
-    cmap_name: str = field(
+    cmap: str = field(
         default="magma",
         metadata={
             "group": "Stacking & Colors",
-            "description": "Matplotlib colormap used for the time/stack gradient.",
+            "description": "Matplotlib colormap used for the stack gradient.",
         },
     )
     cmap_start: float = field(
@@ -79,55 +79,64 @@ class PlotRidgeConfig(BasePlotConfig):
     )
 
     # --- Line Aesthetics ---
-    line_width: float = field(
+    linewidth: float = field(
         default=0.8,
         metadata={
             "group": "Line Aesthetics",
             "description": "Thickness of standard spectrum outlines.",
         },
     )
-    line_width_highlight: float = field(
+    linewidth_highlight: float = field(
         default=1.3,
         metadata={
             "group": "Line Aesthetics",
-            "description": "Thickness for labeled/highlighted timepoint outlines.",
+            "description": "Thickness for labeled/highlighted spectrum outlines.",
         },
     )
 
-    # --- Timeline Labels ---
+    # --- Stack Labels ---
     label_every_n: int = field(
         default=10,
         metadata={
-            "group": "Timeline Labels",
-            "description": "Interval at which to add a time label (every Nth spectrum).",
+            "group": "Stack Labels",
+            "description": "Interval at which to add a stack label (every Nth spectrum).",
         },
     )
     label_x_nudge: float = field(
         default=-0.25,
         metadata={
-            "group": "Timeline Labels",
-            "description": "Horizontal adjustment/offset for time labels.",
+            "group": "Stack Labels",
+            "description": "Horizontal adjustment/offset for stack labels.",
         },
     )
     label_y_nudge_frac: float = field(
         default=0.0,
         metadata={
-            "group": "Timeline Labels",
-            "description": "Vertical adjustment for time labels (fraction of offset_step).",  # noqa: E501
+            "group": "Stack Labels",
+            "description": "Vertical adjustment for stack labels (fraction of offset_step).",
         },
     )
-    label_fontsize: int = field(
+    labelsize: int = field(
         default=12,
         metadata={
-            "group": "Timeline Labels",
+            "group": "Stack Labels",
             "description": "Font size applied to the axis labels.",
         },
     )
-    tick_fontsize: int = field(
+    ticklabelsize: int = field(
         default=10,
         metadata={
-            "group": "Timeline Labels",
+            "group": "Stack Labels",
             "description": "Font size applied to the axis tick marks.",
+        },
+    )
+
+    # --- x-Axis Labels ---
+    xlabel: str | None = field(
+        default=None,
+        metadata={
+            "group": "x-Axis",
+            "description": "x-axis label. If None (default), uses the xarray dimension name.",
         },
     )
 
@@ -136,21 +145,30 @@ class PlotRidgeConfig(BasePlotConfig):
         default=0.0,
         metadata={
             "group": "Axes Padding & Ticks",
-            "description": "Empty padding space on the high-ppm (left) side.",
+            "description": "Empty padding space on the high-value (left) side.",
         },
     )
     pad_right: float = field(
         default=0.0,
         metadata={
             "group": "Axes Padding & Ticks",
-            "description": "Empty padding space on the low-ppm (right) side.",
+            "description": "Empty padding space on the low-value (right) side.",
         },
     )
-    minor_locator_x: int = field(
+    xminor_locator: int = field(
         default=5,
         metadata={
             "group": "Axes Padding & Ticks",
-            "description": "Number of sub-intervals between major X-axis ticks.",
+            "description": "Number of sub-intervals between major x-axis ticks.",
+        },
+    )
+
+    # --- Annotations ---
+    annotation: str | None = field(
+        default="Absorption Mode",
+        metadata={
+            "group": "Annotations",
+            "description": "Text annotation placed in the top left corner. Set to None to hide.",
         },
     )
 
@@ -178,23 +196,23 @@ def plot_ridge(
     stack_vals = da_plot.coords[stack_dim].values
     spectra = da_plot.values
 
-    x_unit = da_plot.coords[x_dim].attrs.get("units", "p.p.m.")
+    x_unit = da_plot.coords[x_dim].attrs.get("units", "ppm")
     stack_unit = da_plot.coords[stack_dim].attrs.get("units", "s")
 
     # 3. Create Axes with Context Managers
-    custom_rc = {"font.family": cfg.font_family, "axes.linewidth": 1.2}
+    custom_rc = {"font.family": cfg.fontfamily, "axes.linewidth": 1.2}
 
     with plt.style.context(cfg.style), plt.rc_context(custom_rc):
         if ax is None:
-            fig, ax = plt.subplots(figsize=cfg.fig_size)
+            fig, ax = plt.subplots(figsize=cfg.figsize)
         else:
             fig = ax.get_figure()
 
         # 4. Color Mapping Setup
         try:
-            base_cmap = plt.colormaps[cfg.cmap_name]
+            base_cmap = plt.colormaps[cfg.cmap]
         except AttributeError:
-            base_cmap = cm.get_cmap(cfg.cmap_name)
+            base_cmap = cm.get_cmap(cfg.cmap)
 
         line_colors = base_cmap(
             np.linspace(cfg.cmap_start, cfg.cmap_end, len(stack_vals))
@@ -206,7 +224,7 @@ def plot_ridge(
             shifted_spectrum = spectra[i, :] + y_baseline
 
             is_labeled = (i % cfg.label_every_n == 0) or (i == len(stack_vals) - 1)
-            current_lw = cfg.line_width_highlight if is_labeled else cfg.line_width
+            current_lw = cfg.linewidth_highlight if is_labeled else cfg.linewidth
 
             ax.fill_between(
                 x_vals,
@@ -234,7 +252,7 @@ def plot_ridge(
                     label_x,
                     label_y,
                     f"{stack_vals[i]:.0f} {stack_unit}",
-                    fontsize=cfg.tick_fontsize,
+                    fontsize=cfg.ticklabelsize,
                     color="black",
                     ha="left",
                     va="center",
@@ -242,13 +260,10 @@ def plot_ridge(
                 )
 
         # 6. Formatting & Cleanup
-        x_label_str = (
-            r"$^{13}$C Chemical Shift"
-            if x_dim == DEFAULTS.chemical_shift.dim
-            else x_dim.replace("_", " ").title()
-        )
+        x_label_str = cfg.xlabel if cfg.xlabel else x_dim.replace("_", " ").title()
+
         ax.set_xlabel(
-            f"{x_label_str} ({x_unit})", fontsize=cfg.label_fontsize, fontweight="bold"
+            f"{x_label_str} [{x_unit}]", fontsize=cfg.labelsize, fontweight="bold"
         )
 
         if not ax.xaxis_inverted():
@@ -256,14 +271,14 @@ def plot_ridge(
 
         ax.set_xlim(x_vals.max() + cfg.pad_left, x_vals.min() - cfg.pad_right)
 
-        ax.xaxis.set_minor_locator(AutoMinorLocator(cfg.minor_locator_x))
+        ax.xaxis.set_minor_locator(AutoMinorLocator(cfg.xminor_locator))
         ax.tick_params(
             axis="x",
             which="major",
             direction="out",
             length=6,
             width=1.2,
-            labelsize=cfg.tick_fontsize,
+            labelsize=cfg.ticklabelsize,
         )
         ax.tick_params(axis="x", which="minor", direction="out", length=3, width=1)
 
@@ -273,17 +288,18 @@ def plot_ridge(
         ax.spines["top"].set_visible(False)
         ax.spines["bottom"].set_linewidth(1.2)
 
-        ax.text(
-            0.0,
-            0.97,
-            "Absorption Mode",
-            transform=ax.transAxes,
-            fontsize=cfg.label_fontsize - 1,
-            fontstyle="italic",
-            color="gray",
-            ha="left",
-            va="top",
-        )
+        if cfg.annotation:
+            ax.text(
+                0.0,
+                0.97,
+                cfg.annotation,
+                transform=ax.transAxes,
+                fontsize=cfg.labelsize - 1,
+                fontstyle="italic",
+                color="gray",
+                ha="left",
+                va="top",
+            )
 
         if ax.get_figure() is fig:
             fig.tight_layout()
