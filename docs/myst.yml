@@ -38,9 +38,9 @@ project:
     - title: Spectral Fitting
       children:
         - file: notebooks/fitting/pyamares.ipynb
-          title: 5. Spectral Fitting
+          title: 1. pyAMARES
         - file: notebooks/fitting/pyamares_advanced.ipynb
-          title: 6. Spectral Fitting (Advanced)
+          title: 2. pyAMARES (Advanced)
 
     # 4. API Ref
     - title: API Reference
