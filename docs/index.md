@@ -114,19 +114,19 @@ We recommend going through the example notebooks. They are designed to be read c
 
 Learn how <span style="color: #B05418;font-weight: bold;">x</span><span style="color: #002E7A;font-weight: bold;">mris</span> leverages `xarray` to make switching between the time and frequency domains completely painless.
 
-* [Basics of FFT](01_notebooks/01_basics_fft.ipynb)
-* [FID to Spectrum](01_notebooks/02_fid_transformations.ipynb)
+* [Basics of FFT](notebooks/01_basics_fft.ipynb)
+* [FID to Spectrum](notebooks/02_fid_transformations.ipynb)
 
 ### 2. The Processing Pipeline
 
 This section guides you step-by-step through a complete MRS processing pipeline. We cover everything from loading raw data to state-of-the-art time-domain fitting using our `pyAMARES` integration.
 
-* [Bruker Digital Filter](01_notebooks/06_bruker_digital_filter.ipynb)
-* [Zero Filling](01_notebooks/03_fid_zerofill.ipynb)
-* [Apodization](01_notebooks/04_fid_apodization.ipynb)
-* [Phase Correction](01_notebooks/05_phase.ipynb)
-* [Spectral Fitting](01_notebooks/07_pyamares.ipynb)
-* [Spectral Fitting (Advanced)](01_notebooks/08_pyamares_advanced.ipynb)
+* [Bruker Digital Filter](notebooks/06_bruker_digital_filter.ipynb)
+* [Zero Filling](notebooks/03_fid_zerofill.ipynb)
+* [Apodization](notebooks/04_fid_apodization.ipynb)
+* [Phase Correction](notebooks/05_phase.ipynb)
+* [Spectral Fitting](notebooks/07_pyamares.ipynb)
+* [Spectral Fitting (Advanced)](notebooks/08_pyamares_advanced.ipynb)
 
 ### 3. API Reference
 

@@ -1,15 +1,61 @@
-# 1. Import the accessor so it registers with xarray immediately
-from . import accessor as accessor
+# 0. Expose the submodules for quartodoc (Griffe) traversal
+from . import accessor, config, fitting, processing, utils, vendor  # noqa: I001
 
-# 2. Optionally, expose core functions at the top level for users who
-# prefer functional programming over method chaining.
-from .fourier import fftc, ifftc
+# 1. Configuration (The Central Nervous System)
+from .config import DEFAULTS
 
+# 2. Accessor (Importing this automatically registers the .xmr namespace)
+from .accessor import XmrisAccessor
+
+# 3. Utilities
+from .utils import to_complex, to_real_imag
+
+# 4. Core Processing
+from .processing.fid import apodize_exp, apodize_lg, to_fid, to_spectrum, zero_fill
+from .processing.fourier import fft, fftc, fftshift, ifft, ifftc, ifftshift
+from .processing.phase import autophase, phase
+
+# 5. Vendor Specific
+from .vendor.bruker import remove_digital_filter
+
+# 6. Fitting
+from .fitting.amares import fit_amares
+
+# Explicitly define the public API.
 __all__ = [
-    "fftshift",
-    "ifftshift",
+    # --- Submodules (Required for quartodoc to build the pages) ---
+    "accessor",
+    "config",
+    "fitting",
+    "processing",
+    "utils",
+    "vendor",
+    # --- Flat API (For the users) ---
+    # Config
+    "DEFAULTS",
+    # Accessor
+    "XmrisAccessor",
+    # Utilities
+    "to_complex",
+    "to_real_imag",
+    # FID Operations
+    "apodize_exp",
+    "apodize_lg",
+    "to_fid",
+    "to_spectrum",
+    "zero_fill",
+    # Fourier Transforms
     "fft",
-    "ifft",
     "fftc",
+    "fftshift",
+    "ifft",
     "ifftc",
+    "ifftshift",
+    # Phase Correction
+    "autophase",
+    "phase",
+    # Vendor
+    "remove_digital_filter",
+    # Fitting
+    "fit_amares",
 ]

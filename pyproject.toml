@@ -85,7 +85,7 @@ addopts = "--nbmake --cov=xmris --cov-report=term-missing --cov-report=html --co
 
 testpaths = [
     "tests",
-    "docs/01_notebooks",
+    "docs/notebooks",
 ]
 
 # --- Ruff (Linter & Formatter) ---
@@ -106,8 +106,8 @@ convention = "numpy"
 # - E501: "Line too long"
 # - F401: "Unused import" (usually due to 'import xmris' to activate the accessor)
 # - E402: "Import not at top of file / double import"
-"docs/01_notebooks/*.py" = ["E501", "F401", "E402"]
-"docs/01_notebooks/*.ipynb" = ["E501", "F401", "E402"]
+"docs/notebooks/*.py" = ["E501", "F401", "E402"]
+"docs/notebooks/*.ipynb" = ["E501", "F401", "E402"]
 
 # --- Jupytext ---
 [tool.jupytext]

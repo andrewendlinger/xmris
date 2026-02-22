@@ -53,7 +53,7 @@ Expose your function through the `.xmr` namespace in `src/xmris/accessor.py`. Th
 
 ### Step 3: Create the Tutorial-Test (Jupytext)
 
-We don't use standard `test_*.py` files. Your tutorials *are* the test suite. Create a Python script in `01_notebooks/` using the Jupytext percent format (`# %%`).
+We don't use standard `test_*.py` files. Your tutorials *are* the test suite. Create a Python script in `notebooks/` using the Jupytext percent format (`# %%`).
 
 1. **Explain:** Use Markdown cells to explain the math, physics, or purpose of the function.
 2. **Demonstrate:** Show the function in action with `matplotlib` plots.
@@ -78,6 +78,6 @@ We don't use standard `test_*.py` files. Your tutorials *are* the test suite. Cr
 * [ ] **Preserves `da.coords` and updates `da.attrs` with applied parameters for data lineage.**
 * [ ] NumPy docstrings are complete and type-hinted (for `quartodoc`).
 * [ ] Mapped appropriately to `XmrisAccessor` in `accessor.py`.
-* [ ] Created a `01_notebooks/` Jupytext script for documentation.
+* [ ] Created a `notebooks/` Jupytext script for documentation.
 * [ ] **Crucial:** Assertion cells test *both* math and metadata preservation, and are tagged with `remove-cell`.
 * [ ] Verified locally via `uv run pytest` and `uv run docs`.

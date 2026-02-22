@@ -44,7 +44,7 @@ Whenever you generate a new function for `xmris`, you MUST follow these rules:
 ### 5. Testing & Documentation Strategy
 
 We do not use traditional hidden `test_*.py` files. Our tests *are* our documentation.
-We use **Jupyter Notebooks** in the `01_notebooks/` directory, managed via Jupytext (`py:percent` format).
+We use **Jupyter Notebooks** in the `notebooks/` directory, managed via Jupytext (`py:percent` format).
 
 When asked to write tests for a new function, generate a Jupytext script structure that includes:
 
