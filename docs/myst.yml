@@ -45,9 +45,9 @@ project:
     # 4. GROUP: Visualization / plotting
     - title: Visualization
       children:
-        - file: notebooks/Visualization/01_plotting_basics.ipynb
+        - file: notebooks/visualization/01_plotting_basics.ipynb
           title: 1. Introduction
-        - file: notebooks/Visualization/02_plotting_heatmap.ipynb
+        - file: notebooks/visualization/02_plotting_heatmap.ipynb
           title: 2. Plotting 1D Time Series
 
     # 5. API Ref
