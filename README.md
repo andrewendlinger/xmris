@@ -5,7 +5,7 @@
   <p><b>A modern, N-dimensional, <code>xarray</code>-based toolbox for Magnetic Resonance Imaging and Spectroscopy.</b></p>
 
   <a href="https://github.com/andrewendlinger/xmris/actions/workflows/deploy.yml"><img src="https://github.com/andrewendlinger/xmris/actions/workflows/deploy.yml/badge.svg" alt="MyST GitHub Pages Deploy"></a>
-  <a href="https://github.com/andrewendlinger/xmris/actions/workflows/tests.yml"><img src="https://github.com/andrewendlinger/xmris/actions/workflows/tests.yml/badge.svg" alt="Tests"></a>
+  <a href="https://github.com/andrewendlinger/xmris/actions/workflows/tests.yml"><img src="https://github.com/andrewendlinger/xmris/actions/workflows/ci-fast.yml/badge.svg" alt="Tests"></a>
   <a href="https://codecov.io/gh/andrewendlinger/xmris"><img src="https://codecov.io/gh/andrewendlinger/xmris/graph/badge.svg" alt="codecov"></a>
   <br>
   <a href="https://github.com/astral-sh/uv"><img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json" alt="uv"></a>
