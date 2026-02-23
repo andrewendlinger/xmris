@@ -213,14 +213,13 @@ plt.show()
 # %%
 # Customize the QC grid to show exactly 10 plots evenly sampled across the 60 repetitions
 qc_cfg = PlotQCGridConfig(
-    max_cols=5,
     crlb_threshold=20.0,
     xlim=(500, -1500),  # Zoom in to the peaks
 
 )
 
-# select spectrae between 24 and 44s (xarray for the win, we don't need indices here, that would be `.isel`).
-fig_qc = ds_dyn.sel(Repetition=slice(24, 43)).xmr.plot.qc_grid(
+# select spectra between 28 and 32 seconds (xarray for the win! we don't need to count indices here, that would be `.isel`).
+fig_qc = ds_dyn.sel(Repetition=slice(28, 32)).xmr.plot.qc_grid(
     dim="Repetition",
     config=qc_cfg,
 )
@@ -252,10 +251,5 @@ crlb_clean = ds_dyn["crlb"].sel(Metabolite="PCr").isel(Repetition=0).values
 # )
 assert crlb_clean < 20.0, "The clean signal generated an unexpectedly high CRLB."
 
-# 4. Verify Config application
-assert qc_cfg.max_cols == 5
-
 # 5. Close all plots
 plt.close("all")
-
-# %%
