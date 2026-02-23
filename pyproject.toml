@@ -119,8 +119,8 @@ cell_metadata_filter = "all,-trusted"
 [tool.uv.sources]
 # Uncomment the local repository for simultaneous development of both packages
 # (longterm a uv workspace might be better)
-pyamares = { git = "https://github.com/andrewendlinger/pyAMARES", branch = "xmris-compatible" }
-# pyamares = { path = "../pyAMARES", editable = true } # (local dependency development workflow)
+# pyamares = { git = "https://github.com/andrewendlinger/pyAMARES", branch = "xmris-compatible" }
+pyamares = { path = "../pyAMARES", editable = true } # (local dependency development workflow)
 
 # ==============================================================================
 # 5. COVERAGE CONFIGURATION

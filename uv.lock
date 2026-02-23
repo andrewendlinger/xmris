@@ -824,25 +824,6 @@ wheels = [
 ]
 
 [[package]]
-name = "hlsvdpro"
-version = "2.0.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "setuptools" },
-]
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/8a/b2/8cf779155a37bfa394f79589610be85f6b86362d5c95dfe815973682e034/hlsvdpro-2.0.0-py36-none-macosx_10_9_x86_64.whl", hash = "sha256:c976edcf07e074ffaef96bba4c798f597598995e6da3b2c4d28feeb4cda487e5", size = 1277714, upload-time = "2020-06-23T04:14:47.931Z" },
-    { url = "https://files.pythonhosted.org/packages/dc/a8/62f5d998c8da8c129ca253d53a53be076abe105af9956a3475df863eda3d/hlsvdpro-2.0.0-py36-none-manylinux2014_x86_64.whl", hash = "sha256:737f74c1b7a22e9a7815710ae4cc12e208bcbc7324b71330d35239191b3b3a66", size = 1362688, upload-time = "2020-06-23T04:14:08.391Z" },
-    { url = "https://files.pythonhosted.org/packages/1c/59/b38a01bf81132cbac14a8c2f52fe3f83cbbd8213bc3451ce7e0f4cdde2d8/hlsvdpro-2.0.0-py36-none-win_amd64.whl", hash = "sha256:064a943f6ea797418a7152b476ac262e3ddd515dd7319b36bdd7f8809826e45d", size = 1482552, upload-time = "2020-06-23T04:13:26.019Z" },
-    { url = "https://files.pythonhosted.org/packages/78/ae/f1df89f258bf4abd8face5683ddda567493d474811e352aaefd5db29777d/hlsvdpro-2.0.0-py37-none-macosx_10_9_x86_64.whl", hash = "sha256:177fe7ecd2c07f3fb91dac81685c02e9538babc1c08152c810cbed647ea8bc0c", size = 1277707, upload-time = "2020-06-23T04:14:49.243Z" },
-    { url = "https://files.pythonhosted.org/packages/4b/70/d1ef6877afe65558f7e04e9d707a769bf25ebfd0616b7ba88fdf6797ec0e/hlsvdpro-2.0.0-py37-none-manylinux2014_x86_64.whl", hash = "sha256:16ee00a0fd0104da761cfa1fd55515271b8fc00a51d7fb8a3e81505dd064b20c", size = 1362651, upload-time = "2020-06-23T04:14:10.521Z" },
-    { url = "https://files.pythonhosted.org/packages/f3/0b/7197677b79abee88e70bfa9c4ef3404bf3a9a9f6baa81a857d274f02377f/hlsvdpro-2.0.0-py37-none-win_amd64.whl", hash = "sha256:1115b9b7d5b0dc0ae4973d843264bad3d3a3a53c7b3e49b739a8104dbe17bef8", size = 1490904, upload-time = "2020-06-23T04:13:27.657Z" },
-    { url = "https://files.pythonhosted.org/packages/af/77/25ac60681e5678cd2ceff0d641de69354838f54fcef0becdecec27e3bb4f/hlsvdpro-2.0.0-py38-none-macosx_10_9_x86_64.whl", hash = "sha256:c242a2aaabe8d0cca46c8c87ca311fea141428ebc345720134032a9e50c45530", size = 1277525, upload-time = "2020-06-23T04:14:50.792Z" },
-    { url = "https://files.pythonhosted.org/packages/5a/29/bb69bc87140341111737ec03e0ef2a524a6b79000f1ba67d4a4ee5314d4d/hlsvdpro-2.0.0-py38-none-manylinux2014_x86_64.whl", hash = "sha256:7189e7e6206005049ecade801cf11b1a647bea6b1c210d28057abd0848e81d46", size = 1370207, upload-time = "2020-06-23T04:14:12.384Z" },
-    { url = "https://files.pythonhosted.org/packages/86/40/5f594f543837375d7183cda82c6eb79a4b7039cd66c5e975efa2a7b8dc1e/hlsvdpro-2.0.0-py38-none-win_amd64.whl", hash = "sha256:34519b9c7a4748097f2d40925cbae852d487fbfb1eb79830916e64acba3f721b", size = 1472978, upload-time = "2020-06-23T04:13:29.606Z" },
-]
-
-[[package]]
 name = "httpcore"
 version = "1.0.9"
 source = { registry = "https://pypi.org/simple" }
@@ -2217,9 +2198,8 @@ wheels = [
 [[package]]
 name = "pyamares"
 version = "0.3.33"
-source = { git = "https://github.com/andrewendlinger/pyAMARES?branch=xmris-compatible#1b5a3244e3de428898f3e4f8b50590ae94adff7c" }
+source = { editable = "../pyAMARES" }
 dependencies = [
-    { name = "hlsvdpro", marker = "platform_machine == 'amd64' or platform_machine == 'x86_64'" },
     { name = "ipykernel" },
     { name = "ipython", version = "8.38.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "ipython", version = "9.10.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
@@ -2239,6 +2219,49 @@ dependencies = [
     { name = "tqdm" },
     { name = "xlrd" },
 ]
+
+[package.metadata]
+requires-dist = [
+    { name = "ipykernel" },
+    { name = "ipykernel", marker = "extra == 'dev'" },
+    { name = "ipykernel", marker = "extra == 'jupyter'" },
+    { name = "ipython" },
+    { name = "ipywidgets", marker = "python_full_version < '3.11'", specifier = ">=7.6.0,<8.0.0" },
+    { name = "ipywidgets", marker = "python_full_version >= '3.11'", specifier = ">=8.0.0" },
+    { name = "ipywidgets", marker = "extra == 'dev'" },
+    { name = "ipywidgets", marker = "extra == 'docs'" },
+    { name = "jinja2" },
+    { name = "lmfit" },
+    { name = "mat73" },
+    { name = "matplotlib", specifier = ">=3.1.3" },
+    { name = "nbsphinx", marker = "extra == 'dev'" },
+    { name = "nbsphinx", marker = "extra == 'docs'" },
+    { name = "nmrglue" },
+    { name = "notebook", marker = "extra == 'dev'" },
+    { name = "notebook", marker = "extra == 'jupyter'" },
+    { name = "numpy", specifier = ">=1.18.1" },
+    { name = "pandas", specifier = ">=1.1.0" },
+    { name = "pre-commit", marker = "extra == 'dev'" },
+    { name = "pre-commit", marker = "extra == 'ruff'" },
+    { name = "pygments", marker = "extra == 'dev'" },
+    { name = "pygments", marker = "extra == 'docs'" },
+    { name = "pytest", marker = "extra == 'dev'" },
+    { name = "pytest", marker = "extra == 'ruff'" },
+    { name = "requests" },
+    { name = "ruff", marker = "extra == 'dev'" },
+    { name = "ruff", marker = "extra == 'ruff'" },
+    { name = "scipy", specifier = ">=1.2.1" },
+    { name = "sphinx", marker = "extra == 'dev'" },
+    { name = "sphinx", marker = "extra == 'docs'" },
+    { name = "sphinx-rtd-theme", marker = "extra == 'dev'" },
+    { name = "sphinx-rtd-theme", marker = "extra == 'docs'" },
+    { name = "sphinx-tabs", marker = "extra == 'dev'" },
+    { name = "sphinx-tabs", marker = "extra == 'docs'" },
+    { name = "sympy" },
+    { name = "tqdm" },
+    { name = "xlrd" },
+]
+provides-extras = ["docs", "jupyter", "ruff", "dev"]
 
 [[package]]
 name = "pycparser"
@@ -3330,7 +3353,7 @@ requires-dist = [
     { name = "joblib", specifier = ">=1.5.3" },
     { name = "nmrglue", specifier = ">=0.11" },
     { name = "numpy", specifier = ">=1.26.0" },
-    { name = "pyamares", git = "https://github.com/andrewendlinger/pyAMARES?branch=xmris-compatible" },
+    { name = "pyamares", editable = "../pyAMARES" },
     { name = "xarray", specifier = "<2025.11.0" },
 ]
 
