@@ -114,6 +114,8 @@ project:
           title: Contributing Guide
         - file: contributing/setup.md
           title: Environment Setup
+        - file: contributing/publishing.md
+          title: Publishing
         - file: contributing/ai_context.md
           title: AI Context
 
