@@ -3,7 +3,6 @@
 # title: Time-Domain Fitting with AMARES
 # ---
 
-
 # %% tags=["remove-cell"]
 import matplotlib.pyplot as plt
 import matplotlib_inline.backend_inline
@@ -22,18 +21,33 @@ plt.rcParams["figure.dpi"] = 150
 #
 # :::{dropdown} Why AMARES?
 #
-# Here a section from the pyAMARES [paper](https://doi.org/10.3390/diagnostics14232668):
+# Here is a section from the pyAMARES [paper](https://doi.org/10.3390/diagnostics14232668):
 #
 # AMARES models the MRS signal as a sum of exponentially damped sinusoids. It uses parameters such as chemical shift, linewidth, amplitude, phase, and spectral lineshape, which can be constrained by prior knowledge. This knowledge includes initial parameters, parameter ranges, and relationships between different peaks and can be readily obtained from published literature. Peaks outside the region of interest can be filtered out, and parameters without prior knowledge can be fitted.
 #
 # In contrast, frequency-domain fitting methods like LCModel require all metabolites to be modeled as basis set spectra. While this approach reduces the number of parameters to fit, it requires additional effort to obtain basis set spectra through experiments or numerical simulations. Moreover, frequency-domain fitting strategies typically require well-phased absorptive spectra. AMARES circumvents the sometimes subjective and complicated phasing procedure, making it particularly effective for analyzing data with distorted phases due to long receiver dead times.
 #
-# LCModel and AMARES have been compared directly and proven to be comparable, each with its own advantages. However, AMARES is often the preferred method for quantifying X-nuclei MRS data, such as 13C and 31P MRS, where spectra typically exhibit fewer peaks and less J-coupling compared to 1H MRS. Also, AMARES can be used for post-processing, such as removing residuals from short-echo 1H MRS data measuring mobile macromolecules (MM). Recently, the introduction of pure-shift NMR techniques that simplify J-coupling split multiplets to singlets shows promise in facilitating AMARES fitting of 1H MRS.
+# LCModel and AMARES have been compared directly and proven to be comparable, each with its own advantages. However, AMARES is often the preferred method for quantifying X-nuclei MRS data, such as 13C and 31P MRS, where spectra typically exhibit fewer peaks and less J-coupling compared to 1H MRS.
 # :::
 #
 # ## The N-Dimensional Advantage
 #
-# Traditional fitting tools often force you to write `for` loops to fit multiple spectra (like in an MRSI grid or a dynamic time-series). In `xmris`, the `.xmr.fit_amares()` accessor handles this for you. You pass in an N-dimensional `DataArray`, and the package automatically flattens the spatial dimensions, distributes the fitting across your CPU cores, and reconstructs the results into an aligned `xarray.Dataset`.
+#
+#
+# Traditional fitting tools often force you to write `for` loops to fit multiple spectra (like in an MRSI grid or a dynamic time-series). In `xmris`, the `.xmr.fit_amares()` accessor handles this for you.
+#
+# You pass in an N-dimensional `DataArray`, and the package automatically flattens the spatial dimensions, distributes the fitting across your CPU cores, and reconstructs the results into an aligned `xarray.Dataset`.
+#
+# ```mermaid
+# graph LR
+#     A[Input DataArray<br>Dims: Voxel, Time] --> B(xmris Auto-Flatten)
+#     B --> C{joblib/loky Parallel Pool}
+#     C -->|Worker 1| D[pyAMARES Fit<br>Voxel 0]
+#     C -->|Worker N| E[pyAMARES Fit<br>Voxel N]
+#     D --> F(xmris Reconstruct)
+#     E --> F
+#     F --> G[Output Dataset<br>Time Dims: raw, fit, residuals<br>Param Dims: amplitude, phase, snr...]
+# ```
 #
 # Let's create a synthetic MRSI dataset (multiple voxels) and quantify it in one line of code.
 
@@ -77,7 +91,7 @@ pk_path.write_text(pk_csv_content)
 # ## 2. Generate N-Dimensional Synthetic Data
 # We will simulate a 1D spatial array containing 5 voxels. To make it realistic, we will vary the amplitude of the PCr peak across the voxels, representing a spatial concentration gradient, while keeping ATP constant.
 
-# %%
+# %% tags=["hide-input"]
 n_voxels = 5
 n_points = 1024
 sw = 10000.0  # Hz
@@ -95,7 +109,7 @@ decay_pcr = 15.0 * np.pi
 decay_atp = 20.0 * np.pi
 
 # Initialize random number generator
-rng = np.random.default_rng()
+rng = np.random.default_rng(seed=42)
 
 for v in range(n_voxels):
     # PCr amplitude increases across voxels (10 to 50)
@@ -137,7 +151,7 @@ plt.show()
 # ## 3. Fit the Data with xmris
 # We pass the `DataArray` to `.xmr.fit_amares()`.
 #
-# Under the hood, `xmris` evaluates the Signal-to-Noise Ratio (SNR) of all 5 voxels, picks the one with the highest SNR to safely initialize the `pyAMARES` template, and then parallelizes the fitting across your CPU cores.
+# Under the hood, `xmris` evaluates the Signal-to-Noise Ratio (SNR) of all voxels, picks the one with the highest SNR to safely initialize the `pyAMARES` template, and then parallelizes the fitting across your CPU cores.
 
 # %% tags=["skip-execution"]
 # We use num_workers=4 to parallelize the fitting across our spatial dimensions!
@@ -149,6 +163,20 @@ ds_fit = da_mrsi.xmr.fit_amares(
 ds_fit = da_mrsi.xmr.fit_amares(
     prior_knowledge_file=pk_path, method="least_squares", num_workers=1
 )
+
+# %% [markdown]
+# :::{dropdown} Understanding the PyAMARES Warning
+# If you look at the cell output above, you might notice this recurring warning:
+# `[AMARES | WARNING] pm_index are all NaNs, return None so that P matrix is a identity matrix!`
+#
+# **This is completely normal and expected.** #
+# During the fitting process, PyAMARES calculates the Cramér-Rao Lower Bounds (CRLB) to estimate the mathematical uncertainty of your fit. To do this, it constructs a Prior Knowledge matrix (the "P matrix").
+#
+# If your prior knowledge CSV does not contain explicit mathematical formulas linking the parameters of different peaks (for example, forcing the linewidth of ATP to exactly match the linewidth of PCr), the internal expression parser evaluates those empty relationships as `NaN`.
+#
+# PyAMARES safely catches this and defaults the P matrix to an identity matrix. This simply means the algorithm is treating all peaks as mathematically independent, which is exactly what we want for this standard fit!
+# :::
+
 # %% [markdown]
 # ### Exploring the Resulting Dataset
 #
@@ -164,7 +192,7 @@ ds_fit = da_mrsi.xmr.fit_amares(
 #
 # Because fitting yields both continuous time-domain signals (mapped to `Time`) and discrete quantified parameters (mapped to a new `Metabolite` dimension), we use a `Dataset` to hold everything perfectly aligned in one neat package!
 #
-# [Here](https://docs.xarray.dev/en/stable/user-guide/data-structures.html#dataset) the official documentation from xarray.
+# Read more in the [official xarray documentation](https://docs.xarray.dev/en/stable/user-guide/data-structures.html#dataset).
 # :::
 #
 # Because it maps the results to the newly created `Metabolite` dimension, you can easily query and plot quantitative maps without touching a Pandas DataFrame or slicing NumPy arrays. Let's verify our spatial concentration gradient by plotting the fitted amplitudes across the voxels.
@@ -205,17 +233,62 @@ ax.legend()
 plt.show()
 
 # %% [markdown]
-# ### Quality Control (Visualizing the Fit)
-# The `Dataset` also contains the mathematically reconstructed `fit_data` and the `residuals` in the time domain. Using the `.xmr.to_spectrum()` accessor, we can instantly visualize the fit quality for a specific voxel in the frequency domain.
+# ### Quality Control (Tabular & Visual)
+#
+# In quantitative MRS, simply looking at a plot is not enough to confirm a successful fit. The gold standard for assessing fit quality is the **Cramér-Rao Lower Bound (CRLB)**, which estimates the minimum variance of the fitted parameters.
+#
+# A common rule of thumb is that **CRLB ≤ 20% indicates a reliable fit**.
+#
+# Let's extract the exact fitting parameters for our final voxel (`Voxel=4`) from the `Dataset` and display them as a Pandas DataFrame. We will apply a custom style to highlight rows with acceptable CRLB values in green, mimicking the native behavior of `pyAMARES`.
 
 # %%
-# Select the center voxel
-voxel_ds = ds_fit.isel(Voxel=2)
+# 1. Select the last voxel
+voxel_idx = -1
+last_voxel_ds = ds_fit.isel(Voxel=voxel_idx)
 
-# Convert Time-domain arrays to Frequency-domain spectra
-spec_raw = voxel_ds.raw_data.xmr.to_spectrum()
-spec_fit = voxel_ds.fit_data.xmr.to_spectrum()
-spec_res = voxel_ds.residuals.xmr.to_spectrum()
+# 2. Extract the quantified variables into a Pandas DataFrame
+df_results = pd.DataFrame(
+    {
+        "Amplitude": last_voxel_ds.amplitude.values,
+        "Chem Shift (ppm)": last_voxel_ds.chem_shift.values,
+        "Linewidth (Hz)": last_voxel_ds.linewidth.values,
+        "Phase (deg)": last_voxel_ds.phase.values,
+        "SNR": last_voxel_ds.snr.values,
+        "CRLB (%)": last_voxel_ds.crlb.values,
+    },
+    index=last_voxel_ds.Metabolite.values,
+)
+
+df_results.index.name = "Metabolite"
+
+
+# 3. Define a styling function for the DataFrame
+def highlight_crlb(row):
+    """Highlight rows green if CRLB <= 20%, otherwise red."""
+    if pd.isna(row["CRLB (%)"]):
+        color = "background-color: rgba(255, 255, 0, 0.2)"  # Yellow for NaN/Failed
+    elif row["CRLB (%)"] <= 20.0:
+        color = "background-color: rgba(0, 255, 0, 0.2)"  # Green for Pass
+    else:
+        color = "background-color: rgba(255, 0, 0, 0.2)"  # Red for Fail
+    return [color] * len(row)
+
+
+# Display the styled dataframe (renders beautifully in Jupyter and MyST)
+df_results.style.apply(highlight_crlb, axis=1).format("{:.3f}")
+
+# %% [markdown]
+# We can clearly see that both PCr and ATP converged beautifully, boasting high SNRs and CRLBs well below 20%.
+#
+# Now, let's verify this visually by plotting the frequency-domain spectrum, the mathematical fit, and the residual noise for this exact same voxel.
+#
+# Because `xmris` retained the reconstructed time-domain data inside our `Dataset`, we just use `.xmr.to_spectrum()` on the variables and plot them using standard `xarray` methods.
+
+# %%
+# Convert Time-domain arrays to Frequency-domain spectra for the last voxel
+spec_raw = last_voxel_ds.raw_data.xmr.to_spectrum()
+spec_fit = last_voxel_ds.fit_data.xmr.to_spectrum()
+spec_res = last_voxel_ds.residuals.xmr.to_spectrum()
 
 fig, ax = plt.subplots(figsize=(8, 5))
 
@@ -224,31 +297,48 @@ ax.plot(
     spec_raw.coords["Frequency"],
     spec_raw.real,
     color="black",
-    alpha=0.5,
+    alpha=0.4,
     label="Raw Data",
 )
-ax.plot(spec_fit.coords["Frequency"], spec_fit.real, color="tab:red", label="AMARES Fit")
+ax.plot(
+    spec_fit.coords["Frequency"],
+    spec_fit.real,
+    color="tab:red",
+    linewidth=1.5,
+    label="AMARES Fit",
+)
 ax.plot(
     spec_res.coords["Frequency"],
-    spec_res.real - 50,
+    spec_res.real - 25,  # Offset the residuals downward for clarity
     color="tab:green",
+    alpha=0.8,
     label="Residuals (offset)",
 )
 
-ax.set_xlim(200, -1200)  # Zoom into the peaks
-ax.set_title("Voxel 2: Spectral Fit Quality")
+ax.set_xlim(200, -1200)  # Zoom into the region of interest
+ax.set_title(f"Voxel {ds_fit.Voxel.values[-1]}: Spectral Fit Quality")
 ax.set_xlabel("Frequency (Hz)")
+ax.set_ylabel("Intensity (a.u.)")
 ax.legend()
 plt.show()
 
 # %% tags=["remove-cell"]
 # CRITICAL ASSERTIONS FOR NBMAKE CI
-# 1. Check Dataset generation and dimensions
+# 1. Check Dataset generation and variables
 assert isinstance(ds_fit, xr.Dataset), "Output must be an xarray Dataset"
-assert "amplitude" in ds_fit.data_vars
-assert "raw_data" in ds_fit.data_vars
-assert "fit_data" in ds_fit.data_vars
-assert "residuals" in ds_fit.data_vars
+expected_vars = [
+    "raw_data",
+    "fit_data",
+    "residuals",
+    "amplitude",
+    "chem_shift",
+    "linewidth",
+    "phase",
+    "crlb",
+    "snr",
+]
+for v in expected_vars:
+    assert v in ds_fit.data_vars, f"Variable {v} missing from Dataset"
 
 # 2. Check Dimensional Alignment
 assert ds_fit.amplitude.dims == ("Voxel", "Metabolite"), (
@@ -257,12 +347,13 @@ assert ds_fit.amplitude.dims == ("Voxel", "Metabolite"), (
 assert ds_fit.fit_data.dims == ("Voxel", "Time"), (
     "Reconstructed fit dimensions are incorrect"
 )
-assert len(ds_fit.coords["Metabolite"]) == 2, "Should have found 2 metabolites (PCr, ATP)"
+assert len(ds_fit.coords["Metabolite"]) == 2, (
+    "Should have found exactly 2 metabolites (PCr, ATP)"
+)
 
 # 3. Check Fit Accuracy (Quantitative)
 fitted_pcr_amps = ds_fit.amplitude.sel(Metabolite="PCr").values
 true_pcr_amps = np.array([10.0, 20.0, 30.0, 40.0, 50.0])
-# Ensure the fit recovered the gradient correctly within a 5% error margin (allowing for noise)
 np.testing.assert_allclose(
     fitted_pcr_amps,
     true_pcr_amps,
@@ -279,13 +370,33 @@ np.testing.assert_allclose(
     err_msg="ATP amplitudes were not fitted correctly",
 )
 
-# 4. Check that residuals are actually noise (Mean should be close to 0)
-voxel_residual = ds_fit.residuals.isel(Voxel=2).values
+# 4. Check Parametric Integrity
+# Linewidth constraints check (should be between 5 and 40 Hz per PK)
+assert np.all((ds_fit.linewidth.values >= 5.0) & (ds_fit.linewidth.values <= 40.0)), (
+    "Linewidths violated PK constraints"
+)
+
+# SNR should be highest for the voxel with the largest amplitude (Voxel 4)
+assert ds_fit.snr.sel(Metabolite="PCr").isel(Voxel=4) > ds_fit.snr.sel(
+    Metabolite="PCr"
+).isel(Voxel=0), "SNR mapping is incorrect"
+
+# CRLB should be valid and acceptable for this high SNR synthetic data
+assert not np.isnan(ds_fit.crlb.values).any(), (
+    "CRLB contains NaNs, indicating an ill-conditioned fit matrix"
+)
+assert np.all(ds_fit.crlb.values <= 20.0), (
+    "CRLB values exceeded 20% on clean synthetic data"
+)
+
+# 5. Check that residuals are mathematically correct and behave like noise
+recalculated_residuals = ds_fit.raw_data - ds_fit.fit_data
+xr.testing.assert_allclose(ds_fit.residuals, recalculated_residuals)
+
+voxel_residual = ds_fit.residuals.isel(Voxel=-1).values
 assert abs(np.mean(voxel_residual)) < 1.0, (
     "Residuals are suspiciously high, indicating a bad fit"
 )
 
-# 5. Cleanup dummy file
+# 6. Cleanup dummy PK file
 pk_path.unlink(missing_ok=True)
-
-# %%

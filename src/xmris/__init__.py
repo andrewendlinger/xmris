@@ -5,7 +5,7 @@ from . import accessor, config, fitting, processing, utils, vendor  # noqa: I001
 from .config import DEFAULTS
 
 # 2. Accessor (Importing this automatically registers the .xmr namespace)
-from .accessor import XmrisAccessor
+from .accessor import XmrisAccessor, XmrisDatasetAccessor
 
 # 3. Utilities
 from .utils import to_complex, to_real_imag
@@ -22,7 +22,12 @@ from .vendor.bruker import remove_digital_filter
 from .fitting.amares import fit_amares
 
 # 7. Visualisation
-from .visualization.plot import PlotRidgeConfig
+from .visualization.plot import (
+    PlotHeatmapConfig,
+    PlotRidgeConfig,
+    PlotTrajectoryConfig,
+    PlotQCGridConfig,
+)
 
 # Explicitly define the public API.
 __all__ = [
@@ -38,6 +43,7 @@ __all__ = [
     "DEFAULTS",
     # Accessor
     "XmrisAccessor",
+    "XmrisDatasetAccessor",
     # Utilities
     "to_complex",
     "to_real_imag",
@@ -61,6 +67,9 @@ __all__ = [
     "remove_digital_filter",
     # Fitting
     "fit_amares",
-    # Visualization - Plotting
+    # Visualization - Plotting Configs
     "PlotRidgeConfig",
+    "PlotHeatmapConfig",
+    "PlotTrajectoryConfig",
+    "PlotQCGridConfig",
 ]

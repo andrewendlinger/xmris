@@ -1,17 +1,207 @@
-import os
+from copy import deepcopy
+from datetime import datetime
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 
 # Import pyAMARES and its core utilities
 import pyAMARES
 import xarray as xr
+from joblib import Parallel, delayed
 from pyAMARES import (
     initialize_FID,
     multieq6,
     result_pd_to_params,
     uninterleave,
 )
+from pyAMARES.kernel.lmfit import fitAMARES as pyamares_fitAMARES
+from pyAMARES.libs.logger import set_log_level
+from tqdm.auto import tqdm
+
+
+def _fit_dataset_safe(
+    fid_current,
+    FIDobj_shared,
+    initial_params,
+    method="leastsq",
+    initialize_with_lm=False,
+    verbose=False,
+):
+    """
+    Safely fit a single FID dataset using the pyAMARES algorithm.
+
+    This internal helper function performs the fitting of a single spectrum. It
+    deep copies the shared FID object to avoid race conditions and state corruption
+    during multiprocessing. If the fitting process raises an exception (e.g., due
+    to non-convergence or bad data), it catches the error and returns a DataFrame
+    populated with NaNs. This ensures that downstream array concatenations in
+    N-dimensional datasets do not fail due to mismatched shapes or `None` types.
+
+    Parameters
+    ----------
+    fid_current : numpy.ndarray
+        The 1D complex array representing the current Free Induction Decay (FID)
+        dataset to be fitted.
+    FIDobj_shared : argparse.Namespace
+        A shared pyAMARES FID object template containing common settings,
+        such as spectrometer frequency, spectral width, and dead time.
+    initial_params : lmfit.Parameters
+        The initialized fitting parameters and prior knowledge constraints
+        used for the AMARES algorithm.
+    method : {"leastsq", "least_squares"}, optional
+        The minimization method to be passed to `lmfit`. Defaults to "leastsq"
+        (Levenberg-Marquardt).
+    initialize_with_lm : bool, optional
+        If True, an internal Levenberg-Marquardt initializer is executed to
+        refine starting values before the main fitting routine. Defaults to False.
+    verbose: bool, optional
+        If True, sets logging level to INFO. Default is False -> log level ERROR.
+
+
+    Returns
+    -------
+    pandas.DataFrame
+        A DataFrame containing the fitting results (e.g., amplitude, linewidth,
+        chemical shift, phase, CRLB, SNR) for the current dataset. If the fit
+        fails, returns a structurally identical DataFrame filled with NaNs.
+    """
+    set_log_level("info" if verbose else "error", verbose=False)
+    try:
+        FIDobj_current = deepcopy(FIDobj_shared)
+        FIDobj_current.fid = fid_current
+
+        out = pyamares_fitAMARES(
+            fid_parameters=FIDobj_current,
+            fitting_parameters=initial_params,
+            method=method,
+            initialize_with_lm=initialize_with_lm,
+            ifplot=False,
+            inplace=True,
+        )
+
+        result_table = FIDobj_current.result_multiplets
+
+        # Explicit memory cleanup in the worker process
+        del FIDobj_current
+        del out
+
+        return result_table
+
+    except Exception as e:
+        print(f"Warning: AMARES fit failed on a voxel. Returning NaNs. Error: {e}")
+        if hasattr(FIDobj_shared, "peaklist"):
+            cols = [
+                "amplitude",
+                "sd",
+                "CRLB(%)",
+                "chem shift(ppm)",
+                "sd(ppm)",
+                "CRLB(cs%) ",
+                "LW(Hz)",
+                "sd(Hz)",
+                "CRLB(LW%)",
+                "phase(deg)",
+                "sd(deg)",
+                "CRLB(phase%)",
+                "g",
+                "g_sd",
+                "g (%)",
+                "SNR",
+            ]
+            dummy_df = pd.DataFrame(np.nan, index=FIDobj_shared.peaklist, columns=cols)
+            dummy_df.index.name = "name"
+            return dummy_df
+        return None
+
+
+def _run_parallel_fitting_optimal(
+    fid_arrs,
+    FIDobj_shared,
+    initial_params,
+    method="leastsq",
+    initialize_with_lm=False,
+    num_workers=8,
+    verbose=False,
+):
+    """
+    Execute parallel AMARES fitting across multiple FID datasets using `joblib`.
+
+    This internal execution engine replaces the legacy `multiprocessing` approach.
+    It uses the `loky` backend from `joblib` to efficiently manage worker pools
+    and minimize memory overhead when passing large NumPy arrays (via memory mapping).
+    It also utilizes joblib's generator return style to provide a completely accurate,
+    non-blocking progress bar.
+
+    Parameters
+    ----------
+    fid_arrs : numpy.ndarray
+        A 2D array of shape (n_spectra, n_time_points) containing the stacked
+        complex FID data to be fitted.
+    FIDobj_shared : argparse.Namespace
+        A shared pyAMARES FID object template containing common settings.
+        Heavy visualization attributes (like `styled_df`) are stripped internally
+        to avoid serialization overhead across processes.
+    initial_params : lmfit.Parameters
+        The initialized fitting parameters and prior knowledge constraints.
+    method : {"leastsq", "least_squares"}, optional
+        The minimization method to be passed to `lmfit`. Defaults to "leastsq".
+    initialize_with_lm : bool, optional
+        If True, an internal Levenberg-Marquardt initializer is executed before
+        the main fitting routine. Defaults to False.
+    num_workers : int, optional
+        The number of concurrent worker processes to spawn. Defaults to 8.
+    verbose: bool, optional
+        If True, sets logging level to INFO. Default is False -> log level ERROR.
+
+    Returns
+    -------
+    numpy.ndarray
+        A 1D object array of length `n_spectra`, where each element is a
+        pandas DataFrame containing the fit results for the corresponding spectrum.
+    """
+    # Create a safe copy and strip heavy/unpicklable visualization attributes
+    FIDobj_shared_clean = deepcopy(FIDobj_shared)
+    for attr in ("styled_df", "simple_df", "out_obj", "fitted_fid"):
+        if hasattr(FIDobj_shared_clean, attr):
+            delattr(FIDobj_shared_clean, attr)
+
+    timebefore = datetime.now()
+    n_spectra = fid_arrs.shape[0]
+
+    # Generate the task arguments
+    args_list = [
+        (
+            fid_arrs[i, :],
+            FIDobj_shared_clean,
+            initial_params,
+            method,
+            initialize_with_lm,
+            verbose,  # <-- Pass to worker
+        )
+        for i in range(n_spectra)
+    ]
+    # Pre-allocate an object array to hold the resulting DataFrames
+    result_array = np.empty(n_spectra, dtype=object)
+
+    # Yield results immediately as they finish
+    parallel_gen = Parallel(n_jobs=num_workers, backend="loky", return_as="generator")(
+        delayed(_fit_dataset_safe)(*args) for args in args_list
+    )
+
+    # Process and assign back to the correct index
+    with tqdm(total=n_spectra, desc="Fitting Spectra") as pbar:
+        for i, res in enumerate(parallel_gen):
+            result_array[i] = res
+            pbar.update(1)
+
+    timeafter = datetime.now()
+    print(
+        f"Fitting {n_spectra} spectra with {num_workers} workers took "
+        f"{(timeafter - timebefore).total_seconds():.2f} seconds."
+    )
+
+    return result_array
 
 
 def fit_amares(
@@ -25,6 +215,7 @@ def fit_amares(
     initialize_with_lm: bool = True,
     num_workers: int = 4,
     init_fid: np.ndarray | None = None,
+    verbose: bool = False,
 ) -> xr.Dataset:
     """
     Apply AMARES time-domain fitting to an N-dimensional Free Induction Decay (FID).
@@ -60,6 +251,8 @@ def fit_amares(
     init_fid : np.ndarray, optional
         A 1D complex array to use as the template for pyAMARES initialization. If None,
         the function automatically selects the spectrum with the highest SNR.
+    verbose: bool, optional
+        If True, sets logging level to INFO. Default is False -> log level ERROR.
 
     Returns
     -------
@@ -68,6 +261,8 @@ def fit_amares(
         and quantified parameters (amplitude, chem_shift, linewidth, phase, CRLB, SNR)
         mapped across the original dimensions and the new 'Metabolite' dimension.
     """
+    set_log_level("info" if verbose else "error", verbose=False)
+
     if dim not in da.dims:
         raise ValueError(f"Dimension '{dim}' missing in DataArray.")
 
@@ -112,8 +307,8 @@ def fit_amares(
         best_idx = np.nanargmax(snr_array)
         template_fid = fid_arrs[best_idx]
         print(
-            f"Auto-selected FID index {best_idx} for initialization"
-            + f"(SNR: {snr_array[best_idx]:.2f})"
+            f"Auto-selected FID index {best_idx} for initialization "
+            f"(SNR: {snr_array[best_idx]:.2f})"
         )
 
     # 4. Setup the Shared pyAMARES State
@@ -128,15 +323,12 @@ def fit_amares(
         preview=False,
     )
 
-    # 5. Execute Fitting
+    # 5. Execute Fitting natively via xmris
     if num_workers == 1:
         # BYPASS multiprocessing entirely for testing/single-core execution
-        # This allows pytest-cov to track the execution properly
-        from pyAMARES.util.multiprocessing import fit_dataset
-
         result_list = []
-        for i in range(fid_arrs.shape[0]):
-            res = fit_dataset(
+        for i in tqdm(range(n_spectra), desc="Fitting Spectra (Single Core)"):
+            res = _fit_dataset_safe(
                 fid_arrs[i, :],
                 FIDobj_shared=shared_obj,
                 initial_params=shared_obj.initialParams,
@@ -145,18 +337,14 @@ def fit_amares(
             )
             result_list.append(res)
     else:
-        # Use pyAMARES multiprocessing for normal execution
-        from pyAMARES.util.multiprocessing import run_parallel_fitting_with_progress
-
-        result_list = run_parallel_fitting_with_progress(
-            fid_arrs,
+        # Use our optimized joblib executor
+        result_list = _run_parallel_fitting_optimal(
+            fid_arrs=fid_arrs,
             FIDobj_shared=shared_obj,
             initial_params=shared_obj.initialParams,
             method=method,
             initialize_with_lm=initialize_with_lm,
             num_workers=num_workers,
-            notebook=False,
-            logfilename=os.devnull,
         )
 
     # 6. Extract Parameters and Reconstruct Time-Domain Fits
@@ -179,8 +367,9 @@ def fit_amares(
     timeaxis = np.arange(0, dwelltime * n_time, dwelltime) + deadtime
 
     for i, df in enumerate(result_list):
-        if df is None:
-            # Handle rare cases where the fit fails completely on a voxel
+        if df is None or df.isna().all().all():
+            # Handle cases where the fit failed completely and returned NaNs
+            # The zeros allocated above will naturally persist for these voxels
             continue
 
         amplitudes[i, :] = df["amplitude"].values
@@ -291,5 +480,9 @@ def fit_amares(
             "amares_version": pyAMARES.__version__,
         }
     )
+
+    for coord in da.coords:
+        if coord in ds.coords:
+            ds.coords[coord].attrs.update(da.coords[coord].attrs)
 
     return ds

@@ -19,6 +19,49 @@ from xmris.vendor.bruker import remove_digital_filter
 from xmris.visualization.plot import PlotHeatmapConfig, PlotRidgeConfig
 
 
+class XmrisDatasetPlotAccessor:
+    """Sub-accessor for xmris xr.Datasets plotting functionalities."""
+
+    def __init__(self, obj: xr.Dataset):
+        self._obj = obj
+
+    def trajectory(
+        self,
+        dim: str,
+        metabolites: list[str] | None = None,
+        ax: plt.Axes | None = None,
+        config=None,
+    ):
+        """Plot kinetic trajectories with CRLB shading."""
+        from xmris.visualization.plot.plot_trajectory import plot_trajectory
+
+        return plot_trajectory(
+            self._obj, dim=dim, metabolites=metabolites, ax=ax, config=config
+        )
+
+    def qc_grid(self, dim: str, config=None):
+        """Plot a grid of spectra and fits to quickly visually inspect quality."""
+        from xmris.visualization.plot.plot_qc_grid import plot_qc_grid
+
+        return plot_qc_grid(self._obj, dim=dim, config=config)
+
+
+@xr.register_dataset_accessor("xmr")
+class XmrisDatasetAccessor:
+    """Accessor for xmris xr.Datasets (e.g., AMARES fitting results)."""
+
+    def __init__(self, xarray_obj: xr.Dataset):
+        self._obj = xarray_obj
+        self._plot = None
+
+    @property
+    def plot(self) -> XmrisDatasetPlotAccessor:
+        """Access xmris plotting functionalities."""
+        if self._plot is None:
+            self._plot = XmrisDatasetPlotAccessor(self._obj)
+        return self._plot
+
+
 class XmrisPlotAccessor:
     """Sub-accessor for xmris plotting functionalities (accessed via .xmr.plot)."""
 

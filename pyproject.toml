@@ -11,6 +11,7 @@ authors = [
     { name = "Andrecho", email = "37243793+andrewendlinger@users.noreply.github.com" }
 ]
 dependencies = [
+    "joblib>=1.5.3",
     "nmrglue>=0.11",
     "numpy>=1.26.0",
     "pyamares",
