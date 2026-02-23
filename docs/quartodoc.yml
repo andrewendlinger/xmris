@@ -2,47 +2,34 @@ quartodoc:
   package: xmris
   dir: api_reference
   sections:
-    - title: Fourier Transforms
-      desc: Core MRI and MRS fourier transform functions.
+    - title: Signal Processing
+      desc: Core MRI/MRS fourier transforms, FID processing, and phase correction.
       contents:
         - processing.fourier
-    - title: FID Specific Signal Processing
-      desc: Core FID signal functions.
-      contents:
         - processing.fid
-    - title: Phase Correction
-      desc: Manual and automatic phase correction of MR spectra.
-      contents:
         - processing.phase
-    - title: Bruker Related Processing
-      desc: Digital filter group delay removal of Bruker FIDs.
+
+    - title: Visualization
+      desc: Publication-ready plotting and aesthetics.
       contents:
-        - vendor.bruker
-    - title: Spectral fitting with pyAMARES
+        - visualization.plot.plot_ridge
+        - visualization.plot.plot_heatmap
+        - visualization.plot.plot_trajectory
+        - visualization.plot.plot_qc_grid
+
+    - title: Modeling & Fitting
       desc: Spectral NMR fitting based on pyAMARES.
       contents:
         - fitting.amares
-    - title: Custom utility functions
-      desc: Custom utilities for xarray, such as improved complex number handling.
+
+    - title: Vendor Integrations
+      desc: Digital filter group delay removal and vendor formats.
       contents:
-        - utils
-    - title: Configuration
-      desc: Naming conventions for dimensions, coordinates etc.
-      contents:
-        - config
-    - title: Visualization - Ridge Plot
-      desc: Ridge plot for 1D NMR time series.
-      contents:
-        - visualization.plot.plot_ridge
-    - title: Visualization - Heatmap Plot
-      desc: Heatmap plot for 1D NMR time series.
-      contents:
-        - visualization.plot._base_config
-    - title: Visualization - Config
-      desc: The plotting configuration base class.
-      contents:
-        - visualization.plot._base_config
-    - title: Data Accessors
-      desc: Custom xarray accessors.
+        - vendor.bruker
+
+    - title: Core Objects & Utilities
+      desc: Custom xarray accessors, configurations, and utilities.
       contents:
         - accessor
+        - config
+        - utils

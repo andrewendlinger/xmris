@@ -1,9 +1,3 @@
-"""
-Xarray accessor for the xmris toolbox.
-
-This module registers the `.xmr` namespace on xarray DataArrays.
-"""
-
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -107,7 +101,7 @@ class XmrisAccessor:
     """
     Accessor for xarray DataArrays to perform MRI and MRS operations.
 
-    This class is registered under the ``.xmr`` namespace. It provides a
+    This class is registered under the `.xmr` namespace. It provides a
     fluent, method-chaining API for signal processing, spectroscopy, and
     imaging functions directly on xarray objects while preserving coordinates
     and metadata.
