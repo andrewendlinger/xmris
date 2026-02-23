@@ -88,7 +88,7 @@ def docs_config_classes(api_dir: Path) -> None:
             "",
             "```{admonition} Associated Plotting Function",
             ":class: seealso",
-            f"This object configures the aesthetics of the **[`{func_name}()`](#{func_anchor})** function.",
+            f"This object configures the aesthetics of the **[`{func_name}()`](#{func_anchor})** function.",  # noqa: E501
             "```",
             "",
             docstring,
@@ -115,13 +115,14 @@ def docs_config_classes(api_dir: Path) -> None:
             )
 
             for f in f_list:
-                # 1. Clean the description (remove newlines so it doesn't break the table row)
+                # 1. Clean description (remove newlines so it doesn't break the table row)
                 raw_desc = f.metadata.get("description", "No description provided.")
                 desc = raw_desc.replace("\n", " ")
 
                 # 2. Extract and format the type string
                 raw_type = getattr(f.type, "__name__", str(f.type).replace("typing.", ""))
-                # CRITICAL: Escape pipe characters for Union types (str | None) in Markdown tables
+                # CRITICAL: Escape pipe characters for Union types (str | None)
+                # in Markdown tables
                 safe_type = raw_type.replace("|", "&#124;")
 
                 # 3. Determine the default value string
