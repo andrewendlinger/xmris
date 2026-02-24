@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="./docs/assets/logo.svg" alt="xmris logo" width="300" />
+  <img src="https://github.com/andrewendlinger/xmris/blob/main/docs/assets/logo.svg" alt="xmris logo" width="300" />
   
   <h1></h1>
   <p><b>A modern, N-dimensional, <code>xarray</code>-based toolbox for Magnetic Resonance Imaging and Spectroscopy.</b></p>
