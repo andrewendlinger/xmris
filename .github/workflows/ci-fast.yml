@@ -3,14 +3,7 @@ name: Tests
 on:
   push:
     branches: [ main ]
-    # Only run if files in these paths change
-    paths:
-      - "xmris/**"                # Core logic
-      - "tests/**"                # Unit tests
-      - "docs/notebooks/**"    # Notebook-based tests
-      - "pyproject.toml"          # Dependencies/Config
-      - "uv.lock"                 # Exact dependency versions
-      - ".github/workflows/**"    # CI configuration
+
   pull_request:
     branches: [ main ]
 
