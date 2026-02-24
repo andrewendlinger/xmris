@@ -181,6 +181,10 @@ def plot_ridge(
     config: PlotRidgeConfig | None = None,
 ) -> plt.Axes:
     """Generate a publication-ready ridge plot (2D waterfall) of stacked 1D spectra."""
+    # BUG:dimension robustnes, will have to be properly fixed, see issue #7
+    x_dim = x_dim.lower() if x_dim else x_dim
+    stack_dim = stack_dim.lower() if stack_dim else stack_dim
+
     # 1. Resolve Configuration safely
     cfg = config or PlotRidgeConfig()
 

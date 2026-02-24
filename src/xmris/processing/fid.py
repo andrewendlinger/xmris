@@ -11,7 +11,7 @@ def to_spectrum(
     Convert a time-domain Free Induction Decay (FID) to a frequency-domain spectrum.
 
     The stored, digital FID signal can be processed by a discrete Fourier
-    [cite_start]transformation (DFT) to produce a digital MR spectrum[cite: 17, 18].
+    transformation (DFT) to produce a digital MR spectrum.
     This function applies the FFT along the specified time dimension and shifts
     the zero-frequency component to the center of the spectrum.
 
