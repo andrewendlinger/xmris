@@ -47,7 +47,7 @@ The full matrix re-runs automatically. Repeat until green.
 Once the matrix is fully green, bump, tag, and ship:
 
 ```bash
-uv version minor               # bump version in pyproject.toml
+uv version --bump minor               # bump version in pyproject.toml
 git commit -am "chore: bump version to 0.2.0"
 git tag v0.2.0
 git push origin v0.2.0         # triggers the publish job
@@ -95,7 +95,7 @@ flowchart TD
     G -.-> H
 
     subgraph publish ["③ Tag & Publish"]
-        H[Bump version<br>uv version minor] --> I[Commit & tag v*]
+        H[Bump version<br>uv version --bump minor] --> I[Commit & tag v*]
         I -->|push tag| J[Publish Job<br>uv build --no-sources]
         J -->|Trusted Publishing| K[(📦 PyPI)]
     end
