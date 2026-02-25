@@ -13,6 +13,8 @@ project:
     # 1. GROUP: Core concepts and basic usage
     - title: Basics
       children:
+        - file: notebooks/basics/architecture.ipynb
+          title: xmris Architecture
         - file: notebooks/basics/fft.ipynb
           title: Basics of FFT
         - file: notebooks/basics/fid_transformations.ipynb

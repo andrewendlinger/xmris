@@ -32,7 +32,7 @@ import numpy as np
 import xarray as xr
 
 # Ensure xmris accessors are registered
-import xmris.accessor
+import xmris.core.accessor
 from xmris import PlotQCGridConfig, PlotTrajectoryConfig
 
 # Write a simple Prior Knowledge file to disk
@@ -97,9 +97,9 @@ for i in range(n_rep):
     noise_level = 0.4
 
     # Simulate subject motion / RF coil spike scaled to the timeline
-    if i in (14,15,16):
+    if i in (14, 15, 16):
         noise_level = 5.0  # Massive spike
-    elif i in (44,45,46,47,48):
+    elif i in (44, 45, 46, 47, 48):
         noise_level = 2.0  # Minor spike
 
     noise = rng.normal(0, noise_level, n_points) + 1j * rng.normal(
@@ -215,7 +215,6 @@ plt.show()
 qc_cfg = PlotQCGridConfig(
     crlb_threshold=20.0,
     xlim=(500, -1500),  # Zoom in to the peaks
-
 )
 
 # select spectra between 28 and 32 seconds (xarray for the win! we don't need to count indices here, that would be `.isel`).

@@ -33,7 +33,7 @@ import xarray as xr
 from pyAMARES.libs.MPFIR import MPFIR
 
 # Ensure xmris accessors are registered
-import xmris.accessor
+import xmris.core.accessor
 
 # %% [markdown]
 # ## 1. Simulate a Challenging Dataset using pyAMARES

@@ -118,13 +118,20 @@ class XmrisDimensions(BaseVocabulary):
             "description": "Time-domain dimension for Free Induction Decay (FID) data."
         },
     )
+
     frequency: str = field(
         default="Frequency",
         metadata={"description": "Frequency-domain dimension for spectral data."},
     )
+
     metabolite: str = field(
         default="Metabolite",
         metadata={"description": "Dimension representing quantified metabolites."},
+    )
+
+    component: str = field(
+        default="component",
+        metadata={"description": "Dimension separating real and imaginary parts."},
     )
 
 

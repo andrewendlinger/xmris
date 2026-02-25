@@ -60,7 +60,7 @@ import pandas as pd
 import xarray as xr
 
 # Ensure xmris accessors are registered
-import xmris.accessor
+import xmris.core.accessor
 
 # %% [markdown]
 # ## 1. Define Prior Knowledge

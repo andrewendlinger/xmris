@@ -39,7 +39,7 @@ import numpy as np
 import xarray as xr
 
 # Ensure the accessor is registered
-import xmris.accessor
+import xmris.core.accessor
 
 # %% [markdown]
 # ## 1. Generate a Synthetic FID
