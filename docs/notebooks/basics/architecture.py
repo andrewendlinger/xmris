@@ -64,21 +64,25 @@
 import numpy as np
 import xarray as xr
 
-# A typical xmris FID — data + metadata in one object:
+import xmris  # activates the .xmr accessor
+
 n_points = 2048
 dwell_time = 0.0005  # seconds
 
-fid = xr.DataArray(
-    data=np.random.randn(n_points) + 1j * np.random.randn(n_points),
-    dims=["time"],
-    coords={"time": np.arange(n_points) * dwell_time},
+mrsi_fid = xr.DataArray(
+    data=np.random.randn(16, n_points) + 1j * np.random.randn(16, n_points),
+    dims=["voxel", "time"],
+    coords={
+        "voxel": np.arange(16),
+        "time": np.arange(n_points) * dwell_time,
+    },
     attrs={
         "b0_field": 7.0,  # Tesla
         "reference_frequency": 300.15,  # MHz
     },
 )
 
-fid
+mrsi_fid
 
 # %% [markdown]
 # The data now carries its own context. The pipeline from above collapses to this:
@@ -103,35 +107,17 @@ fid
 #    automatically — and because `xarray` preserves attributes through operations,
 #    that metadata is still there at step four without any effort from you.
 #
-# 2. **Operations act on named dimensions, not integer positions.** Instead of
-#    remembering whether time is `axis=0` or `axis=1`, you refer to axes by
-#    name. Each function has a sensible default — `to_spectrum()` defaults to
-#    `dim="time"` — but you can always pass a different name if your data uses
-#    different conventions:
+# 2. **Operations act on named dimensions, not integer positions.** `to_spectrum()`
+#    defaults to `dim="time"`, so it transforms the right axis regardless of
+#    whether the array is 1D, 2D, or 5D — and regardless of axis order. If your
+#    data uses a different convention, just say so:
 
 # %%
-# activate the 'xmr' accessor
-import xmris
-
-# Create a 2D complex MRSI dataset:
-# 16 spatial voxels × 2048 temporal samples (FID signal)
-mrsi_fid = xr.DataArray(
-    data=np.random.randn(16, 2048) + 1j * np.random.randn(16, 2048),
-    dims=["voxel", "time"],
-    coords={
-        "voxel": np.arange(16),
-        "time": np.arange(2048) * dwell_time,
-    },
-    attrs={"b0_field": 7.0, "reference_frequency": 300.15},
-)
-
-# Transform from time domain (FID) to frequency domain (spectrum)
-# by explicitly specifying the dimension
-mrsi_spectrum = mrsi_fid.xmr.to_spectrum(dim="time")
-
-# Even better: "time" is the default transform dimension for to_spectrum,
-# so the same result can be obtained using
+# Default — transforms along "time":
 mrsi_spectrum = mrsi_fid.xmr.to_spectrum()
+
+# Your data calls it something else? Just pass the name (in our case still 'time' although explicitly defined now):
+mrsi_spectrum = mrsi_fid.xmr.to_spectrum(dim="time")
 
 # %% [markdown]
 # Compare this to the numpy equivalent, where you'd have to track that time is
@@ -393,20 +379,20 @@ COORDS
 # processing, the package would feel rigid and hostile toward quick-and-dirty datasets.
 #
 # Therefore, dimensions are passed as **explicit arguments with smart defaults**:
-
-# %%
-from xmris.core import DIMS
-
-# Your data uses the xmris standard "time" dimension? Just use the defaults:
-result = fid.xmr.apodize_exp(lb=5.0)
-
-# Your data has a custom axis name? No problem — just pass it:
-result = fid.xmr.apodize_exp(dim="t", lb=5.0)
-
-# You can even pass xmris constants explicitly for maximum clarity:
-result = fid.xmr.apodize_exp(dim=DIMS.time, lb=5.0)
-
-# %% [markdown]
+#
+# ```python
+# from xmris.core import DIMS
+#
+# # Your data uses the xmris standard "time" dimension? Just use the defaults:
+# result = fid.xmr.apodize_exp(lb=5.0)
+#
+# # Your data has a custom axis name? No problem — just pass it:
+# result = fid.xmr.apodize_exp(dim="t", lb=5.0)
+#
+# # You can even pass xmris constants explicitly for maximum clarity:
+# result = fid.xmr.apodize_exp(dim=DIMS.time, lb=5.0)
+# ```
+#
 # And if you pass a dimension that doesn't exist at all, `xmris` gives you a clear,
 # actionable error — just like the attribute bouncer:
 #
