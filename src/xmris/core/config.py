@@ -113,19 +113,19 @@ class XmrisDimensions(BaseVocabulary):
     """Official dimension names for xmris xarray objects (`.dims`)."""
 
     time: str = field(
-        default="Time",
+        default="time",
         metadata={
             "description": "Time-domain dimension for Free Induction Decay (FID) data."
         },
     )
 
     frequency: str = field(
-        default="Frequency",
+        default="frequency",
         metadata={"description": "Frequency-domain dimension for spectral data."},
     )
 
     metabolite: str = field(
-        default="Metabolite",
+        default="metabolite",
         metadata={"description": "Dimension representing quantified metabolites."},
     )
 
@@ -140,14 +140,14 @@ class XmrisCoordinates(BaseVocabulary):
     """Official coordinate names for xmris xarray objects (`.coords`)."""
 
     time: str = field(
-        default="Time", metadata={"description": "Time coordinates.", "unit": "s"}
+        default="time", metadata={"description": "Time coordinates.", "unit": "s"}
     )
     frequency: str = field(
-        default="Frequency",
+        default="frequency",
         metadata={"description": "Frequency coordinates.", "unit": "Hz"},
     )
-    ppm: str = field(
-        default="ppm",
+    chemical_shift: str = field(
+        default="chemical_shift",
         metadata={"description": "Chemical shift coordinates.", "unit": "ppm"},
     )
 

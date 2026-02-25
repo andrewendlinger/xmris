@@ -238,7 +238,7 @@ mrsi_spectrum = mrsi_fid.xmr.to_spectrum()
 # :::
 
 # %%
-from xmris.core import ATTRS, DIMS, COORDS
+from xmris.core import ATTRS, COORDS, DIMS
 
 # These are typed Python objects, not bare strings.
 # Your IDE will autocomplete them — typos become impossible.
