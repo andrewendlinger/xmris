@@ -169,7 +169,7 @@ class XmrisAccessor:
 
     def fft(
         self,
-        dim: str | list[str] = "Time",
+        dim: str | list[str] = "time",
         out_dim: str | list[str] | None = None,
     ) -> xr.DataArray:
         """
@@ -181,7 +181,7 @@ class XmrisAccessor:
 
     def ifft(
         self,
-        dim: str | list[str] = "Time",
+        dim: str | list[str] = "time",
         out_dim: str | list[str] | None = None,
     ) -> xr.DataArray:
         """
@@ -195,7 +195,7 @@ class XmrisAccessor:
 
     def fftc(
         self,
-        dim: str | list[str] = "Time",
+        dim: str | list[str] = "time",
         out_dim: str | list[str] | None = None,
     ) -> xr.DataArray:
         """
@@ -208,7 +208,7 @@ class XmrisAccessor:
 
     def ifftc(
         self,
-        dim: str | list[str] = "Time",
+        dim: str | list[str] = "time",
         out_dim: str | list[str] | None = None,
     ) -> xr.DataArray:
         """
@@ -221,7 +221,7 @@ class XmrisAccessor:
 
     # --- Apodization ---
 
-    def apodize_exp(self, dim: str = "Time", lb: float = 1.0) -> xr.DataArray:
+    def apodize_exp(self, dim: str = "time", lb: float = 1.0) -> xr.DataArray:
         """
         Multiply the time-domain signal by a decreasing mono-exponential filter.
 
@@ -231,7 +231,7 @@ class XmrisAccessor:
         Parameters
         ----------
         dim : str, optional
-            The dimension corresponding to time, by default "Time".
+            The dimension corresponding to time, by default "time".
         lb : float, optional
             The desired line broadening factor in Hz, by default 1.0.
 
@@ -243,7 +243,7 @@ class XmrisAccessor:
         return apodize_exp(self._obj, dim=dim, lb=lb)
 
     def apodize_lg(
-        self, dim: str = "Time", lb: float = 1.0, gb: float = 1.0
+        self, dim: str = "time", lb: float = 1.0, gb: float = 1.0
     ) -> xr.DataArray:
         """
         Apply a Lorentzian-to-Gaussian transformation filter.
@@ -254,7 +254,7 @@ class XmrisAccessor:
         Parameters
         ----------
         dim : str, optional
-            The dimension corresponding to time, by default "Time".
+            The dimension corresponding to time, by default "time".
         lb : float, optional
             The Lorentzian line broadening to cancel in Hz, by default 1.0.
         gb : float, optional
@@ -269,7 +269,7 @@ class XmrisAccessor:
 
     # --- FID Specific Operations ---
 
-    def to_spectrum(self, dim: str = "Time", out_dim: str = "Frequency") -> xr.DataArray:
+    def to_spectrum(self, dim: str = "time", out_dim: str = "frequency") -> xr.DataArray:
         """
         Convert a time-domain FID to a frequency-domain spectrum.
 
@@ -278,9 +278,9 @@ class XmrisAccessor:
         Parameters
         ----------
         dim : str, optional
-            The time dimension to transform, by default "Time".
+            The time dimension to transform, by default "time".
         out_dim : str, optional
-            The name of the resulting frequency dimension, by default "Frequency".
+            The name of the resulting frequency dimension, by default "frequency".
 
         Returns
         -------
@@ -289,7 +289,7 @@ class XmrisAccessor:
         """
         return to_spectrum(self._obj, dim=dim, out_dim=out_dim)
 
-    def to_fid(self, dim: str = "Frequency", out_dim: str = "Time") -> xr.DataArray:
+    def to_fid(self, dim: str = "frequency", out_dim: str = "time") -> xr.DataArray:
         """
         Convert a frequency-domain spectrum to a time-domain FID.
 
@@ -298,9 +298,9 @@ class XmrisAccessor:
         Parameters
         ----------
         dim : str, optional
-            The frequency dimension to transform, by default "Frequency".
+            The frequency dimension to transform, by default "frequency".
         out_dim : str, optional
-            The name of the resulting time dimension, by default "Time".
+            The name of the resulting time dimension, by default "time".
 
         Returns
         -------
@@ -311,7 +311,7 @@ class XmrisAccessor:
 
     def zero_fill(
         self,
-        dim: str = "Time",
+        dim: str = "time",
         target_points: int = 1024,
         position: str = "end",
     ) -> xr.DataArray:
@@ -323,7 +323,7 @@ class XmrisAccessor:
         Parameters
         ----------
         dim : str, optional
-            The dimension along which to pad zeros, by default "Time".
+            The dimension along which to pad zeros, by default "time".
         target_points : int, optional
             The total number of points desired after padding, by default 1024.
         position : {"end", "symmetric"}, optional
@@ -360,7 +360,7 @@ class XmrisAccessor:
         return phase(self._obj, p0=p0, p1=p1)
 
     def autophase(
-        self, dim: str = "Frequency", lb: float = 5.0, temp_time_dim: str = "Time"
+        self, dim: str = "frequency", lb: float = 5.0, temp_time_dim: str = "time"
     ) -> xr.DataArray:
         """
         Automatically calculate and apply phase correction to a spectrum.
@@ -372,13 +372,13 @@ class XmrisAccessor:
         Parameters
         ----------
         dim : str, optional
-            The frequency dimension, by default "Frequency".
+            The frequency dimension, by default "frequency".
         lb : float, optional
             The line broadening (in Hz) used for the sacrificial apodization.
             Higher values suppress more noise. By default 10.0.
         temp_time_dim : str, optional
             The name used for the temporary time dimension during the inverse
-            transform. By default "Time".
+            transform. By default "time".
 
         Returns
         -------
@@ -393,7 +393,7 @@ class XmrisAccessor:
     def fit_amares(
         self,
         prior_knowledge_file: str | Path,
-        dim: str = "Time",
+        dim: str = "time",
         mhz: float | None = None,
         sw: float | None = None,
         deadtime: float | None = None,
@@ -417,7 +417,7 @@ class XmrisAccessor:
         prior_knowledge_file : str | Path
             Path to the CSV or XLSX file containing the prior knowledge constraints.
         dim : str, optional
-            The time dimension along which to fit, by default "Time".
+            The time dimension along which to fit, by default "time".
         mhz : float, optional
             Spectrometer frequency in MHz. If None, attempts to read from attrs['MHz'].
         sw : float, optional
@@ -473,7 +473,7 @@ class XmrisAccessor:
     # --- Vendor Specific ---
 
     def remove_digital_filter(
-        self, group_delay: float, dim: str = "Time", keep_length: bool = True
+        self, group_delay: float, dim: str = "time", keep_length: bool = True
     ) -> xr.DataArray:
         """
         Remove the hardware digital filter group delay from Bruker FID data.
@@ -490,7 +490,7 @@ class XmrisAccessor:
             The exact delay value to remove. This should be read directly from the
             Bruker `ACQ_RxFilterInfo` parameter array.
         dim : str, optional
-            The time dimension along which to apply the correction, by default "Time".
+            The time dimension along which to apply the correction, by default "time".
         keep_length : bool, optional
             If True, appends pure zeros to the end of the FID to replace the truncated
             startup points, maintaining the original length. By default True.

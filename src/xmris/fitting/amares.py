@@ -207,7 +207,7 @@ def _run_parallel_fitting_optimal(
 def fit_amares(
     da: xr.DataArray,
     prior_knowledge_file: str | Path,
-    dim: str = "Time",
+    dim: str = "time",
     mhz: float | None = None,
     sw: float | None = None,
     deadtime: float | None = None,
@@ -235,7 +235,7 @@ def fit_amares(
     prior_knowledge_file : str | Path
         Path to the CSV or XLSX file containing the prior knowledge constraints.
     dim : str, optional
-        The time dimension along which to fit, by default "Time".
+        The time dimension along which to fit, by default "time".
     mhz : float, optional
         Spectrometer frequency in MHz. If None, attempts to read from da.attrs['MHz'].
     sw : float, optional

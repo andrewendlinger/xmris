@@ -21,9 +21,7 @@ def ifftshift(da: xr.DataArray, dim: str | list[str]) -> xr.DataArray:
 # --- 2. Coordinate Math ---
 
 
-def _convert_fft_coords(
-    da: xr.DataArray, dim: str, out_dim: str = None
-) -> xr.DataArray:
+def _convert_fft_coords(da: xr.DataArray, dim: str, out_dim: str = None) -> xr.DataArray:
     """Calculate unshifted reciprocal coordinates and optionally renames dimension."""
     n_points = da.sizes[dim]
     old_coords = da.coords[dim].values
@@ -44,7 +42,7 @@ def _convert_fft_coords(
 
 def fft(
     da: xr.DataArray,
-    dim: str | list[str] = "Time",
+    dim: str | list[str] = "time",
     out_dim: str | list[str] | None = None,
 ) -> xr.DataArray:
     """Perform N-dimensional FFT (Ortho normalized, no shifts)."""
@@ -77,7 +75,7 @@ def fft(
 
 def ifft(
     da: xr.DataArray,
-    dim: str | list[str] = "Time",
+    dim: str | list[str] = "time",
     out_dim: str | list[str] | None = None,
 ) -> xr.DataArray:
     """Perform N-dimensional IFFT (Ortho normalized, no shifts)."""
@@ -102,7 +100,7 @@ def ifft(
 
 def fftc(
     da: xr.DataArray,
-    dim: str | list[str] = "Time",
+    dim: str | list[str] = "time",
     out_dim: str | list[str] | None = None,
 ) -> xr.DataArray:
     """Centered N-dimensional FFT (ifftshift -> fft -> fftshift)."""
@@ -118,7 +116,7 @@ def fftc(
 
 def ifftc(
     da: xr.DataArray,
-    dim: str | list[str] = "Time",
+    dim: str | list[str] = "time",
     out_dim: str | list[str] | None = None,
 ) -> xr.DataArray:
     """Centered N-dimensional IFFT (ifftshift -> ifft -> fftshift)."""

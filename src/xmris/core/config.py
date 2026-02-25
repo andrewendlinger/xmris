@@ -27,7 +27,7 @@ class BaseVocabulary:
         ----------
         target_value : str
             The actual string value of the attribute/dimension/coordinate
-            (e.g., "MHz", "Time").
+            (e.g., "MHz", "time").
 
         Returns
         -------

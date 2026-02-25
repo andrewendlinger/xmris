@@ -86,12 +86,12 @@ fid_total = pyAMARES.kernel.fid.simulate_fid(
 )
 
 da_raw = xr.DataArray(
-    fid_total, dims=["Time"], coords={"Time": time}, attrs={"MHz": mhz, "sw": sw}
+    fid_total, dims=["time"], coords={"time": time}, attrs={"MHz": mhz, "sw": sw}
 )
 
 # Convert to spectrum and assign a ppm coordinate for plotting
 spec_raw = da_raw.xmr.to_spectrum()
-spec_raw = spec_raw.assign_coords(ppm=spec_raw.coords["Frequency"] / mhz)
+spec_raw = spec_raw.assign_coords(ppm=spec_raw.coords["frequency"] / mhz)
 
 # Visualize the problem
 fig, ax = plt.subplots(figsize=(8, 4))
@@ -118,8 +118,8 @@ da_filtered = xr.apply_ufunc(
     apply_mpfir_wrapper,
     da_raw,
     kwargs={"dt": dt, "mhz": mhz, "ppm_range": (0.0, 3.5)},
-    input_core_dims=[["Time"]],
-    output_core_dims=[["Time"]],
+    input_core_dims=[["time"]],
+    output_core_dims=[["time"]],
     vectorize=True,  # This enables N-dimensional broadcasting
 )
 
@@ -128,7 +128,7 @@ da_filtered.attrs = da_raw.attrs
 
 # Convert to spectrum and assign ppm coordinates
 spec_filtered = da_filtered.xmr.to_spectrum()
-spec_filtered = spec_filtered.assign_coords(ppm=spec_filtered.coords["Frequency"] / mhz)
+spec_filtered = spec_filtered.assign_coords(ppm=spec_filtered.coords["frequency"] / mhz)
 
 # Visualize the isolated peak
 fig, ax = plt.subplots(figsize=(8, 4))
@@ -193,10 +193,10 @@ spec_res_data = ds_fit.residuals.xmr.to_spectrum()
 
 # Assign ppm coordinates
 spec_filtered_data = spec_filtered_data.assign_coords(
-    ppm=spec_filtered_data.coords["Frequency"] / mhz
+    ppm=spec_filtered_data.coords["frequency"] / mhz
 )
-spec_fit_data = spec_fit_data.assign_coords(ppm=spec_fit_data.coords["Frequency"] / mhz)
-spec_res_data = spec_res_data.assign_coords(ppm=spec_res_data.coords["Frequency"] / mhz)
+spec_fit_data = spec_fit_data.assign_coords(ppm=spec_fit_data.coords["frequency"] / mhz)
+spec_res_data = spec_res_data.assign_coords(ppm=spec_res_data.coords["frequency"] / mhz)
 
 fig, ax = plt.subplots(figsize=(8, 5))
 

@@ -59,8 +59,8 @@ fid_data = np.exp(-t / t2_star) * np.exp(1j * 2 * np.pi * f0 * t)
 
 da_fid = xr.DataArray(
     fid_data,
-    dims=["Time"],
-    coords={"Time": t},
+    dims=["time"],
+    coords={"time": t},
     attrs={"ProtocolName": "PRESS_1H", "Units": "a.u."},
 )
 
@@ -74,14 +74,14 @@ plt.show()
 # %% [markdown]
 # Now, we transform the signal. **Crucial:** Because this signal starts exactly at t=0, we *cannot* use the centered wrapper `fftc` (which applies an `ifftshift` to the input and would physically split our t=0 point to the center of the array, ruining the phase).
 #
-# Instead, we use the pure `.xmr.fft()` followed by an explicit `.xmr.fftshift()`. The toolbox automatically calculates the reciprocal coordinate values (Hz) based on the input dwell time, and by providing `out_dim="Frequency"`, it conveniently renames the dimension for us in the same step!
+# Instead, we use the pure `.xmr.fft()` followed by an explicit `.xmr.fftshift()`. The toolbox automatically calculates the reciprocal coordinate values (Hz) based on the input dwell time, and by providing `out_dim="frequency"`, it conveniently renames the dimension for us in the same step!
 #
 # *(Note: The `xmris.mrs` module provides a semantic wrapper `da.xmr.to_spectrum()` that does this exact method chain under the hood).*
 
 # %%
 # Transform to Frequency Domain, calculate Hz axis, and center the output
-da_spectrum = da_fid.xmr.fft(dim="Time", out_dim="Frequency").xmr.fftshift(
-    dim="Frequency"
+da_spectrum = da_fid.xmr.fft(dim="time", out_dim="frequency").xmr.fftshift(
+    dim="frequency"
 )
 
 # Plot the real part of the spectrum
@@ -95,13 +95,13 @@ plt.show()
 # This cell is hidden in the MyST docs but executed in CI.
 
 # 1. Metadata Preservation & Coordinate Transformation
-assert "Frequency" in da_spectrum.dims, "Dimension was not renamed!"
-assert "Time" not in da_spectrum.dims
+assert "frequency" in da_spectrum.dims, "Dimension was not renamed!"
+assert "time" not in da_spectrum.dims
 assert da_spectrum.attrs["ProtocolName"] == "PRESS_1H"
 
 # 2. Check the Math (Is the peak actually at 50 Hz?)
 peak_idx = np.argmax(np.abs(da_spectrum.values))
-peak_freq = da_spectrum.coords["Frequency"].values[peak_idx]
+peak_freq = da_spectrum.coords["frequency"].values[peak_idx]
 assert np.isclose(peak_freq, 50.0), f"Peak is at {peak_freq} Hz, expected 50 Hz!"
 
 # 3. Parseval's Theorem (Energy Conservation via Ortho Normalization)

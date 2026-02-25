@@ -140,7 +140,7 @@ def plot_qc_grid(
         )
         axes_flat = axes.flatten()
 
-        freq_dim = "Frequency"
+        freq_dim = "frequency"
         dim_coords = ds.coords[dim].values
         dim_unit = ds.coords[dim].attrs.get("units", "")
 

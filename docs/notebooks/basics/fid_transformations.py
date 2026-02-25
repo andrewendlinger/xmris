@@ -56,8 +56,8 @@ peak2 = 0.5 * np.exp(-t / 0.03) * np.exp(1j * 2 * np.pi * -150 * t)
 
 da_fid = xr.DataArray(
     peak1 + peak2,
-    dims=["Time"],
-    coords={"Time": t},
+    dims=["time"],
+    coords={"time": t},
     attrs={"sequence": "FID", "B0": 3.0},
 )
 
@@ -67,10 +67,10 @@ plt.show()
 
 # %% [markdown]
 # ## 2. Convert to Spectrum
-# We use `.xmr.to_spectrum()` to perform the FFT and automatically rename the dimension to "Frequency". Notice how the resulting coordinates automatically represent the correct centered frequency axis (ranging from -500 Hz to 500 Hz).
+# We use `.xmr.to_spectrum()` to perform the FFT and automatically rename the dimension to "frequency". Notice how the resulting coordinates automatically represent the correct centered frequency axis (ranging from -500 Hz to 500 Hz).
 
 # %%
-da_spec = da_fid.xmr.to_spectrum(dim="Time", out_dim="Frequency")
+da_spec = da_fid.xmr.to_spectrum(dim="time", out_dim="frequency")
 
 # Plot the magnitude spectrum
 np.abs(da_spec).plot(figsize=(8, 3))
@@ -81,7 +81,7 @@ plt.show()
 # %% tags=["remove-cell"]
 # STRICT TESTS: FID to Spectrum
 # 1. Prove metadata preservation
-assert "Frequency" in da_spec.dims, "Dimension was not renamed."
+assert "frequency" in da_spec.dims, "Dimension was not renamed."
 assert da_spec.attrs == da_fid.attrs, "Attributes were dropped."
 
 # 2. Prove math and coordinate alignment
@@ -89,7 +89,7 @@ _expected_freqs = np.fft.fftshift(np.fft.fftfreq(n_points, d=dwell_time))
 _expected_spec = np.fft.fftshift(np.fft.fft(da_fid.values, norm="ortho"))
 
 np.testing.assert_allclose(
-    da_spec.coords["Frequency"].values,
+    da_spec.coords["frequency"].values,
     _expected_freqs,
     err_msg="Frequency coordinates are incorrect.",
 )
@@ -102,7 +102,7 @@ np.testing.assert_allclose(
 # We can accurately recover the original time-domain signal using `.xmr.to_fid()`.
 
 # %%
-da_recovered = da_spec.xmr.to_fid(dim="Frequency", out_dim="Time")
+da_recovered = da_spec.xmr.to_fid(dim="frequency", out_dim="time")
 
 da_recovered.real.plot(figsize=(8, 3), linestyle="-", color="orange")
 plt.title("Recovered FID (Real Part)")
@@ -110,10 +110,10 @@ plt.show()
 
 # %% tags=["remove-cell"]
 # STRICT TESTS: Spectrum back to FID
-assert "Time" in da_recovered.dims, "Dimension was not renamed back to Time."
+assert "time" in da_recovered.dims, "Dimension was not renamed back to Time."
 np.testing.assert_allclose(
-    da_recovered.coords["Time"].values,
-    da_fid.coords["Time"].values,
+    da_recovered.coords["time"].values,
+    da_fid.coords["time"].values,
     err_msg="Time coordinates shifted.",
 )
 np.testing.assert_allclose(

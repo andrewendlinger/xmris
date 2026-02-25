@@ -13,14 +13,14 @@ plt.rcParams["figure.dpi"] = 150
 # %% [markdown]
 # ## The Magic String Problem
 #
-# In Magnetic Resonance, data formats are notoriously fragmented. Vendors use entirely different coordinate systems, units, and metadata keys. If a processing package hardcodes "magic strings" like `"Time"` or `"MHz"` directly into its functions, it inevitably breaks when a user imports data with a `"t"` axis or a `"tx_freq"` attribute.
+# In Magnetic Resonance, data formats are notoriously fragmented. Vendors use entirely different coordinate systems, units, and metadata keys. If a processing package hardcodes "magic strings" like `"time"` or `"MHz"` directly into its functions, it inevitably breaks when a user imports data with a `"t"` axis or a `"tx_freq"` attribute.
 #
 # It also forces users to continually supply repetitive arguments for every step of their pipeline:
 #
 # ```python
 # # The old, exhaustive way
-# da_phased = phase(da, time_dim="Time", freq_dim="Frequency")
-# da_fit = fit(da_phased, time_dim="Time", mhz_key="MHz")
+# da_phased = phase(da, time_dim="time", freq_dim="frequency")
+# da_fit = fit(da_phased, time_dim="time", mhz_key="MHz")
 # ```
 #
 # ## The Backend `DEFAULTS` Solution

@@ -23,8 +23,8 @@ data = np.random.randn(5, 1024) + 1j * np.random.randn(5, 1024)
 
 mrsi_data = xr.DataArray(
     data,
-    dims=["Voxel", "Time"],
-    coords={"Voxel": np.arange(5), "Time": time},
+    dims=["voxel", "time"],
+    coords={"voxel": np.arange(5), "time": time},
     attrs={"MHz": 120.0, "sw": 10000.0}
 )
 
@@ -51,7 +51,7 @@ By simply importing `xmris`, standard `xarray` DataArrays instantly gain special
 :::{dropdown} What is xarray?
 `xarray` is a Python library that builds labeled, N-dimensional arrays on top of `numpy`.
 
-* **`DataArray`**: The workhorse. It is a single, N-dimensional array just like a `numpy` array, but it has named dimensions (e.g., `["Voxel", "Time"]`), physical coordinate values, and metadata attached directly to it.
+* **`DataArray`**: The workhorse. It is a single, N-dimensional array just like a `numpy` array, but it has named dimensions (e.g., `["voxel", "time"]`), physical coordinate values, and metadata attached directly to it.
 * **`Dataset`**: A dictionary-like container that holds multiple aligned `DataArray` objects. For example, `xmris` fitting operations return a `Dataset` containing your raw data, the fitted model, and the residuals all perfectly synced together!
 
 ![xarray-diagram](https://docs.xarray.dev/en/stable/_images/dataset-diagram.png)

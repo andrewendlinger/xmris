@@ -5,7 +5,7 @@ from xmris.processing.fourier import fft, fftshift, ifft, ifftshift
 
 
 def to_spectrum(
-    da: xr.DataArray, dim: str = "Time", out_dim: str = "Frequency"
+    da: xr.DataArray, dim: str = "time", out_dim: str = "frequency"
 ) -> xr.DataArray:
     """
     Convert a time-domain Free Induction Decay (FID) to a frequency-domain spectrum.
@@ -20,9 +20,9 @@ def to_spectrum(
     da : xr.DataArray
         The input time-domain FID data.
     dim : str, optional
-        The time dimension to transform, by default "Time".
+        The time dimension to transform, by default "time".
     out_dim : str, optional
-        The name of the resulting frequency dimension, by default "Frequency".
+        The name of the resulting frequency dimension, by default "frequency".
 
     Returns
     -------
@@ -40,7 +40,7 @@ def to_spectrum(
 
 
 def to_fid(
-    da: xr.DataArray, dim: str = "Frequency", out_dim: str = "Time"
+    da: xr.DataArray, dim: str = "frequency", out_dim: str = "time"
 ) -> xr.DataArray:
     """Convert a frequency-domain spectrum back to a time-domain FID."""
     if dim not in da.dims:
@@ -71,7 +71,7 @@ def to_fid(
     return da_fid
 
 
-def apodize_exp(da: xr.DataArray, dim: str = "Time", lb: float = 1.0) -> xr.DataArray:
+def apodize_exp(da: xr.DataArray, dim: str = "time", lb: float = 1.0) -> xr.DataArray:
     """
     Apply an exponential weighting filter function for line broadening.
 
@@ -86,7 +86,7 @@ def apodize_exp(da: xr.DataArray, dim: str = "Time", lb: float = 1.0) -> xr.Data
     da : xr.DataArray
         The input time-domain data.
     dim : str, optional
-        The dimension corresponding to time, by default "Time".
+        The dimension corresponding to time, by default "time".
     lb : float, optional
         The desired line broadening factor in Hz, by default 1.0.
 
@@ -110,7 +110,7 @@ def apodize_exp(da: xr.DataArray, dim: str = "Time", lb: float = 1.0) -> xr.Data
 
 
 def apodize_lg(
-    da: xr.DataArray, dim: str = "Time", lb: float = 1.0, gb: float = 1.0
+    da: xr.DataArray, dim: str = "time", lb: float = 1.0, gb: float = 1.0
 ) -> xr.DataArray:
     """
     Apply a Lorentzian-to-Gaussian transformation filter.
@@ -125,7 +125,7 @@ def apodize_lg(
     da : xr.DataArray
         The input time-domain data.
     dim : str, optional
-        The dimension corresponding to time, by default "Time".
+        The dimension corresponding to time, by default "time".
     lb : float, optional
         The Lorentzian line broadening to cancel in Hz, by default 1.0.
     gb : float, optional
@@ -159,7 +159,7 @@ def apodize_lg(
 
 def zero_fill(
     da: xr.DataArray,
-    dim: str = "Time",
+    dim: str = "time",
     target_points: int = 1024,
     position: str = "end",
 ) -> xr.DataArray:
@@ -173,7 +173,7 @@ def zero_fill(
     da : xr.DataArray
         The input data.
     dim : str, optional
-        The dimension along which to pad zeros, by default "Time".
+        The dimension along which to pad zeros, by default "time".
     target_points : int, optional
         The total number of points desired after padding, by default 1024.
     position : {"end", "symmetric"}, optional

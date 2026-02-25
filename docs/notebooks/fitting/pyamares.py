@@ -133,8 +133,8 @@ for v in range(n_voxels):
 # Package into an xarray DataArray
 da_mrsi = xr.DataArray(
     data,
-    dims=["Voxel", "Time"],
-    coords={"Voxel": np.arange(n_voxels), "Time": time},
+    dims=["voxel", "time"],
+    coords={"voxel": np.arange(n_voxels), "time": time},
     attrs={"MHz": mhz, "sw": sw},
 )
 
@@ -142,7 +142,7 @@ da_mrsi = xr.DataArray(
 spectra = da_mrsi.xmr.to_spectrum()
 
 fig, ax = plt.subplots(figsize=(8, 4))
-spectra.real.plot.line(x="Frequency", hue="Voxel", ax=ax, add_legend=True)
+spectra.real.plot.line(x="frequency", hue="voxel", ax=ax, add_legend=True)
 ax.set_xlim(200, -1200)  # Zoom into the peaks
 ax.set_title("Synthetic MRSI Data: PCr Gradient & Constant ATP")
 plt.show()
@@ -294,21 +294,21 @@ fig, ax = plt.subplots(figsize=(8, 5))
 
 # Plot Real parts
 ax.plot(
-    spec_raw.coords["Frequency"],
+    spec_raw.coords["frequency"],
     spec_raw.real,
     color="black",
     alpha=0.4,
     label="Raw Data",
 )
 ax.plot(
-    spec_fit.coords["Frequency"],
+    spec_fit.coords["frequency"],
     spec_fit.real,
     color="tab:red",
     linewidth=1.5,
     label="AMARES Fit",
 )
 ax.plot(
-    spec_res.coords["Frequency"],
+    spec_res.coords["frequency"],
     spec_res.real - 25,  # Offset the residuals downward for clarity
     color="tab:green",
     alpha=0.8,
@@ -341,10 +341,10 @@ for v in expected_vars:
     assert v in ds_fit.data_vars, f"Variable {v} missing from Dataset"
 
 # 2. Check Dimensional Alignment
-assert ds_fit.amplitude.dims == ("Voxel", "Metabolite"), (
+assert ds_fit.amplitude.dims == ("voxel", "Metabolite"), (
     "Amplitude map dimensions are incorrect"
 )
-assert ds_fit.fit_data.dims == ("Voxel", "Time"), (
+assert ds_fit.fit_data.dims == ("voxel", "time"), (
     "Reconstructed fit dimensions are incorrect"
 )
 assert len(ds_fit.coords["Metabolite"]) == 2, (

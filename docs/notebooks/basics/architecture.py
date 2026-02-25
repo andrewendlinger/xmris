@@ -164,7 +164,7 @@ mrsi_spectrum = mrsi_fid.xmr.to_spectrum()
 #
 # ```python
 # # 💥 Naive approach — no safeguards:
-# def to_ppm(self, dim="Frequency"):
+# def to_ppm(self, dim="frequency"):
 #     mhz = self._obj.attrs["MHz"]  # ← what if "MHz" doesn't exist?
 #     ppm_coords = self._obj.coords[dim].values / mhz
 #     return self._obj.assign_coords({"ppm": (dim, ppm_coords)})
@@ -215,7 +215,7 @@ mrsi_spectrum = mrsi_fid.xmr.to_spectrum()
 #
 # To eliminate magic strings, we built a **single source of truth** for the entire vocabulary of `xmris` — the Data Dictionary in `xmris.core.config`.
 #
-# Instead of scattering raw strings like `"Time"`, `"MHz"`, or `"ppm"` throughout the codebase, every internal access goes through frozen `dataclass` singletons:
+# Instead of scattering raw strings like `"time"`, `"MHz"`, or `"ppm"` throughout the codebase, every internal access goes through frozen `dataclass` singletons:
 #
 #
 # :::{dropdown} What is a singleton?
@@ -289,6 +289,9 @@ COORDS
 # This means if the underlying key ever changes (e.g., `"MHz"` → `"spectrometer_frequency"`),
 # we update it in *one place* — the dataclass field default — and the entire package updates automatically.
 #
+# :::{important}
+# For the end-user, this means you **do not need to interact with the configuration object**. You simply name your dimensions using standard conventions (e.g., `"time"`, `"chemical_shift"`), and the backend functions will automatically discover them.
+# :::
 # ---
 
 # %% [markdown]

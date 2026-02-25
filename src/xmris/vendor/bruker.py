@@ -3,7 +3,7 @@ import xarray as xr
 
 
 def remove_digital_filter(
-    da: xr.DataArray, group_delay: float, dim: str = "Time", keep_length: bool = True
+    da: xr.DataArray, group_delay: float, dim: str = "time", keep_length: bool = True
 ) -> xr.DataArray:
     """
     Remove the hardware digital filter group delay from Bruker FID data.
@@ -35,7 +35,7 @@ def remove_digital_filter(
           - ~0.0 to 16.0 for Fast Imaging or ZTE (where hardware pre-compensation
             or short filters are used).
     dim : str, optional
-        The time dimension along which to apply the correction, by default "Time".
+        The time dimension along which to apply the correction, by default "time".
     keep_length : bool, optional
         If True, appends pure zeros to the end of the FID to replace the truncated
         startup points. This ensures the returned DataArray maintains the exact same

@@ -36,7 +36,7 @@ Whenever you generate a new function for `xmris`, you MUST follow these rules:
 1. **Xarray First:** The first argument of every internal function is `da: xr.DataArray`.
 2. **Functional Purity:** NEVER modify data in-place. Always return a *new* `xr.DataArray` (e.g., using `da.copy(data=new_vals)`).
 3. **Data Lineage:** You MUST preserve coordinates and attributes. Append new processing parameters to `da.attrs` so the user has a permanent record of what was done to the data.
-4. **The `DEFAULTS` Config:** NEVER hardcode magic strings for dimensions (like `"Time"`) or attributes (like `"MHz"`). Import `DEFAULTS` from `xmris.config`. Function arguments for dimensions should default to `None` and implement the fallback pattern (e.g., `dim = dim or DEFAULTS.time.dim`).
+4. **The `DEFAULTS` Config:** NEVER hardcode magic strings for dimensions (like `"time"`) or attributes (like `"MHz"`). Import `DEFAULTS` from `xmris.config`. Function arguments for dimensions should default to `None` and implement the fallback pattern (e.g., `dim = dim or DEFAULTS.time.dim`).
 5. **Type Hinting:** Fully type-hint all function signatures. 
 6. **NumPy Docstrings:** Use standard NumPy-style docstrings. These are critical as `quartodoc` parses them for the online API reference.
 7. **Accessor Integration:** Any user-facing function must be mapped to the `XmrisAccessor` class.

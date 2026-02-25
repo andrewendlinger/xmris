@@ -37,9 +37,9 @@ def phase(da: xr.DataArray, p0: float = 0.0, p1: float = 0.0) -> xr.DataArray:
 
 def autophase(
     da: xr.DataArray,
-    dim: str = "Frequency",
+    dim: str = "frequency",
     lb: float = 10.0,
-    temp_time_dim: str = "Time",
+    temp_time_dim: str = "time",
 ) -> xr.DataArray:
     """
     Automatically calculate and apply phase correction to a spectrum.
@@ -55,14 +55,14 @@ def autophase(
     da : xr.DataArray
         The input frequency-domain spectrum.
     dim : str, optional
-        The frequency dimension, by default "Frequency".
+        The frequency dimension, by default "frequency".
     lb : float, optional
         The exponential line broadening factor (in Hz) applied during the
         temporary SNR-boosting step. Higher values suppress more noise.
         By default 10.0.
     temp_time_dim : str, optional
         The name used for the temporary time dimension during the inverse
-        transform. By default "Time".
+        transform. By default "time".
 
     Returns
     -------
