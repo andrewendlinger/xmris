@@ -16,49 +16,53 @@
 #
 # If we built `xmris` like a traditional library, a simple processing pipeline would look like this:
 
-# %%
+# %% [markdown]
 # ❌ The Anti-Pattern: Parameter Soup
-def remove_filter(data, group_delay, dwell_time):
-    ...
-
-def apodize(data, dwell_time, lb):
-    ...
-
-def fft_to_spectrum(data):
-    ...
-
-def to_ppm(data, mhz):
-    ...
-
-def autophase(data, mhz, dwell_time):
-    ...
-
-
+# ```python
+# def apodize(data, dwell_time, lb): ...
+#
+#
+# def fft_to_spectrum(data): ...
+#
+#
+# def to_ppm(data, mhz): ...
+#
+#
+# def autophase(data, mhz, dwell_time): ...
+#
+#
 # User code — threading the same metadata through every step:
-data = remove_filter(raw, group_delay=68.0, dwell_time=0.0005)
-data = apodize(data, dwell_time=0.0005, lb=5.0)
-data = fft_to_spectrum(data)
-data = to_ppm(data, mhz=300.15)
-data = autophase(data, mhz=300.15, dwell_time=0.0005)
+# data = apodize(data, dwell_time=0.0005, lb=5.0)
+# data = fft_to_spectrum(data)
+# data = to_ppm(data, mhz=300.15)
+# data = autophase(data, mhz=300.15, dwell_time=0.0005)
+# ```
 
 # %% [markdown]
 # ```{admonition} Why is this bad?
 # :class: warning
 # 1. **Cognitive Load:** The user has to manually thread `mhz` and `dwell_time` through every single step, even though those values never change within a single experiment.
-# 2. **Fragility:** If you swap `phase_0` and `phase_1` in a function call, the code won't crash — it will silently give you the wrong scientific result.
-# 3. **Boilerplate:** Every function signature becomes 80% parameter plumbing and 20% actual science.
+# 2. **Boilerplate:** Every function signature becomes 80% parameter plumbing and 20% actual science.
+# 3. **Unnamed axes:** Every operation implicitly acts on "the first axis" or "axis 0". There is no way to say *which* axis you mean by name — and with multidimensional data (e.g., spatial × spectral), positional indexing becomes a minefield.
+# ```
+#
+# That last point deserves emphasis. In raw numpy, axes are just integers:
+#
+# ```python
+# # Which axis is time? Which is space? Hope you remember.
+# result = np.fft.fft(data, axis=0)
+# result = np.fft.fft(data, axis=1)  # wrong axis, no error, wrong science
 # ```
 #
 # ### The `xarray` Solution
 #
-# To avoid parameter soup, `xmris` is built natively on top of [xarray](https://docs.xarray.dev/en/stable/). An `xarray.DataArray` bundles together the raw data, named dimensions (axes), coordinates (axis labels), and arbitrary metadata (`.attrs`) into a single, self-describing object.
+# To avoid parameter soup, `xmris` is built natively on top of [xarray](https://docs.xarray.dev/en/stable/). An `xarray.DataArray` bundles together the raw data, named dimensions ("numpy" axes), coordinates (axis labels), and arbitrary metadata (`.attrs`) into a single, self-describing object.
 #
 # Here is what an `xmris` DataArray looks like in practice:
 
 # %%
 import numpy as np
 import xarray as xr
-from xmris.core import ATTRS, DIMS, COORDS
 
 # A typical xmris FID — data + metadata in one object:
 n_points = 2048
@@ -66,39 +70,82 @@ dwell_time = 0.0005  # seconds
 
 fid = xr.DataArray(
     data=np.random.randn(n_points) + 1j * np.random.randn(n_points),
-    dims=[DIMS.time],
-    coords={DIMS.time: np.arange(n_points) * dwell_time},
+    dims=["time"],
+    coords={"time": np.arange(n_points) * dwell_time},
     attrs={
-        ATTRS.b0_field: 7.0,               # Tesla
-        ATTRS.reference_frequency: 300.15,  # MHz
+        "b0_field": 7.0,  # Tesla
+        "reference_frequency": 300.15,  # MHz
     },
 )
 
 fid
 
 # %% [markdown]
-# The data now carries its own context. The five-step pipeline from above collapses to this:
-
-# %%
-# ✅ The xmris Way: Encapsulated, Chainable Processing
-spectrum = (
-    fid
-    .xmr.remove_digital_filter(group_delay=68)
-    .xmr.apodize_exp(lb=5.0)
-    .xmr.to_spectrum()
-    .xmr.to_ppm()
-    .xmr.autophase()
-)
+# The data now carries its own context. The pipeline from above collapses to this:
 
 # %% [markdown]
-# Notice that `to_ppm()` and `autophase()` take *zero* metadata arguments. They find
-# the spectrometer frequency inside `fid.attrs` automatically — and because `xarray`
-# preserves attributes through operations, that metadata is still there at step five
-# without any effort from you.
+# ```python
+# # ✅ The xmris Way: Encapsulated, Chainable Processing
+# spectrum = (
+#     fid
+#     .xmr.apodize_exp(lb=5.0)
+#     .xmr.to_spectrum()
+#     .xmr.to_ppm()
+#     .xmr.autophase()
+# )
+# ```
+
+# %% [markdown]
+# Two things happened here:
 #
-# The user still passes arguments that represent *choices* (`lb=5.0`, `group_delay=68`),
-# but never has to re-supply physical constants of the experiment. The metadata travels
-# *with* the data. You never carry it yourself.
+# 1. **Metadata travels with the data.** `to_ppm()` and `autophase()` take *zero*
+#    metadata arguments. They find the spectrometer frequency inside `fid.attrs`
+#    automatically — and because `xarray` preserves attributes through operations,
+#    that metadata is still there at step four without any effort from you.
+#
+# 2. **Operations act on named dimensions, not integer positions.** Instead of
+#    remembering whether time is `axis=0` or `axis=1`, you refer to axes by
+#    name. Each function has a sensible default — `to_spectrum()` defaults to
+#    `dim="time"` — but you can always pass a different name if your data uses
+#    different conventions:
+
+# %%
+# activate the 'xmr' accessor
+import xmris
+
+# Create a 2D complex MRSI dataset:
+# 16 spatial voxels × 2048 temporal samples (FID signal)
+mrsi_fid = xr.DataArray(
+    data=np.random.randn(16, 2048) + 1j * np.random.randn(16, 2048),
+    dims=["voxel", "time"],
+    coords={
+        "voxel": np.arange(16),
+        "time": np.arange(2048) * dwell_time,
+    },
+    attrs={"b0_field": 7.0, "reference_frequency": 300.15},
+)
+
+# Transform from time domain (FID) to frequency domain (spectrum)
+# by explicitly specifying the dimension
+mrsi_spectrum = mrsi_fid.xmr.to_spectrum(dim="time")
+
+# Even better: "time" is the default transform dimension for to_spectrum,
+# so the same result can be obtained using
+mrsi_spectrum = mrsi_fid.xmr.to_spectrum()
+
+# %% [markdown]
+# Compare this to the numpy equivalent, where you'd have to track that time is
+# `axis=1` (and hope nobody transposes the array upstream):
+#
+# ```python
+# # 🤞 numpy — is time axis 0 or 1? Better check.
+# result = np.fft.fftshift(np.fft.fft(data, axis=1), axes=1)
+# ```
+#
+# The user still passes arguments that represent *choices* (`lb=5.0`),
+# but never has to re-supply physical constants of the experiment or remember
+# which integer axis is which. The metadata and the axis semantics travel
+# *with* the data. You never carry them yourself.
 #
 # ---
 
@@ -123,14 +170,6 @@ spectrum = (
 #     return self._obj.assign_coords({"ppm": (dim, ppm_coords)})
 # ```
 #
-# ::: {dropdown} 💥 Click to see the dreaded KeyError
-# ```python
-# # Somewhere deep in xmris internals...
-# mhz = self._obj.attrs["MHz"]
-# KeyError: 'MHz'
-# ```
-# *The pipeline crashes deep inside the library with a cryptic error that tells the user nothing about what went wrong or how to fix it.*
-# :::
 #
 # And there is a subtler problem: how does the user even *know* that `to_ppm()` requires `"MHz"`?
 # If we document it by hand in a docstring, those docs will inevitably drift out of sync with the actual code.
@@ -140,7 +179,34 @@ spectrum = (
 # 2. **Tells the user** exactly what is wrong and how to fix it.
 # 3. **Documents itself** automatically so documentation can never go stale.
 #
-# The solution has two parts: a **Data Dictionary** and a **Decorator Engine**.
+# The solution has two parts: a **Data Dictionary** (see section 3) and a **Decorator Engine** (see section 4).
+#
+#
+# :::{dropdown} What's a decorator?
+# A decorator is a Python function that **wraps another function** to add
+# behavior before or after it runs — without modifying the function's own code.
+# You apply one with the `@` syntax:
+#
+# ```python
+# @requires_attrs(ATTRS.reference_frequency)
+# def to_ppm(self, dim="frequency"):
+#     ...
+# ```
+#
+# This is equivalent to writing:
+#
+# ```python
+# def to_ppm(self, dim="frequency"):
+#     ...
+#
+# to_ppm = requires_attrs(ATTRS.reference_frequency)(to_ppm)
+# ```
+#
+# The decorator returns a new function that first checks whether
+# `reference_frequency` exists in `.attrs`, and only then calls the
+# original `to_ppm`. The original function never contains any validation
+# code — the decorator handles it from the outside.
+# :::
 #
 # ---
 
@@ -150,23 +216,44 @@ spectrum = (
 # To eliminate magic strings, we built a **single source of truth** for the entire vocabulary of `xmris` — the Data Dictionary in `xmris.core.config`.
 #
 # Instead of scattering raw strings like `"Time"`, `"MHz"`, or `"ppm"` throughout the codebase, every internal access goes through frozen `dataclass` singletons:
+#
+#
+# :::{dropdown} What is a singleton?
+# A singleton is a design pattern where only **one instance** of a class ever
+# exists in the entire program. In xmris, the config objects are created once
+# at the bottom of `config.py`:
+#
+# ```python
+# ATTRS = XmrisAttributes()
+# DIMS = XmrisDimensions()
+# COORDS = XmrisCoordinates()
+# ```
+#
+# Every module that does `from xmris.core import ATTRS` gets a reference to
+# the **same object**. There is no way to accidentally create a second,
+# conflicting vocabulary. Combined with the `frozen=True` dataclass decorator
+# (which prevents modification after creation), this guarantees that the
+# vocabulary is both **global** and **immutable** — a single source of truth
+# that cannot drift.
+# :::
 
 # %%
 from xmris.core import ATTRS, DIMS, COORDS
 
 # These are typed Python objects, not bare strings.
 # Your IDE will autocomplete them — typos become impossible.
-print(ATTRS.reference_frequency)  # → "MHz"
-print(ATTRS.b0_field)             # → "b0_field"
-print(DIMS.time)                  # → "Time"
-print(DIMS.frequency)             # → "Frequency"
-print(COORDS.ppm)                 # → "ppm"
+print(f"{ATTRS.reference_frequency=}")
+print(f"{ATTRS.b0_field=}")
+print(f"{DIMS.time=}")
+print(f"{DIMS.frequency=}")
+print(f"{COORDS.chemical_shift=}")
 
 # %% [markdown]
 # Each entry carries rich metadata — a human-readable description, physical units, and the actual
 # xarray string key it maps to. In Jupyter, simply type the name to render a formatted reference table:
 
 # %%
+print("This code cell ran and produced this ⬇️ overview.")
 ATTRS
 
 # %%
@@ -227,9 +314,9 @@ COORDS
 #
 # ```{mermaid}
 # flowchart LR
-#     User("User calls\n.xmr.to_ppm()") --> Bouncer{"@requires_attrs\nchecks .attrs"}
-#     Bouncer -- "Missing 'MHz'" --> Error["Raise clear ValueError\nwith fix instructions"]
-#     Bouncer -- "All present" --> Math["Execute function body\n(pure science, no boilerplate)"]
+#     User("User calls<br>.xmr.to_ppm()") --> Bouncer{"@requires_attrs<br>checks .attrs"}
+#     Bouncer -- "Missing 'MHz'" --> Error["❌<br>Raise clear ValueError<br>with fix instructions"]
+#     Bouncer -- "All present" --> Math["✅<br>Execute function body"]
 # ```
 #
 # The decorator does two things:
@@ -283,15 +370,15 @@ COORDS
 # %% [markdown]
 # ## 5. Dimensions vs. Attributes: The Great Divide
 #
-# You might be wondering: *"If decorators are so great for attributes, why don't you use them for dimensions like `Time` or `Frequency`?"*
+# You might be wondering: *"If decorators are so great for attributes, why don't you use them for dimensions to enforce consistent use of e.g. `time` or `frequency`?"*
 #
 # This was the single most important architectural decision we made. We treat **Dimensions**
-# and **Attributes** with fundamentally different strategies, because they play fundamentally
+# and **Attributes** with different strategies, because they play fundamentally
 # different roles.
 #
 # ### Attributes Are "Hidden State"
-# A B0 field strength is a physical constant of the experiment. You don't apply an operation
-# *to* the B0 field; the math just requires it to exist in the background. Because it is
+# A $B_0$ field strength is a physical constant of the experiment. You don't apply an operation
+# *to* the $B_0$ field; the math just requires it to exist in the background. Because it is
 # invisible, it needs strict guarding by our `@requires_attrs` decorator.
 #
 # ### Dimensions Are an "Action Space"
@@ -299,7 +386,7 @@ COORDS
 # We want you to have the freedom to say, *"apply this to the `t` axis"* — even if your data
 # doesn't follow `xmris` naming conventions.
 #
-# If we strictly forced you to rename your axes to `Time` and `Frequency` before doing *any*
+# *If* we strictly forced you to rename your axes to `time` and `frequency` before doing *any*
 # processing, the package would feel rigid and hostile toward quick-and-dirty datasets.
 #
 # Therefore, dimensions are passed as **explicit arguments with smart defaults**:
@@ -307,7 +394,7 @@ COORDS
 # %%
 from xmris.core import DIMS
 
-# Your data uses the xmris standard "Time" dimension? Just use the defaults:
+# Your data uses the xmris standard "time" dimension? Just use the defaults:
 result = fid.xmr.apodize_exp(lb=5.0)
 
 # Your data has a custom axis name? No problem — just pass it:
@@ -322,16 +409,16 @@ result = fid.xmr.apodize_exp(dim=DIMS.time, lb=5.0)
 #
 # ````{dropdown} 💡 Click to view the dimension error message
 # ```python
-# fid.xmr.apodize_exp(dim="nonexistent")
+# fid.xmr.apodize_exp(dim="randomname")
 # ```
 # ```
 # ValueError: Method 'apodize_exp' attempted to operate on missing
-# dimension(s): ['nonexistent'].
+# dimension(s): ['randomname'].
 # Available dimensions are: ['Time'].
 #
 # To fix this, either pass the correct `dim` string argument to the function,
 # or rename your data's axes using xarray:
-#     >>> obj = obj.rename({'nonexistent': DIMS.time})
+#     >>> obj = obj.rename({'randomname': DIMS.time})
 # ```
 # ````
 #
@@ -344,7 +431,7 @@ result = fid.xmr.apodize_exp(dim=DIMS.time, lb=5.0)
 # | **Nature** | Physical constants of the experiment | Axes the user chooses to act upon |
 # | **Guarded by** | `@requires_attrs` decorator | `_check_dims` helper |
 # | **User interface** | Implicit (read from `.attrs`) | Explicit argument with smart default |
-# | **Example** | `ATTRS.reference_frequency` → `"MHz"` | `dim=DIMS.time` → `dim="Time"` |
+# | **Example** | `ATTRS.reference_frequency` → `"MHz"` | `dim=DIMS.time` → `dim="time"` |
 #
 # ---
 
@@ -357,11 +444,11 @@ result = fid.xmr.apodize_exp(dim=DIMS.time, lb=5.0)
 # ```{mermaid}
 # flowchart TD
 #     A["User calls spectrum.xmr.to_ppm()"] --> B["@requires_attrs decorator fires"]
-#     B --> C{"'b0_field' in .attrs?\n'MHz' in .attrs?"}
-#     C -- "No" --> D["Friendly ValueError:\n'assign them with obj.assign_attrs(...)'"]
+#     B --> C{"'b0_field' in .attrs?<br>'MHz' in .attrs?"}
+#     C -- "No" --> D["Friendly ValueError:<br>'assign them with obj.assign_attrs(...)'"]
 #     C -- "Yes" --> E["_check_dims validates dim='Frequency'"]
 #     E --> F{"'Frequency' in .dims?"}
-#     F -- "No" --> G["Friendly ValueError:\n'Available dimensions are: [...]'"]
+#     F -- "No" --> G["Friendly ValueError:<br>'Available dimensions are: [...]'"]
 #     F -- "Yes" --> H["Execute: ppm = hz / attrs[ATTRS.reference_frequency]"]
 #     H --> I["Return DataArray with new COORDS.ppm coordinate"]
 # ```
@@ -377,22 +464,11 @@ result = fid.xmr.apodize_exp(dim=DIMS.time, lb=5.0)
 # ## Summary
 #
 # By combining `xarray` encapsulation, a strongly-typed Data Dictionary, fail-fast decorators
-# for hidden state, and explicit arguments for action spaces, `xmris` achieves three goals simultaneously:
+# for hidden state, and explicit arguments for action spaces, `xmris` strives for three goals:
 #
 # * **Rigorously safe** — no silent math failures from swapped parameters or missing metadata.
 # * **Highly transparent** — docstrings generate themselves from the config; documentation can never drift from code.
 # * **Easy to use** — clean, chainable APIs with zero parameter soup.
 #
-# ```python
-# # This is the entire user interface. The architecture handles the rest.
-# spectrum = (
-#     fid
-#     .xmr.remove_digital_filter(group_delay=68)
-#     .xmr.apodize_exp(lb=5.0)
-#     .xmr.to_spectrum()
-#     .xmr.to_ppm()
-#     .xmr.autophase()
-# )
-# ```
 #
 # Happy processing!
