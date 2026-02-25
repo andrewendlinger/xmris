@@ -56,14 +56,14 @@ processed_data = raw_data.xmr.phase().xmr.to_ppm()
 #
 # If `to_ppm()` implicitly hunts for the frequency in `data.attrs["MHz"]`, what happens if the user's data doesn't have that attribute? Or what if they spelled it `"mhz"`?
 #
-# ```{dropdown} 💥 Click to see the dreaded KeyError
+# ::: {dropdown} 💥 Click to see the dreaded KeyError
 # ```python
 # # Deep inside numpy...
 # ppm_coords = hz_coords / self._obj.attrs["MHz"]
 # KeyError: 'MHz'
 # ```
 # *There is nothing worse than a pipeline crashing deep inside a library with a cryptic error message.*
-# ```
+# :::
 #
 # Furthermore, how does the user even *know* that `to_ppm()` requires `"MHz"`? If we just type it in the docstring, the documentation will inevitably drift out of sync with the actual code.
 #
