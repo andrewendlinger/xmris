@@ -22,7 +22,7 @@
 # def apodize(data, dwell_time, lb): ...
 #
 #
-# def fft_to_spectrum(data): ...
+# def fft_to_spectrum(data, axis): ...
 #
 #
 # def to_ppm(data, mhz): ...
@@ -31,9 +31,9 @@
 # def autophase(data, mhz, dwell_time): ...
 #
 #
-# User code — threading the same metadata through every step:
+# # User code — threading the same metadata through every step:
 # data = apodize(data, dwell_time=0.0005, lb=5.0)
-# data = fft_to_spectrum(data)
+# data = fft_to_spectrum(data, axis=1)  # is time axis 0 or 1?
 # data = to_ppm(data, mhz=300.15)
 # data = autophase(data, mhz=300.15, dwell_time=0.0005)
 # ```
@@ -43,22 +43,14 @@
 # :class: warning
 # 1. **Cognitive Load:** The user has to manually thread `mhz` and `dwell_time` through every single step, even though those values never change within a single experiment.
 # 2. **Boilerplate:** Every function signature becomes 80% parameter plumbing and 20% actual science.
-# 3. **Unnamed axes:** Every operation implicitly acts on "the first axis" or "axis 0". There is no way to say *which* axis you mean by name — and with multidimensional data (e.g., spatial × spectral), positional indexing becomes a minefield.
-# ```
-#
-# That last point deserves emphasis. In raw numpy, axes are just integers:
-#
-# ```python
-# # Which axis is time? Which is space? Hope you remember.
-# result = np.fft.fft(data, axis=0)
-# result = np.fft.fft(data, axis=1)  # wrong axis, no error, wrong science
+# 3. **Unnamed axes:** Every operation implicitly acts on `axis=0` or `axis=1`. With multidimensional data (e.g., spatial × spectral), there is no way to say *which* axis you mean by name — and if someone transposes the array upstream, everything silently breaks.
 # ```
 #
 # ### The `xarray` Solution
 #
-# To avoid parameter soup, `xmris` is built natively on top of [xarray](https://docs.xarray.dev/en/stable/). An `xarray.DataArray` bundles together the raw data, named dimensions ("numpy" axes), coordinates (axis labels), and arbitrary metadata (`.attrs`) into a single, self-describing object.
+# To avoid parameter soup, `xmris` is built natively on top of [xarray](https://docs.xarray.dev/en/stable/). An `xarray.DataArray` bundles together the raw data, **named dimensions** ("numpy axes"), coordinates (axis labels), and arbitrary metadata (`.attrs`) into a single, self-describing object.
 #
-# Here is what an `xmris` DataArray looks like in practice:
+# Here is what an `xmris` DataArray looks like in practice — a 2D MRSI dataset with 16 spatial voxels, each containing a 2048-point FID:
 
 # %%
 import numpy as np
@@ -85,25 +77,24 @@ mrsi_fid = xr.DataArray(
 mrsi_fid
 
 # %% [markdown]
-# The data now carries its own context. The pipeline from above collapses to this:
-
-# %% [markdown]
+# The data now carries its own context — metadata, axis names, and coordinates
+# all in one object. The entire pipeline collapses to this:
+#
 # ```python
 # # ✅ The xmris Way: Encapsulated, Chainable Processing
 # spectrum = (
-#     fid
+#     mrsi_fid
 #     .xmr.apodize_exp(lb=5.0)
 #     .xmr.to_spectrum()
 #     .xmr.to_ppm()
 #     .xmr.autophase()
 # )
 # ```
-
-# %% [markdown]
+#
 # Two things happened here:
 #
 # 1. **Metadata travels with the data.** `to_ppm()` and `autophase()` take *zero*
-#    metadata arguments. They find the spectrometer frequency inside `fid.attrs`
+#    metadata arguments. They find the spectrometer frequency inside `.attrs`
 #    automatically — and because `xarray` preserves attributes through operations,
 #    that metadata is still there at step four without any effort from you.
 #
@@ -116,7 +107,7 @@ mrsi_fid
 # Default — transforms along "time":
 mrsi_spectrum = mrsi_fid.xmr.to_spectrum()
 
-# Your data calls it something else? Just pass the name (in our case still 'time' although explicitly defined now):
+# Your data calls it something else? Just pass the name:
 mrsi_spectrum = mrsi_fid.xmr.to_spectrum(dim="time")
 
 # %% [markdown]
@@ -124,7 +115,7 @@ mrsi_spectrum = mrsi_fid.xmr.to_spectrum(dim="time")
 # `axis=1` (and hope nobody transposes the array upstream):
 #
 # ```python
-# # 🤞 numpy — is time axis 0 or 1? Better check.
+# # 🤞 numpy — is time axis 0 or 1? Better check every time.
 # result = np.fft.fftshift(np.fft.fft(data, axis=1), axes=1)
 # ```
 #
@@ -140,24 +131,24 @@ mrsi_spectrum = mrsi_fid.xmr.to_spectrum(dim="time")
 #
 # Encapsulation is beautiful, but it introduces a dangerous new problem: **magic strings and hidden state.**
 #
-# If `to_ppm()` implicitly reads the frequency from `data.attrs["MHz"]`, three things can go wrong:
+# If `to_ppm()` implicitly reads the frequency from `data.attrs["reference_frequency"]`, three things can go wrong:
 #
 # 1. The user's data doesn't have that attribute.
-# 2. The user spelled it `"mhz"` or `"ref_freq"`.
-# 3. The user has no way of knowing `"MHz"` was required in the first place.
+# 2. The user spelled it `"ref_freq"` or `"MHz"`.
+# 3. The user has no way of knowing `"reference_frequency"` was required in the first place.
 #
 # A naive implementation would look like this:
 #
 # ```python
 # # 💥 Naive approach — no safeguards:
 # def to_ppm(self, dim="frequency"):
-#     mhz = self._obj.attrs["MHz"]  # ← what if "MHz" doesn't exist?
+#     mhz = self._obj.attrs["reference_frequency"]  # ← what if it doesn't exist?
 #     ppm_coords = self._obj.coords[dim].values / mhz
-#     return self._obj.assign_coords({"ppm": (dim, ppm_coords)})
+#     return self._obj.assign_coords({"chemical_shift": (dim, ppm_coords)})
 # ```
 #
 #
-# And there is a subtler problem: how does the user even *know* that `to_ppm()` requires `"MHz"`?
+# And there is a subtler problem: how does the user even *know* that `to_ppm()` requires `"reference_frequency"`?
 # If we document it by hand in a docstring, those docs will inevitably drift out of sync with the actual code.
 #
 # We needed a system that:
@@ -165,7 +156,7 @@ mrsi_spectrum = mrsi_fid.xmr.to_spectrum(dim="time")
 # 2. **Tells the user** exactly what is wrong and how to fix it.
 # 3. **Documents itself** automatically so documentation can never go stale.
 #
-# The solution has two parts: a **Data Dictionary** (see section 3) and a **Decorator Engine** (see section 4).
+# The solution has two parts: a **Data Dictionary** ([section 3](#building-the-data-dictionary)) and a **Decorator Engine** ([section 4](#the-bouncer-pattern-decorators)).
 #
 #
 # :::{dropdown} What's a decorator?
@@ -201,7 +192,7 @@ mrsi_spectrum = mrsi_fid.xmr.to_spectrum(dim="time")
 #
 # To eliminate magic strings, we built a **single source of truth** for the entire vocabulary of `xmris` — the Data Dictionary in `xmris.core.config`.
 #
-# Instead of scattering raw strings like `"time"`, `"MHz"`, or `"ppm"` throughout the codebase, every internal access goes through frozen `dataclass` singletons:
+# Instead of scattering raw strings like `"time"`, `"reference_frequency"`, or `"chemical_shift"` throughout the codebase, every internal access goes through frozen `dataclass` singletons:
 #
 #
 # :::{dropdown} What is a singleton?
@@ -255,6 +246,27 @@ COORDS
 # an `AttributeError` at import time — not a silent bug three hours into a processing run.
 # ```
 #
+# (the-lowercase-convention)=
+# ### The Lowercase Convention
+#
+# All xmris dimension names, coordinate names, and attribute keys are **lowercase `snake_case`**.
+# This is a deliberate decision that aligns with the broader xarray ecosystem:
+#
+# | Standard / Package | Convention |
+# |---|---|
+# | [CF Conventions](https://cfconventions.org/) | `time`, `latitude`, `longitude` |
+# | [cf-xarray](https://cf-xarray.readthedocs.io/) | `time`, `latitude`, `vertical` |
+# | xarray docs & tutorials | `time`, `x`, `y`, `space` |
+# | **xmris** | `time`, `frequency`, `chemical_shift` |
+#
+# This also avoids ambiguity with multi-word names: `"chemical_shift"` is unambiguous
+# `snake_case`, whereas `"Chemical_Shift"` is a hybrid that no Python convention endorses.
+#
+# As a user, you are free to name your own dimensions however you like — xmris functions
+# accept a `dim` argument for exactly this reason (see [section 5](#dimensions-vs-attributes-the-great-divide)).
+# But whenever xmris creates a name internally (e.g., the `"chemical_shift"` coordinate
+# added by `to_ppm()`), it will always be lowercase.
+#
 # ### How the Dictionary Is Used Internally
 #
 # Throughout the `xmris` codebase, **no function uses a bare string to access metadata.** Every
@@ -262,22 +274,27 @@ COORDS
 #
 # ```python
 # # ❌ Never this:
-# mhz = self._obj.attrs["MHz"]
+# mhz = self._obj.attrs["reference_frequency"]
 # ppm_coords = hz_coords / mhz
-# self._obj.assign_coords({"ppm": (dim, ppm_coords)})
+# self._obj.assign_coords({"chemical_shift": (dim, ppm_coords)})
 #
 # # ✅ Always this:
 # mhz = self._obj.attrs[ATTRS.reference_frequency]
 # ppm_coords = hz_coords / mhz
-# self._obj.assign_coords({COORDS.ppm: (dim, ppm_coords)})
+# self._obj.assign_coords({COORDS.chemical_shift: (dim, ppm_coords)})
 # ```
 #
-# This means if the underlying key ever changes (e.g., `"MHz"` → `"spectrometer_frequency"`),
-# we update it in *one place* — the dataclass field default — and the entire package updates automatically.
+# This means if the underlying key ever changes, we update it in *one place* — the
+# dataclass field default — and the entire package updates automatically.
 #
 # :::{important}
-# For the end-user, this means you **do not need to interact with the configuration object**. You simply name your dimensions using standard conventions (e.g., `"time"`, `"chemical_shift"`), and the backend functions will automatically discover them.
+# As an end user, you **do not need to interact with the config objects**. You simply
+# name your dimensions and attributes using the lowercase conventions shown in the
+# [Quick Start](../../../index.md#quick-start-a-minimal-working-example), and
+# xmris functions will discover them automatically. The config constants are a
+# backend safety net — not a user-facing API.
 # :::
+#
 # ---
 
 # %% [markdown]
@@ -298,13 +315,13 @@ COORDS
 #     mhz = self._obj.attrs[ATTRS.reference_frequency]
 #     hz_coords = self._obj.coords[dim].values
 #     ppm_coords = hz_coords / mhz
-#     return self._obj.assign_coords({COORDS.ppm: (dim, ppm_coords)})
+#     return self._obj.assign_coords({COORDS.chemical_shift: (dim, ppm_coords)})
 # ```
 #
 # ```{mermaid}
 # flowchart LR
 #     User("User calls<br>.xmr.to_ppm()") --> Bouncer{"@requires_attrs<br>checks .attrs"}
-#     Bouncer -- "Missing 'MHz'" --> Error["❌<br>Raise clear ValueError<br>with fix instructions"]
+#     Bouncer -- "Missing attr" --> Error["❌<br>Raise clear ValueError<br>with fix instructions"]
 #     Bouncer -- "All present" --> Math["✅<br>Execute function body"]
 # ```
 #
@@ -321,7 +338,7 @@ COORDS
 # ```
 # ```
 # ValueError: Method 'to_ppm' requires the following missing attributes
-# in `obj.attrs`: ['b0_field', 'MHz'].
+# in `obj.attrs`: ['b0_field', 'reference_frequency'].
 #
 # To fix this, assign them using standard xarray methods:
 #     >>> obj = obj.assign_attrs({'b0_field': value})
@@ -347,7 +364,7 @@ COORDS
 # Required Attributes
 # --------------------
 # * ``b0_field``: Static main magnetic field strength. [T]
-# * ``MHz``: Spectrometer working/reference frequency. [MHz]
+# * ``reference_frequency``: Spectrometer working/reference frequency. [MHz]
 # ```
 # Because the docstring is generated from the *same config* that powers the runtime
 # validation, it is **physically impossible** for the documentation to drift out of
@@ -373,9 +390,9 @@ COORDS
 # ### Dimensions Are an "Action Space"
 # When you apply an FFT or an apodization, you are actively choosing *which axis* to act upon.
 # We want you to have the freedom to say, *"apply this to the `t` axis"* — even if your data
-# doesn't follow `xmris` naming conventions.
+# doesn't follow the xmris [lowercase convention](#the-lowercase-convention).
 #
-# *If* we strictly forced you to rename your axes to `time` and `frequency` before doing *any*
+# *If* we strictly forced you to rename your axes to `"time"` and `"frequency"` before doing *any*
 # processing, the package would feel rigid and hostile toward quick-and-dirty datasets.
 #
 # Therefore, dimensions are passed as **explicit arguments with smart defaults**:
@@ -403,7 +420,7 @@ COORDS
 # ```
 # ValueError: Method 'apodize_exp' attempted to operate on missing
 # dimension(s): ['randomname'].
-# Available dimensions are: ['Time'].
+# Available dimensions are: ['time'].
 #
 # To fix this, either pass the correct `dim` string argument to the function,
 # or rename your data's axes using xarray:
@@ -420,7 +437,7 @@ COORDS
 # | **Nature** | Physical constants of the experiment | Axes the user chooses to act upon |
 # | **Guarded by** | `@requires_attrs` decorator | `_check_dims` helper |
 # | **User interface** | Implicit (read from `.attrs`) | Explicit argument with smart default |
-# | **Example** | `ATTRS.reference_frequency` → `"MHz"` | `dim=DIMS.time` → `dim="time"` |
+# | **Example** | `ATTRS.reference_frequency` | `dim=DIMS.time` → `dim="time"` |
 #
 # ---
 
@@ -433,18 +450,18 @@ COORDS
 # ```{mermaid}
 # flowchart TD
 #     A["User calls spectrum.xmr.to_ppm()"] --> B["@requires_attrs decorator fires"]
-#     B --> C{"'b0_field' in .attrs?<br>'MHz' in .attrs?"}
+#     B --> C{"'b0_field' in .attrs?<br>'reference_frequency' in .attrs?"}
 #     C -- "No" --> D["Friendly ValueError:<br>'assign them with obj.assign_attrs(...)'"]
-#     C -- "Yes" --> E["_check_dims validates dim='Frequency'"]
-#     E --> F{"'Frequency' in .dims?"}
+#     C -- "Yes" --> E["_check_dims validates dim='frequency'"]
+#     E --> F{"'frequency' in .dims?"}
 #     F -- "No" --> G["Friendly ValueError:<br>'Available dimensions are: [...]'"]
 #     F -- "Yes" --> H["Execute: ppm = hz / attrs[ATTRS.reference_frequency]"]
-#     H --> I["Return DataArray with new COORDS.ppm coordinate"]
+#     H --> I["Return DataArray with new COORDS.chemical_shift coordinate"]
 # ```
 #
 # Every layer serves a distinct purpose:
 #
-# 1. **Config constants** (`ATTRS.b0_field`, `DIMS.frequency`, `COORDS.ppm`) eliminate magic strings everywhere.
+# 1. **Config constants** (`ATTRS.b0_field`, `DIMS.frequency`, `COORDS.chemical_shift`) eliminate magic strings everywhere.
 # 2. **`@requires_attrs`** catches missing metadata *before* the math runs and auto-generates the docstring.
 # 3. **`_check_dims`** validates the dimension argument at call time, listing what's available.
 # 4. **The function body** is pure science — no validation code, no defensive `try/except` blocks.
@@ -459,5 +476,6 @@ COORDS
 # * **Highly transparent** — docstrings generate themselves from the config; documentation can never drift from code.
 # * **Easy to use** — clean, chainable APIs with zero parameter soup.
 #
+# For a quick-start example, head back to the [Welcome page](../../../index.md#quick-start-a-minimal-working-example).
 #
 # Happy processing!
