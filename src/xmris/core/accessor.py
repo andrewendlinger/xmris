@@ -19,16 +19,16 @@ from xmris.visualization.plot import PlotHeatmapConfig, PlotRidgeConfig
 
 
 def _check_dims(obj: xr.DataArray, dims: str | list[str], func_name: str):
-    """Internal helper to validate explicit dimension arguments with UX-friendly errors."""
+    """Internal helper to validate explicit dimension arguments with UX-friendly errors."""  # noqa: D401, E501
     dim_list = [dims] if isinstance(dims, str) else dims
     missing = [d for d in dim_list if d not in obj.dims]
 
     if missing:
         available = list(obj.dims)
         raise ValueError(
-            f"Method '{func_name}' attempted to operate on missing dimension(s): {missing}.\n"
+            f"Method '{func_name}' attempted to operate on missing dimension(s): {missing}.\n"  # noqa: E501
             f"Available dimensions are: {available}.\n\n"
-            f"To fix this, either pass the correct `dim` string argument to the function, "
+            f"To fix this, either pass the correct `dim` string argument to the function, "  # noqa: E501
             f"or rename your data's axes using xarray:\n"
             f"    >>> obj = obj.rename({{{repr(missing[0])}: DIMS.time}})"
         )
@@ -523,7 +523,7 @@ class XmrisAccessor:
         ppm_coords = hz_coords / mhz
 
         # Assign new coordinate using our config standard
-        return self._obj.assign_coords({COORDS.ppm: (dim, ppm_coords)})
+        return self._obj.assign_coords({COORDS.chemical_shift: (dim, ppm_coords)})
 
     # --- Utility / Formatting ---
 

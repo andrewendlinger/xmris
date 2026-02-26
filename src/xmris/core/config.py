@@ -92,7 +92,7 @@ class XmrisAttributes(BaseVocabulary):
         metadata={"description": "Static main magnetic field strength.", "unit": "T"},
     )
     reference_frequency: str = field(
-        default="MHz",
+        default="reference_frequency",
         metadata={
             "description": "Spectrometer working/reference frequency.",
             "unit": "MHz",
