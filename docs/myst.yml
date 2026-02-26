@@ -124,6 +124,7 @@ site:
   title: xmris
   options:
     logo: assets/logo.svg
+    logo_dark: assets/logo_dark.svg
   nav:
     - title: Home
       url: /index
