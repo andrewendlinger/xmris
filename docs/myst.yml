@@ -71,7 +71,7 @@ project:
               title: Fourier Transforms
             - file: api_reference/processing.fid.md
               title: FID Processing
-            - file: api_reference/processing.phase.md
+            - file: api_reference/processing.phasing.md
               title: Phase Correction
 
         # --- 2. Visualization Submenu ---

@@ -7,7 +7,7 @@ quartodoc:
       contents:
         - processing.fourier
         - processing.fid
-        - processing.phase
+        - processing.phasing
 
     - title: Visualization
       desc: Publication-ready plotting and aesthetics.

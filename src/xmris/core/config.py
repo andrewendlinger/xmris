@@ -155,13 +155,29 @@ class XmrisAttributes(BaseVocabulary):
         unit="ppm",
     )
 
-    b0_field = XmrisTerm(
-        "b0_field", description="Static main magnetic field strength.", unit="T"
+    # --- Phase Parameters ---
+    phase_p0 = XmrisTerm(
+        "phase_p0", description="Zero-order phase angle applied.", unit="degrees"
+    )
+    phase_p1 = XmrisTerm(
+        "phase_p1", description="First-order phase angle applied.", unit="degrees"
     )
 
-    p0 = XmrisTerm("p0", description="Zero-order phase angle.", unit="degrees")
+    # --- Apodization Parameters ---
+    apodization_lb = XmrisTerm(
+        "apodization_lb", description="Line broadening factor applied.", unit="Hz"
+    )
+    apodization_gb = XmrisTerm(
+        "apodization_gb", description="Gaussian broadening factor applied.", unit="Hz"
+    )
 
-    p1 = XmrisTerm("p1", description="First-order phase angle.", unit="degrees")
+    # --- Zero Fill Parameters ---
+    zero_fill_target = XmrisTerm(
+        "zero_fill_target", description="Total number of points after zero-filling."
+    )
+    zero_fill_position = XmrisTerm(
+        "zero_fill_position", description="Position of padding ('end' or 'symmetric')."
+    )
 
 
 class XmrisDimensions(BaseVocabulary):
@@ -182,6 +198,22 @@ class XmrisDimensions(BaseVocabulary):
     component = XmrisTerm(
         "component", description="Dimension separating real and imaginary parts."
     )
+    # --- Standard Acquisition Dimensions ---
+    average = XmrisTerm(
+        "average", description="Dimension for multiple signal acquisitions/averages."
+    )
+    coil = XmrisTerm("coil", description="Dimension for multi-coil phased array data.")
+    echo = XmrisTerm("echo", description="Dimension for multi-echo acquisitions.")
+
+    # --- Spatial Frequency (k-space) ---
+    kx = XmrisTerm("kx", description="k-space frequency dimension along the x-axis.")
+    ky = XmrisTerm("ky", description="k-space frequency dimension along the y-axis.")
+    kz = XmrisTerm("kz", description="k-space frequency dimension along the z-axis.")
+
+    # --- Image Space ---
+    x = XmrisTerm("x", description="Image space dimension along the x-axis.")
+    y = XmrisTerm("y", description="Image space dimension along the y-axis.")
+    z = XmrisTerm("z", description="Image space dimension along the z-axis (slice).")
 
 
 class XmrisCoordinates(BaseVocabulary):
@@ -194,6 +226,16 @@ class XmrisCoordinates(BaseVocabulary):
     chemical_shift = XmrisTerm(
         "chemical_shift", description="Chemical shift coordinates.", unit="ppm"
     )
+
+    # --- Spatial Frequency (k-space) ---
+    kx = XmrisTerm("kx", description="k-space coordinates along x.", unit="1/m")
+    ky = XmrisTerm("ky", description="k-space coordinates along y.", unit="1/m")
+    kz = XmrisTerm("kz", description="k-space coordinates along z.", unit="1/m")
+
+    # --- Image Space ---
+    x = XmrisTerm("x", description="Spatial coordinates along x.", unit="mm")
+    y = XmrisTerm("y", description="Spatial coordinates along y.", unit="mm")
+    z = XmrisTerm("z", description="Spatial coordinates along z.", unit="mm")
 
 
 class XmrisDataVars(BaseVocabulary):

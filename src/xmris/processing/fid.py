@@ -1,7 +1,7 @@
 import numpy as np
 import xarray as xr
 
-from xmris.core.config import COORDS, DIMS
+from xmris.core.config import ATTRS, COORDS, DIMS
 from xmris.core.utils import _check_dims, as_variable
 from xmris.processing.fourier import fft, fftshift, ifft, ifftshift
 
@@ -99,7 +99,6 @@ def to_fid(
 
             da_fid = da_fid.assign_coords({out_dim: time_var})
 
-    da_fid.attrs["to_fid_applied"] = True
     return da_fid
 
 
@@ -140,8 +139,7 @@ def apodize_exp(da: xr.DataArray, dim: str = DIMS.time, lb: float = 1.0) -> xr.D
     da_apodized = (da * weight).transpose(*da.dims).assign_attrs(da.attrs)
 
     # Record lineage
-    da_apodized.attrs["apodization"] = "exponential"
-    da_apodized.attrs["apodization_lb"] = lb
+    da_apodized.attrs[ATTRS.apodization_lb] = lb
 
     return da_apodized
 
@@ -194,9 +192,8 @@ def apodize_lg(
     da_apodized = (da * weight).transpose(*da.dims).assign_attrs(da.attrs)
 
     # Record lineage
-    da_apodized.attrs["apodization"] = "lorentzian-to-gaussian"
-    da_apodized.attrs["apodization_lb"] = lb
-    da_apodized.attrs["apodization_gb"] = gb
+    da_apodized.attrs[ATTRS.apodization_lb] = lb
+    da_apodized.attrs[ATTRS.apodization_gb] = gb
 
     return da_apodized
 
@@ -282,7 +279,7 @@ def zero_fill(
 
     # Restore lost attrs and record lineage
     da_padded = da_padded.assign_attrs(da.attrs)
-    da_padded.attrs["zero_fill_target"] = target_points
-    da_padded.attrs["zero_fill_position"] = position
+    da_padded.attrs[ATTRS.zero_fill_target] = target_points
+    da_padded.attrs[ATTRS.zero_fill_position] = position
 
     return da_padded

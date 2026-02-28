@@ -1,10 +1,14 @@
 import nmrglue as ng
 import xarray as xr
 
+from xmris.core.config import ATTRS, DIMS
+from xmris.core.utils import _check_dims
 from xmris.processing.fid import apodize_exp, to_fid, to_spectrum
 
 
-def phase(da: xr.DataArray, p0: float = 0.0, p1: float = 0.0) -> xr.DataArray:
+def phase(
+    da: xr.DataArray, dim: str = DIMS.frequency, p0: float = 0.0, p1: float = 0.0
+) -> xr.DataArray:
     """
     Apply zero- and first-order phase correction to a spectrum.
 
@@ -12,6 +16,9 @@ def phase(da: xr.DataArray, p0: float = 0.0, p1: float = 0.0) -> xr.DataArray:
     ----------
     da : xr.DataArray
         The input frequency-domain spectrum.
+    dim : str, optional
+        The frequency dimension along which to apply phase correction,
+        by default `DIMS.frequency`.
     p0 : float, optional
         Zero-order phase angle in degrees, by default 0.0.
     p1 : float, optional
@@ -22,24 +29,32 @@ def phase(da: xr.DataArray, p0: float = 0.0, p1: float = 0.0) -> xr.DataArray:
     xr.DataArray
         The phase-corrected spectrum. Phase angles are appended to the attributes.
     """
+    _check_dims(da, dim, "phase")
+
+    # nmrglue operates on the last axis by default.
+    # Transpose the working dimension to the end to ensure safe N-dimensional application.
+    da_transposed = da.transpose(..., dim)
+
     # nmrglue's ps expects the data array and angles in degrees
-    phased_values = ng.process.proc_base.ps(da.values, p0=p0, p1=p1)
+    phased_values = ng.process.proc_base.ps(da_transposed.values, p0=p0, p1=p1)
 
-    # Reconstruct the DataArray and embed the exact angles used
-    da_phased = da.copy(data=phased_values)
+    # Reconstruct the DataArray and transpose back to original dimension order
+    da_phased = da_transposed.copy(data=phased_values)
+    da_phased = da_phased.transpose(*da.dims)
 
-    # Merge existing attributes and add the phase angles
-    new_attrs = da.attrs.copy()
-    new_attrs.update({"p0": p0, "p1": p1})
+    # Preserve original attributes and explicitly stamp mathematical lineage
+    da_phased = da_phased.assign_attrs(da.attrs)
+    da_phased.attrs[ATTRS.phase_p0] = p0
+    da_phased.attrs[ATTRS.phase_p1] = p1
 
-    return da_phased.assign_attrs(new_attrs)
+    return da_phased
 
 
 def autophase(
     da: xr.DataArray,
-    dim: str = "frequency",
+    dim: str = DIMS.frequency,
     lb: float = 10.0,
-    temp_time_dim: str = "time",
+    temp_time_dim: str = DIMS.time,
 ) -> xr.DataArray:
     """
     Automatically calculate and apply phase correction to a spectrum.
@@ -55,22 +70,22 @@ def autophase(
     da : xr.DataArray
         The input frequency-domain spectrum.
     dim : str, optional
-        The frequency dimension, by default "frequency".
+        The frequency dimension, by default `DIMS.frequency`.
     lb : float, optional
         The exponential line broadening factor (in Hz) applied during the
         temporary SNR-boosting step. Higher values suppress more noise.
         By default 10.0.
     temp_time_dim : str, optional
         The name used for the temporary time dimension during the inverse
-        transform. By default "time".
+        transform. By default `DIMS.time`.
 
     Returns
     -------
     xr.DataArray
-        The phased spectrum. Angles are stored in `attrs['p0']` and `attrs['p1']`.
+        The phased spectrum. Applied angles are stored in `attrs[ATTRS.phase_p0]`
+        and `attrs[ATTRS.phase_p1]`.
     """
-    if dim not in da.dims:
-        raise ValueError(f"Dimension '{dim}' not found in DataArray.")
+    _check_dims(da, dim, "autophase")
 
     # 1. Transform spectrum back to a temporary FID
     temp_fid = to_fid(da, dim=dim, out_dim=temp_time_dim)
@@ -82,9 +97,12 @@ def autophase(
     temp_smooth_spec = to_spectrum(temp_apodized_fid, dim=temp_time_dim, out_dim=dim)
 
     # 4. Calculate phase angles using nmrglue's ACME algorithm on the smooth data
+    # Ensure the target dimension is last for nmrglue's underlying routines
+    temp_smooth_transposed = temp_smooth_spec.transpose(..., dim)
     _, (p0, p1) = ng.process.proc_autophase.autops(
-        temp_smooth_spec.values, "acme", return_phases=True
+        temp_smooth_transposed.values, "acme", return_phases=True
     )
 
     # 5. Apply the calculated angles to the ORIGINAL, untouched spectrum
-    return phase(da, p0=p0, p1=p1)
+    # The phase() function will automatically handle the lineage stamping for p0 and p1
+    return phase(da, dim=dim, p0=p0, p1=p1)

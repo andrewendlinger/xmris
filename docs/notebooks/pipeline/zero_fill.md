@@ -176,11 +176,11 @@ _pad_size = _target_points - _current_points
 
 # Prove math (padding with zeros)
 np.testing.assert_array_equal(
-    da_fid_zf.values[:_current_points], da_fid_sampled.values, 
+    da_fid_zf.values[:_current_points], da_fid_sampled.values,
     err_msg="Original data altered during padding."
 )
 np.testing.assert_array_equal(
-    da_fid_zf.values[_current_points:], np.zeros(_pad_size), 
+    da_fid_zf.values[_current_points:], np.zeros(_pad_size),
     err_msg="Padded values are not zero."
 )
 
@@ -229,7 +229,7 @@ Transforming back to image space demonstrates how zero-filling smooths the block
 
 ```{code-cell} ipython3
 # Transform to image space (using standard centered FFT functions from xmris)
-# Note: In a real xmris pipeline, we would use a dedicated spatial transform, 
+# Note: In a real xmris pipeline, we would use a dedicated spatial transform,
 # but for this demonstration we will use numpy's generic ifftn/ifftshift.
 img_orig = np.abs(np.fft.ifftshift(np.fft.ifftn(np.fft.fftshift(da_k2d.values))))
 img_zf = np.abs(np.fft.ifftshift(np.fft.ifftn(np.fft.fftshift(da_k2d_zf.values))))

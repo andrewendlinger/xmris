@@ -17,7 +17,7 @@ from .processing import utils
 # 4. Core Processing
 from .processing.fid import apodize_exp, apodize_lg, to_fid, to_spectrum, zero_fill
 from .processing.fourier import fft, fftc, fftshift, ifft, ifftc, ifftshift
-from .processing.phase import autophase, phase
+from .processing.phasing import autophase, phase
 
 # 3. Utilities
 from .processing.utils import to_complex, to_real_imag
