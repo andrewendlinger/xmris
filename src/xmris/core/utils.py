@@ -15,8 +15,8 @@ def _check_dims(da: xr.DataArray, dims: str | list[str], method_name: str) -> No
             f"Method '{method_name}' attempted to operate on missing "
             f"dimension(s): {missing}.\n"
             f"Available dimensions are: {list(da.dims)}.\n\n"
-            f"To fix this, either pass the correct `dim` string argument to the function, "
-            f"or rename your data's axes using xarray:\n"
+            f"To fix this, either pass the correct `dim` string argument to the function,"
+            f" or rename your data's axes using xarray:\n"
             f"    >>> obj = obj.rename({{{repr(missing[0])}: 'correct_name'}})"
         )
 
