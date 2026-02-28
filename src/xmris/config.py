@@ -1,3 +1,4 @@
+import warnings
 from dataclasses import dataclass
 
 
@@ -35,5 +36,24 @@ class XmrisConfig:
         self.tr = Attribute(key="TR", units="s")
 
 
-# The single global instance users interact with
-DEFAULTS = XmrisConfig()
+# 1. Rename the instance to be private
+_DEFAULTS = XmrisConfig()
+
+
+# 2. Use module-level __getattr__ to intercept access to DEFAULTS
+def __getattr__(name):
+    if name == "DEFAULTS":
+        warnings.warn(
+            "The `DEFAULTS` configuration object is deprecated and will be removed "
+            "in a future release. Please use the new singletons `ATTRS`, `DIMS`, "
+            "`COORDS`, and `VARS` from `xmris.core.config` instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return _DEFAULTS
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+# 3. (Optional) Define __dir__ so autocomplete tools still see DEFAULTS
+def __dir__():
+    return ["Dimension", "Attribute", "XmrisConfig", "DEFAULTS"]
