@@ -5,7 +5,10 @@ import numpy as np
 import xarray as xr
 
 # Import our new core architecture
-from xmris.core.config import ATTRS, COORDS, DIMS, XmrisTerm
+from xmris.core.config import ATTRS, COORDS, DIMS
+
+# (Assuming imports for fid, fourier, phase, etc. remain the same)
+from xmris.core.utils import _check_dims, as_variable
 from xmris.core.validation import requires_attrs
 from xmris.processing.fid import apodize_exp, apodize_lg, to_fid, to_spectrum, zero_fill
 from xmris.processing.fourier import fft, fftc, fftshift, ifft, ifftc, ifftshift
@@ -14,36 +17,6 @@ from xmris.vendor.bruker import remove_digital_filter
 
 # Import the config type for type-hinting, but defer the actual plotting function
 from xmris.visualization.plot import PlotHeatmapConfig, PlotRidgeConfig
-
-# (Assuming imports for fid, fourier, phase, etc. remain the same)
-
-
-def _check_dims(obj: xr.DataArray, dims: str | list[str], func_name: str):
-    """Internal helper to validate explicit dimension arguments with UX-friendly errors."""  # noqa: D401, E501
-    dim_list = [dims] if isinstance(dims, str) else dims
-    missing = [d for d in dim_list if d not in obj.dims]
-
-    if missing:
-        available = list(obj.dims)
-        raise ValueError(
-            f"Method '{func_name}' attempted to operate on missing dimension(s): {missing}.\n"  # noqa: E501
-            f"Available dimensions are: {available}.\n\n"
-            f"To fix this, either pass the correct `dim` string argument to the function, "  # noqa: E501
-            f"or rename your data's axes using xarray:\n"
-            f"    >>> obj = obj.rename({{{repr(missing[0])}: DIMS.time}})"
-        )
-
-
-def as_variable(term: XmrisTerm, dims: str | tuple, data: np.ndarray) -> xr.Variable:
-    """Wrap a numpy array into an xarray Variable.
-
-    Automatically applies the correct units and long_name from the provided XmrisTerm.
-    """
-    attrs = {"long_name": term.long_name}
-    if term.unit:
-        attrs["units"] = term.unit
-
-    return xr.Variable(dims, data, attrs=attrs)
 
 
 class XmrisDatasetPlotAccessor:
