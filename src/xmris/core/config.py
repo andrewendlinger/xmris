@@ -155,6 +155,11 @@ class XmrisAttributes(BaseVocabulary):
         unit="ppm",
     )
 
+    # --- mostly used for demo of attributes ---
+    b0_field = XmrisTerm(
+        "b0_field", description="Magnetic field strength B0", unit="Tesla"
+    )
+
     # --- Phase Parameters ---
     phase_p0 = XmrisTerm(
         "phase_p0", description="Zero-order phase angle applied.", unit="degrees"
@@ -188,7 +193,21 @@ class XmrisDimensions(BaseVocabulary):
     )
 
     frequency = XmrisTerm(
-        "frequency", description="Frequency-domain dimension for spectral data."
+        "frequency",
+        description=(
+            "Relative frequency dimension in Hertz (Hz). Generated directly by the "
+            "Fourier transform, or calculated from chemical shift using the "
+            "`carrier_ppm` and `reference_frequency` (MHz) attributes."
+        ),
+    )
+
+    chemical_shift = XmrisTerm(
+        "chemical_shift",
+        description=(
+            "Absolute chemical shift dimension in parts-per-million (ppm). "
+            "Calculated mathematically from the relative frequency (Hz) by dividing "
+            "by `reference_frequency` (MHz) and adding the `carrier_ppm` offset."
+        ),
     )
 
     metabolite = XmrisTerm(

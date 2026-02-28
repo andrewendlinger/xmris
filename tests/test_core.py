@@ -510,9 +510,9 @@ class TestAccessorDefaults:
         "method_name, param_name, expected_default",
         [
             ("fft", "dim", DIMS.time),
-            ("ifft", "dim", DIMS.time),
+            ("ifft", "dim", DIMS.frequency),
             ("fftc", "dim", DIMS.time),
-            ("ifftc", "dim", DIMS.time),
+            ("ifftc", "dim", DIMS.frequency),
             ("apodize_exp", "dim", DIMS.time),
             ("apodize_lg", "dim", DIMS.time),
             ("to_spectrum", "dim", DIMS.time),
@@ -523,6 +523,7 @@ class TestAccessorDefaults:
             ("autophase", "dim", DIMS.frequency),
             ("remove_digital_filter", "dim", DIMS.time),
             ("to_ppm", "dim", DIMS.frequency),
+            ("to_hz", "dim", DIMS.chemical_shift),
             ("to_real_imag", "dim", DIMS.component),
             ("to_complex", "dim", DIMS.component),
         ],
@@ -592,6 +593,11 @@ class TestAttrsPreservation:
                 f"Attribute {key!r} was modified: {value!r} → {result.attrs[key]!r}"
             )
 
+    def test_to_hz_preserves_attrs(self, valid_spectrum_da):
+        """``to_hz`` must preserve all input attrs."""
+        result = valid_spectrum_da.xmr.to_ppm()
+        self._assert_attrs_preserved(valid_spectrum_da, result)
+
     def test_to_ppm_preserves_attrs(self, valid_spectrum_da):
         """``to_ppm`` must preserve all input attrs."""
         result = valid_spectrum_da.xmr.to_ppm()
@@ -607,10 +613,10 @@ class TestAttrsPreservation:
         result = valid_fid_da.xmr.to_spectrum()
         self._assert_attrs_preserved(valid_fid_da, result)
 
-    def test_phase_preserves_attrs(self, valid_fid_da):
+    def test_phase_preserves_attrs(self, valid_spectrum_da):
         """``phase`` must preserve all input attrs (and may add ``p0``, ``p1``)."""
-        result = valid_fid_da.xmr.phase(p0=10.0)
-        self._assert_attrs_preserved(valid_fid_da, result)
+        result = valid_spectrum_da.xmr.phase(p0=10.0)
+        self._assert_attrs_preserved(valid_spectrum_da, result)
 
     def test_zero_fill_preserves_attrs(self, valid_fid_da):
         """``zero_fill`` must preserve all input attrs."""
