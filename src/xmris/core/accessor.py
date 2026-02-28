@@ -5,7 +5,7 @@ import numpy as np
 import xarray as xr
 
 # Import our new core architecture
-from xmris.core.config import ATTRS, COORDS, DIMS
+from xmris.core.config import ATTRS, COORDS, DIMS, XmrisTerm
 from xmris.core.validation import requires_attrs
 from xmris.processing.fid import apodize_exp, apodize_lg, to_fid, to_spectrum, zero_fill
 from xmris.processing.fourier import fft, fftc, fftshift, ifft, ifftc, ifftshift
@@ -32,6 +32,18 @@ def _check_dims(obj: xr.DataArray, dims: str | list[str], func_name: str):
             f"or rename your data's axes using xarray:\n"
             f"    >>> obj = obj.rename({{{repr(missing[0])}: DIMS.time}})"
         )
+
+
+def as_variable(term: XmrisTerm, dims: str | tuple, data: np.ndarray) -> xr.Variable:
+    """Wrap a numpy array into an xarray Variable.
+
+    Automatically applies the correct units and long_name from the provided XmrisTerm.
+    """
+    attrs = {"long_name": term.long_name}
+    if term.unit:
+        attrs["units"] = term.unit
+
+    return xr.Variable(dims, data, attrs=attrs)
 
 
 class XmrisDatasetPlotAccessor:
@@ -511,15 +523,18 @@ class XmrisAccessor:
         """Convert relative frequency axis [Hz] to absolute chemical shift axis [ppm]."""
         _check_dims(self._obj, dim, "to_ppm")
 
-        # 1. Aggressively recalculate to guarantee sync with current .attrs
         mhz = self._obj.attrs[ATTRS.reference_frequency]
-        carrier_ppm = self._obj.attrs["carrier_ppm"]
+        carrier_ppm = self._obj.attrs[ATTRS.carrier_ppm]
         hz_coords = self._obj.coords[dim].values
 
+        # 1. Calculate the math
         ppm_coords = carrier_ppm + (hz_coords / mhz)
 
-        # 2. Assign the new coordinate AND make it the primary dimension
-        obj = self._obj.assign_coords({COORDS.chemical_shift: (dim, ppm_coords)})
+        # 2. Build the fully-formed xarray Variable (data + metadata)
+        shift_var = as_variable(COORDS.chemical_shift, dim, ppm_coords)
+
+        # 3. Assign and swap in one clean sweep
+        obj = self._obj.assign_coords({COORDS.chemical_shift: shift_var})
         return obj.swap_dims({dim: COORDS.chemical_shift})
 
     @requires_attrs(ATTRS.reference_frequency, ATTRS.carrier_ppm)
@@ -527,15 +542,16 @@ class XmrisAccessor:
         """Convert absolute chemical shift axis [ppm] to relative frequency axis [Hz]."""
         _check_dims(self._obj, dim, "to_hz")
 
-        # 1. Aggressively recalculate to guarantee sync with current .attrs
         mhz = self._obj.attrs[ATTRS.reference_frequency]
-        carrier_ppm = self._obj.attrs["carrier_ppm"]
+        carrier_ppm = self._obj.attrs[ATTRS.carrier_ppm]
         ppm_coords = self._obj.coords[dim].values
 
         hz_coords = (ppm_coords - carrier_ppm) * mhz
 
-        # 2. Assign the new coordinate AND make it the primary dimension
-        obj = self._obj.assign_coords({DIMS.frequency: (dim, hz_coords)})
+        # Pack the data and metadata together instantly
+        freq_var = as_variable(COORDS.frequency, dim, hz_coords)
+
+        obj = self._obj.assign_coords({COORDS.frequency: freq_var})
         return obj.swap_dims({dim: DIMS.frequency})
 
     # --- Utility / Formatting ---

@@ -5,8 +5,43 @@ This module defines the single source of truth for all metadata attributes,
 dimensions, coordinates, and data variables expected by the xmris package.
 """
 
-import dataclasses
-from dataclasses import dataclass, field
+
+class XmrisTerm(str):
+    """A string subclass that holds metadata attributes.
+
+    This allows xarray to treat it as a standard dimension/coordinate name,
+    while allowing developers to access `.unit` and `.description` directly.
+    """
+
+    def __new__(cls, value: str, description: str = "", unit: str = ""):
+        """Create a new :class:`XmrisTerm` instance with metadata.
+
+        Parameters
+        ----------
+        value : str
+            The string value to use for the term.
+        description : str, optional
+            A human‑readable description of the term (default is empty).
+        unit : str, optional
+            The unit associated with the term, if any (default is empty).
+
+        Returns
+        -------
+        XmrisTerm
+            A new string instance with ``description`` and ``unit`` attributes.
+        """
+        obj = str.__new__(cls, value)
+        obj.description = description
+        obj.unit = unit
+        return obj
+
+    @property
+    def long_name(self) -> str:
+        """Automatically generates a display-friendly long name.
+
+        Example: 'chemical_shift' -> 'Chemical Shift'
+        """
+        return self.replace("_", " ").title()
 
 
 class BaseVocabulary:
@@ -16,6 +51,14 @@ class BaseVocabulary:
     Provides rich HTML display for Jupyter Notebooks and utility
     methods to fetch metadata for validation decorators.
     """
+
+    def _get_terms(self) -> dict:
+        """Help extract all XmrisTerm attributes from the class."""
+        return {
+            key: val
+            for key, val in vars(self.__class__).items()
+            if isinstance(val, XmrisTerm)
+        }
 
     def get_description(self, target_value: str) -> str:
         """
@@ -34,9 +77,9 @@ class BaseVocabulary:
         str
             The description string, or a fallback message if not found.
         """
-        for f in dataclasses.fields(self):
-            if getattr(self, f.name) == target_value:
-                return f.metadata.get("description", "No description provided.")
+        for term in self._get_terms().values():
+            if term == target_value:
+                return term.description or "No description provided."
         return "Unknown xarray key."
 
     def _repr_html_(self) -> str:
@@ -53,29 +96,32 @@ class BaseVocabulary:
         desc_text = doc.strip().split("\n")[0] if doc else f"Vocabulary for {cls_name}:"
 
         html = [
-            "<div style='font-family: sans-serif; max-width: 800px;'>",
+            "<div style='font-family: sans-serif; max-width: 900px;'>",
             f"<h3 style='margin-bottom: 4px;'>{cls_name}</h3>",
             f"<p style='margin-top: 0; color: #555;'><em>{desc_text}</em></p>",
             "<table style='width: 100%; border-collapse: collapse; text-align: left;'>",
             "<tr style='border-bottom: 2px solid #ccc;'>",
             "<th style='padding: 8px;'>Property</th>",
             "<th style='padding: 8px;'>xarray String Key</th>",
+            "<th style='padding: 8px;'>Unit</th>",
             "<th style='padding: 8px;'>Description</th>",
             "</tr>",
         ]
 
-        for f in dataclasses.fields(self):
-            val = getattr(self, f.name)
-            desc = f.metadata.get("description", "")
-            unit = f.metadata.get("unit", "")
-
-            desc_str = f"{desc} <strong>[{unit}]</strong>" if unit else desc
+        for prop_name, term in self._get_terms().items():
+            # Format unit cleanly: bold if present, faint dash if empty
+            unit_str = (
+                f"<strong>{term.unit}</strong>"
+                if term.unit
+                else "<span style='color: #999;'>-</span>"
+            )
 
             html.append(
                 "<tr style='border-bottom: 1px solid #eee;'>"
-                f"<td style='padding: 8px;'><code>{f.name}</code></td>"
-                f"<td style='padding: 8px;'><strong><code>\"{val}\"</code></strong></td>"
-                f"<td style='padding: 8px;'>{desc_str}</td>"
+                f"<td style='padding: 8px; white-space: nowrap;'><code>{prop_name}</code></td>"  # noqa: E501
+                f"<td style='padding: 8px; white-space: nowrap;'><strong><code>\"{term}\"</code></strong></td>"  # noqa: E501
+                f"<td style='padding: 8px; white-space: nowrap;'>{unit_str}</td>"
+                f"<td style='padding: 8px;'>{term.description}</td>"
                 "</tr>"
             )
 
@@ -83,143 +129,109 @@ class BaseVocabulary:
         return "".join(html)
 
 
-@dataclass(frozen=True)
 class XmrisAttributes(BaseVocabulary):
     """Official metadata attribute keys for xmris xarray objects (`.attrs`)."""
 
-    reference_frequency: str = field(
-        default="reference_frequency",
-        metadata={
-            "description": (
-                "The measured Larmor frequency of the target nucleus. This reflects the actual B0 "
-                "field during the scan, not a theoretical constant. It serves as the denominator "
-                "to convert frequency shifts (Hz) to parts-per-million (ppm). Maps to Bruker "
-                "'PVM_FrqRef'/'BF1' and DICOM 'ImagingFrequency' (0018,0084) or "
-                "'TransmitterFrequency' (0018,9098)."
-            ),
-            "unit": "MHz",
-        },
+    reference_frequency = XmrisTerm(
+        "reference_frequency",
+        description=(
+            "The measured Larmor frequency of the target nucleus. This reflects the"
+            "actual B0 field during the scan, not a theoretical constant. It serves as"
+            "the denominator to convert frequency shifts (Hz) to parts-per-million (ppm)."
+            "Maps to Bruker 'PVM_FrqRef' and potentially DICOM 'ImagingFrequency'"
+            "(0018,0084) or 'TransmitterFrequency' (0018,9098)."
+        ),
+        unit="MHz",
     )
 
-    carrier_ppm: str = field(
-        default="carrier_ppm",
-        metadata={
-            "description": (
-                "The absolute chemical shift at the center of the RF excitation bandwidth. "
-                "In the digitized baseband signal, this is the exact chemical shift located at 0 Hz. "
-                "For standard 1H MRS, this is typically water (4.7 ppm). Maps to Bruker "
-                "'PVM_FrqWorkPpm'."
-            ),
-            "unit": "ppm",
-        },
+    carrier_ppm = XmrisTerm(
+        "carrier_ppm",
+        description=(
+            "The absolute chemical shift at the center of the RF excitation bandwidth. "
+            "In the digitized baseband signal, this is the exact chemical shift located"
+            "at 0 Hz. For standard 1H MRS, this is typically water (4.7 ppm). Maps to"
+            "Bruker 'PVM_FrqWorkPpm'."
+        ),
+        unit="ppm",
     )
 
-    b0_field: str = field(
-        default="b0_field",
-        metadata={"description": "Static main magnetic field strength.", "unit": "T"},
+    b0_field = XmrisTerm(
+        "b0_field", description="Static main magnetic field strength.", unit="T"
     )
 
-    p0: str = field(
-        default="p0",
-        metadata={"description": "Zero-order phase angle.", "unit": "degrees"},
-    )
-    p1: str = field(
-        default="p1",
-        metadata={"description": "First-order phase angle.", "unit": "degrees"},
-    )
+    p0 = XmrisTerm("p0", description="Zero-order phase angle.", unit="degrees")
+
+    p1 = XmrisTerm("p1", description="First-order phase angle.", unit="degrees")
 
 
-@dataclass(frozen=True)
 class XmrisDimensions(BaseVocabulary):
     """Official dimension names for xmris xarray objects (`.dims`)."""
 
-    time: str = field(
-        default="time",
-        metadata={
-            "description": "Time-domain dimension for Free Induction Decay (FID) data."
-        },
+    time = XmrisTerm(
+        "time", description="Time-domain dimension for Free Induction Decay (FID) data."
     )
 
-    frequency: str = field(
-        default="frequency",
-        metadata={"description": "Frequency-domain dimension for spectral data."},
+    frequency = XmrisTerm(
+        "frequency", description="Frequency-domain dimension for spectral data."
     )
 
-    metabolite: str = field(
-        default="metabolite",
-        metadata={"description": "Dimension representing quantified metabolites."},
+    metabolite = XmrisTerm(
+        "metabolite", description="Dimension representing quantified metabolites."
     )
 
-    component: str = field(
-        default="component",
-        metadata={"description": "Dimension separating real and imaginary parts."},
+    component = XmrisTerm(
+        "component", description="Dimension separating real and imaginary parts."
     )
 
 
-@dataclass(frozen=True)
 class XmrisCoordinates(BaseVocabulary):
     """Official coordinate names for xmris xarray objects (`.coords`)."""
 
-    time: str = field(
-        default="time", metadata={"description": "Time coordinates.", "unit": "s"}
-    )
-    frequency: str = field(
-        default="frequency",
-        metadata={"description": "Frequency coordinates.", "unit": "Hz"},
-    )
-    chemical_shift: str = field(
-        default="chemical_shift",
-        metadata={"description": "Chemical shift coordinates.", "unit": "ppm"},
+    time = XmrisTerm("time", description="Time coordinates.", unit="s")
+
+    frequency = XmrisTerm("frequency", description="Frequency coordinates.", unit="Hz")
+
+    chemical_shift = XmrisTerm(
+        "chemical_shift", description="Chemical shift coordinates.", unit="ppm"
     )
 
 
-@dataclass(frozen=True)
 class XmrisDataVars(BaseVocabulary):
     """Official data variable names for xmris xarray Datasets (`.data_vars`)."""
 
     # --- Time/Frequency Domain Data ---
-    original_data: str = field(
-        default="data",
-        metadata={"description": "The original experimental data (FID or Spectrum)."},
+    original_data = XmrisTerm(
+        "data", description="The original experimental data (FID or Spectrum)."
     )
-    fit: str = field(
-        default="fit",
-        metadata={
-            "description": "The reconstructed time-domain or frequency-domain fit."
-        },
+
+    fit = XmrisTerm(
+        "fit", description="The reconstructed time-domain or frequency-domain fit."
     )
-    residuals: str = field(
-        default="residuals",
-        metadata={"description": "The difference between the original data and the fit."},
+
+    residuals = XmrisTerm(
+        "residuals", description="The difference between the original data and the fit."
     )
-    baseline: str = field(
-        default="baseline",
-        metadata={"description": "The calculated baseline of the spectrum."},
+
+    baseline = XmrisTerm(
+        "baseline", description="The calculated baseline of the spectrum."
     )
 
     # --- Quantified Parameters ---
-    amplitude: str = field(
-        default="amplitude", metadata={"description": "Fitted peak amplitude."}
+    amplitude = XmrisTerm("amplitude", description="Fitted peak amplitude.")
+
+    chem_shift = XmrisTerm("chem_shift", description="Fitted chemical shift.", unit="ppm")
+
+    linewidth = XmrisTerm(
+        "linewidth", description="Fitted linewidth (damping factor).", unit="Hz"
     )
-    chem_shift: str = field(
-        default="chem_shift",
-        metadata={"description": "Fitted chemical shift.", "unit": "ppm"},
+
+    phase = XmrisTerm("phase", description="Fitted phase.", unit="degrees")
+
+    crlb = XmrisTerm(
+        "crlb", description="Cramer-Rao Lower Bound (fitting error estimation).", unit="%"
     )
-    linewidth: str = field(
-        default="linewidth",
-        metadata={"description": "Fitted linewidth (damping factor).", "unit": "Hz"},
-    )
-    phase: str = field(
-        default="phase", metadata={"description": "Fitted phase.", "unit": "degrees"}
-    )
-    crlb: str = field(
-        default="crlb",
-        metadata={
-            "description": "Cramer-Rao Lower Bound (fitting error estimation).",
-            "unit": "%",
-        },
-    )
-    snr: str = field(default="snr", metadata={"description": "Signal-to-Noise Ratio."})
+
+    snr = XmrisTerm("snr", description="Signal-to-Noise Ratio.")
 
 
 # =============================================================================

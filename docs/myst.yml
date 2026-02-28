@@ -21,28 +21,26 @@ project:
           title: FID to Spectrum
         - file: notebooks/basics/complex_numbers.ipynb
           title: Complex Numbers
-        - file: notebooks/basics/conventions.ipynb
-          title: Core Conventions
 
     # 2. GROUP: A chronological processing pipeline
     - title: Processing Pipeline
       children:
-        - file: notebooks/pipeline/bruker_filter.ipynb
-          title: 1. Bruker Digital Filter
         - file: notebooks/pipeline/zero_fill.ipynb
-          title: 2. Zero Filling
+          title: 1. Zero Filling
         - file: notebooks/pipeline/apodization.ipynb
-          title: 3. Apodization
+          title: 2. Apodization
         - file: notebooks/pipeline/phase.ipynb
-          title: 4. Phase Correction
+          title: 3. Phase Correction
 
     # 3. GROUP: Advanced Quantification
-    - title: Spectral Fitting
+    - title: Spectral Fitting & Simulation
       children:
+        - file: notebooks/fitting/simufid.ipynb
+          title: FID Simulation
         - file: notebooks/fitting/pyamares.ipynb
-          title: 1. pyAMARES
+          title: pyAMARES - Part I
         - file: notebooks/fitting/pyamares_advanced.ipynb
-          title: 2. pyAMARES (Advanced)
+          title: pyAMARES - Part II
 
     # 4. GROUP: Visualization / plotting
     - title: Visualization
@@ -53,6 +51,15 @@ project:
           title: 2. 1D+Time, NMR time series
         - file: notebooks/visualization/03_plotting_fit_1d.ipynb
           title: 3. 1D+Time, pyAMARES data
+
+    # 4. GROUP: Visualization / plotting
+    - title: Vendor Specific
+      children:
+        - file: notebooks/vendor/bruker_filter_removal.ipynb
+          title: Bruker - Digital Filter
+        - file: notebooks/vendor/bruker_fid_loader.ipynb
+          title: Bruker - FID Loading
+
 
     # 5. API Ref
     - title: API Reference

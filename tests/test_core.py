@@ -1,33 +1,46 @@
 """
 Core architecture tests for the xmris package.
 
-This module validates the foundational layers that the entire package depends on:
+This module validates the foundational safety and configuration layers that
+the entire package depends on. These tests are intentionally strict; if any
+of them fail, it signals a regression in a guarantee that downstream code
+or user pipelines depend on.
 
-1. **Configuration immutability**
-     —> vocabulary singletons cannot be mutated at runtime.
-2. **Naming conventions**
-     —> all xarray keys follow the lowercase convention.
-3. **Metadata completeness**
-     —> every config field carries a description for auto-docs.
-4. **Decorator engine**
-     —> ``@requires_attrs`` validates at runtime and injects docstrings.
-5. **Dimension validation**
-     —> ``_check_dims`` produces actionable errors for missing dims.
-6. **Accessor registration**
-     —> the ``.xmr`` namespace is available on DataArrays and Datasets.
-7. **Accessor defaults**
-     —> method signatures use config constants, not bare strings.
-8. **Attrs preservation**
-     —> processing methods never silently drop ``.attrs``.
-9. **Integration (to_ppm)**
-     —> end-to-end test of the most heavily guarded method.
+### What This Module Tests
+1. Configuration Singletons: Vocabulary instances are shared globally in memory.
+2. Naming Conventions: All xarray keys strictly follow the lowercase convention.
+3. Metadata Completeness: Every config field carries a description for auto-docs.
+4. Decorator Engine: `@requires_attrs` validates at runtime and injects docstrings.
+5. Dimension Validation: `_check_dims` produces actionable errors for missing dims.
+6. Accessor Registration: The `.xmr` namespace is available on DataArrays/Datasets.
+7. Accessor Defaults: Method signatures use config constants, not bare strings.
+8. Attrs Preservation: Processing methods never silently drop `.attrs`.
+9. Integration (to_ppm): End-to-end test of the most heavily guarded method.
 
-These tests are intentionally conservative. If any of them fail, it signals a
-regression in a guarantee that downstream code and user pipelines depend on.
+### Maintenance Guide: When to Update This File
+
+* **Adding a new dimension, coordinate, or attribute to `config.py`:**
+  You usually do NOT need to update these tests. The metadata and naming
+  convention tests dynamically scan your classes. However, if your new attribute
+  becomes globally required by many methods, you must add it to the dummy
+  DataArrays in the `Fixtures` section.
+
+* **Adding a new accessor method to `accessor.py`:**
+  1. Add the method to the parametrization list in `TestAccessorDefaults` to
+     verify it uses configuration constants (e.g., `DIMS.time`) instead of
+     bare strings.
+  2. Add a basic pass-through test in `TestAttrsPreservation` to guarantee
+     your new method does not accidentally strip xarray `.attrs`.
+
+* **Modifying or adding a decorator in `validation.py`:**
+  Update the `MockAccessor` class and add specific behavior checks to
+  `TestRequiresAttrsRuntime` or `TestRequiresAttrsDocstring`.
+
+* **Changing core mathematical logic:**
+  Do not test complex scientific logic here. This file is for architecture.
+  Test the math in a separate `test_processing.py` suite. The `TestToPpm`
+  class here exists solely as a structural integration test of the pipeline.
 """
-
-import dataclasses
-from dataclasses import FrozenInstanceError
 
 import numpy as np
 import pytest
@@ -77,7 +90,8 @@ def valid_fid_da():
     - Complex data (2048 points)
     - Standard ``DIMS.time`` dimension
     - Physical time coordinates derived from a 0.5 ms dwell time
-    - Both required attrs for downstream processing (`b0_field`, `reference_frequency`)
+    - Required attrs for downstream processing
+        (-> `b0_field`, `reference_frequency`, `carrier_ppm`)
 
     Returns
     -------
@@ -94,6 +108,7 @@ def valid_fid_da():
         attrs={
             ATTRS.b0_field: 7.0,
             ATTRS.reference_frequency: 300.15,
+            ATTRS.carrier_ppm: 4.7,
         },
     )
 
@@ -106,7 +121,7 @@ def valid_spectrum_da():
     - Complex data (1024 points)
     - Standard ``DIMS.frequency`` dimension
     - Frequency coordinates spanning ±5000 Hz
-    - Full attrs (3T field, 127.8 MHz reference)
+    - Full attrs (3T field, 127.8 MHz reference, 4.7 ppm carrier)
 
     Returns
     -------
@@ -122,6 +137,7 @@ def valid_spectrum_da():
         attrs={
             ATTRS.b0_field: 3.0,
             ATTRS.reference_frequency: 127.8,
+            ATTRS.carrier_ppm: 4.7,
         },
     )
 
@@ -153,36 +169,26 @@ def multi_dim_da():
         attrs={
             ATTRS.b0_field: 7.0,
             ATTRS.reference_frequency: 300.15,
+            ATTRS.carrier_ppm: 4.7,
         },
     )
 
 
 # =============================================================================
-# 1. Configuration: Immutability
+# 1. Configuration: Singletons
 # =============================================================================
 
 
-class TestConfigImmutability:
-    """Vocabulary singletons (ATTRS, DIMS, COORDS, VARS) must be frozen.
+class TestConfigSingletons:
+    """Vocabulary instances (ATTRS, DIMS, COORDS, VARS) must be singletons.
 
-    The entire xmris architecture depends on these objects being immutable
-    global constants. If a user or contributor accidentally mutates one,
-    every function that reads from it could silently change behavior.
+    The entire xmris architecture depends on these objects acting as a unified
+    single source of truth. Multiple imports must resolve to the exact same
+    memory address.
     """
 
-    @pytest.mark.parametrize("vocab", [ATTRS, DIMS, COORDS, VARS])
-    def test_field_assignment_raises(self, vocab):
-        """Attempting to overwrite any field on a frozen singleton must raise."""
-        first_field = dataclasses.fields(vocab)[0]
-        with pytest.raises(FrozenInstanceError):
-            setattr(vocab, first_field.name, "hacked")
-
     def test_singletons_are_same_object(self):
-        """Multiple imports of ATTRS must return the exact same object in memory.
-
-        This confirms that the module-level instantiation pattern produces
-        a true singleton — not a new copy on each import.
-        """
+        """Multiple imports of ATTRS must return the exact same object in memory."""
         from xmris.core.config import ATTRS as ATTRS2
 
         assert ATTRS is ATTRS2
@@ -201,44 +207,26 @@ class TestConfigNamingConventions:
     (e.g., ``"chemical_shift"`` not ``"Chemical_Shift"``).
     """
 
-    @pytest.mark.parametrize(
-        "field_obj",
-        dataclasses.fields(DIMS),
-        ids=lambda f: f.name,
-    )
-    def test_dims_are_lowercase(self, field_obj):
+    @pytest.mark.parametrize("prop_name, term_val", list(DIMS._get_terms().items()))
+    def test_dims_are_lowercase(self, prop_name, term_val):
         """Every DIMS field value must be a lowercase string."""
-        value = getattr(DIMS, field_obj.name)
-        assert value == value.lower(), (
-            f"DIMS.{field_obj.name} = {value!r} is not lowercase. "
+        assert term_val == term_val.lower(), (
+            f"DIMS.{prop_name} = {term_val!r} is not lowercase. "
             f"All dimension keys must be lowercase per project convention."
         )
 
-    @pytest.mark.parametrize(
-        "field_obj",
-        dataclasses.fields(COORDS),
-        ids=lambda f: f.name,
-    )
-    def test_coords_are_lowercase(self, field_obj):
+    @pytest.mark.parametrize("prop_name, term_val", list(COORDS._get_terms().items()))
+    def test_coords_are_lowercase(self, prop_name, term_val):
         """Every COORDS field value must be a lowercase string."""
-        value = getattr(COORDS, field_obj.name)
-        assert value == value.lower(), (
-            f"COORDS.{field_obj.name} = {value!r} is not lowercase."
+        assert term_val == term_val.lower(), (
+            f"COORDS.{prop_name} = {term_val!r} is not lowercase."
         )
 
-    @pytest.mark.parametrize(
-        "field_obj",
-        dataclasses.fields(ATTRS),
-        ids=lambda f: f.name,
-    )
-    def test_attrs_are_lowercase(self, field_obj):
-        """Every ATTRS field value must be a lowercase string.
-
-        Note: up for debate if we keep this in.
-        """
-        value = getattr(ATTRS, field_obj.name)
-        assert value == value.lower(), (
-            f"ATTRS.{field_obj.name} = {value!r} is not lowercase. "
+    @pytest.mark.parametrize("prop_name, term_val", list(ATTRS._get_terms().items()))
+    def test_attrs_are_lowercase(self, prop_name, term_val):
+        """Every ATTRS field value must be a lowercase string."""
+        assert term_val == term_val.lower(), (
+            f"ATTRS.{prop_name} = {term_val!r} is not lowercase. "
             f"Consider aligning the xarray key with the Python field name."
         )
 
@@ -260,11 +248,10 @@ class TestConfigMetadata:
     @pytest.mark.parametrize("vocab", [ATTRS, DIMS, COORDS, VARS])
     def test_all_fields_have_descriptions(self, vocab):
         """Every field across all vocabularies must have a non-empty description."""
-        for f in dataclasses.fields(vocab):
-            desc = f.metadata.get("description", "")
-            assert desc, (
-                f"{vocab.__class__.__name__}.{f.name} is missing a 'description' "
-                f"in its field metadata."
+        for prop_name, term in vocab._get_terms().items():
+            assert term.description, (
+                f"{vocab.__class__.__name__}.{prop_name} is missing a 'description' "
+                f"in its metadata."
             )
 
     def test_get_description_valid_key(self):
@@ -278,15 +265,11 @@ class TestConfigMetadata:
 
     @pytest.mark.parametrize("vocab", [ATTRS, DIMS, COORDS, VARS])
     def test_html_repr_renders(self, vocab):
-        """The Jupyter HTML table must render without errors and include all fields.
-
-        This is a smoke test — it verifies the output is valid HTML containing
-        a table element and that every field's xarray key appears in the output.
-        """
+        """The Jupyter HTML table must render without errors and include all fields."""
         html = vocab._repr_html_()
         assert "<table" in html
-        for f in dataclasses.fields(vocab):
-            assert getattr(vocab, f.name) in html
+        for term in vocab._get_terms().values():
+            assert str(term) in html
 
 
 # =============================================================================
@@ -640,12 +623,7 @@ class TestAttrsPreservation:
         self._assert_attrs_preserved(valid_fid_da, result)
 
     def test_multi_step_chain_preserves_attrs(self, valid_fid_da):
-        """Attrs must survive a realistic multi-step processing chain.
-
-        This is the most important attrs test. A user who sets attrs once
-        at the start of their pipeline must find them intact at the end,
-        regardless of how many xmris methods were called in between.
-        """
+        """Attrs must survive a realistic multi-step processing chain."""
         result = valid_fid_da.xmr.apodize_exp(lb=5.0).xmr.to_spectrum().xmr.to_ppm()
         self._assert_attrs_preserved(valid_fid_da, result)
 
@@ -671,11 +649,13 @@ class TestToPpm:
         assert COORDS.chemical_shift in result.coords
 
     def test_math_is_correct(self, valid_spectrum_da):
-        """The ppm values must equal ``hz_coords / reference_frequency``."""
+        """The ppm values must equal `carrier_ppm + (hz_coords / reference_frequency)`."""
         result = valid_spectrum_da.xmr.to_ppm()
         hz = valid_spectrum_da.coords[DIMS.frequency].values
         mhz = valid_spectrum_da.attrs[ATTRS.reference_frequency]
-        expected_ppm = hz / mhz
+        carrier = valid_spectrum_da.attrs[ATTRS.carrier_ppm]
+
+        expected_ppm = carrier + (hz / mhz)
         np.testing.assert_array_almost_equal(
             result.coords[COORDS.chemical_shift].values, expected_ppm
         )
@@ -698,12 +678,7 @@ class TestToPpm:
             valid_spectrum_da.xmr.to_ppm(dim="nonexistent")
 
     def test_works_with_custom_dim_name(self):
-        """Users with non-standard dim names must be able to pass them explicitly.
-
-        This tests the core flexibility promise: xmris defaults are
-        convenient, but never mandatory. A user whose data has ``"freq"``
-        instead of ``"frequency"`` can simply pass ``dim="freq"``.
-        """
+        """Users with non-standard dim names must be able to pass them explicitly."""
         rng = np.random.default_rng()
         da = xr.DataArray(
             rng.standard_normal(100),
@@ -712,29 +687,21 @@ class TestToPpm:
             attrs={
                 ATTRS.b0_field: 3.0,
                 ATTRS.reference_frequency: 127.8,
+                ATTRS.carrier_ppm: 4.7,
             },
         )
         result = da.xmr.to_ppm(dim="freq")
         assert COORDS.chemical_shift in result.coords
 
     def test_deleted_attr_fails(self, valid_spectrum_da):
-        """Simulates a user who accidentally drops attrs mid-pipeline.
-
-        This can happen via xarray operations that silently strip ``.attrs``
-        (see ``TestAttrsPreservation``). The bouncer must still catch it.
-        """
+        """Simulates a user who accidentally drops attrs mid-pipeline."""
         broken = valid_spectrum_da.copy()
         del broken.attrs[ATTRS.reference_frequency]
         with pytest.raises(ValueError, match="missing attributes"):
             broken.xmr.to_ppm()
 
     def test_multidim_input(self, multi_dim_da):
-        """``to_ppm`` must work on N-dimensional data without flattening.
-
-        After converting an MRSI FID to a spectrum, ``to_ppm`` should add
-        the chemical shift coordinate while preserving all original
-        dimensions (including the non-standard ``"voxel"`` dim).
-        """
+        """``to_ppm`` must work on N-dimensional data without flattening."""
         spectrum = multi_dim_da.xmr.to_spectrum()
         result = spectrum.xmr.to_ppm()
         assert COORDS.chemical_shift in result.coords
