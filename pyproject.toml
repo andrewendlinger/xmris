@@ -118,7 +118,7 @@ convention = "numpy"
 
 # --- Jupytext ---
 [tool.jupytext]
-formats = "ipynb,py:percent"
+formats = "ipynb,md:myst"
 notebook_metadata_filter = "-all"
 cell_metadata_filter = "all,-trusted"
 

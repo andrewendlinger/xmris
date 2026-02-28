@@ -4,28 +4,28 @@
 
 If you have ever processed MR data in Python, you have likely written dozens of `for` loops to iterate over voxels, coils, or time points, all while carefully keeping track of raw `numpy` array dimensions in your head. This is what <span style="color: #B05418;font-weight: bold;">x</span><span style="color: #002E7A;font-weight: bold;">mris</span> tries to solve.
 
-By keeping your multi-dimensional data permanently linked to its physical coordinates (like time or frequency) and metadata (like carrier frequency), you can process entire datasets simultaneously.
+By keeping your multi-dimensional data permanently linked to its named dimensions (like `"time"` or `"frequency"`), physical coordinates, and metadata (like the spectrometer frequency), you can process entire datasets simultaneously — no loops, no positional axis indexing.
 
 ---
 
 ## ⚡ Quick Start: A Minimal Working Example
 
-Because <span style="color: #B05418;font-weight: bold;">x</span><span style="color: #002E7A;font-weight: bold;">mris</span> functions return standard `xarray` objects, you can chain methods together to build beautiful, highly readable N-dimensional processing pipelines without writing a single `for` loop:
+Because <span style="color: #B05418;font-weight: bold;">x</span><span style="color: #002E7A;font-weight: bold;">mris</span> functions return standard `xarray` objects, you can chain methods together to build readable, N-dimensional processing pipelines without writing a single `for` loop:
 
 ```python
 import numpy as np
 import xarray as xr
 import xmris  # Registers the .xmr accessor!
 
-# 1. Create a dummy N-dimensional FID (e.g., 5 Voxels x 1024 Time points)
+# 1. Create a dummy N-dimensional FID (e.g., 5 Voxels × 1024 Time points)
 time = np.linspace(0, 1, 1024)
 data = np.random.randn(5, 1024) + 1j * np.random.randn(5, 1024)
 
 mrsi_data = xr.DataArray(
     data,
-    dims=["Voxel", "Time"],
-    coords={"Voxel": np.arange(5), "Time": time},
-    attrs={"MHz": 120.0, "sw": 10000.0}
+    dims=["voxel", "time"],
+    coords={"voxel": np.arange(5), "time": time},
+    attrs={"b0_field": 7.0, "reference_frequency": 300.15},
 )
 
 # 2. Process all voxels simultaneously using the .xmr accessor!
@@ -39,8 +39,23 @@ results = (
 
 # 3. Fit the time-domain data using the pyAMARES integration
 fit_dataset = mrsi_data.xmr.fit_amares(prior_knowledge_file="pk.csv")
-
 ```
+
+:::{note} Naming convention
+xmris uses **lowercase `snake_case`** for all dimension names, coordinate names, and attribute keys — matching the conventions of the xarray ecosystem and [CF Conventions](https://cfconventions.org/).
+
+```python
+# ✅ xmris convention
+dims=["voxel", "time"]
+attrs={"b0_field": 7.0, "reference_frequency": 300.15}
+
+# ❌ Not this
+dims=["Voxel", "Time"]
+attrs={"B0_Field": 7.0, "MHz": 300.15}
+```
+
+You are free to use any dimension names you like in your own data — xmris functions accept a `dim` argument to handle non-standard names. But when xmris creates or expects names internally, it uses lowercase. For the full rationale, see [The Architecture Guide](notebooks/basics/architecture.ipynb#the-lowercase-convention).
+:::
 
 ---
 
@@ -51,7 +66,7 @@ By simply importing `xmris`, standard `xarray` DataArrays instantly gain special
 :::{dropdown} What is xarray?
 `xarray` is a Python library that builds labeled, N-dimensional arrays on top of `numpy`.
 
-* **`DataArray`**: The workhorse. It is a single, N-dimensional array just like a `numpy` array, but it has named dimensions (e.g., `["Voxel", "Time"]`), physical coordinate values, and metadata attached directly to it.
+* **`DataArray`**: The workhorse. It is a single, N-dimensional array just like a `numpy` array, but it has named dimensions (e.g., `["voxel", "time"]`), physical coordinate values, and metadata attached directly to it.
 * **`Dataset`**: A dictionary-like container that holds multiple aligned `DataArray` objects. For example, `xmris` fitting operations return a `Dataset` containing your raw data, the fitted model, and the residuals all perfectly synced together!
 
 ![xarray-diagram](https://docs.xarray.dev/en/stable/_images/dataset-diagram.png)
@@ -61,7 +76,7 @@ By simply importing `xmris`, standard `xarray` DataArrays instantly gain special
 :::{dropdown} What exactly is an accessor?
 An *accessor* is how `xarray` lets external packages attach custom methods directly to standard `xarray` objects. Conceptually, the division of labor looks like this:
 
-* **Native xarray** handles data wrangling: `da.mean()`, `da.sel(Voxel=2)`, `da.plot()`, ...
+* **Native xarray** handles data wrangling: `da.mean()`, `da.sel(voxel=2)`, `da.plot()`, ...
 * **xmris** handles the physics: `da.xmr.to_spectrum()`, `da.xmr.autophase()`, ...
 
 It is the exact same data object, meaning you never have to switch contexts or convert data types.
@@ -79,13 +94,13 @@ flowchart TD
     classDef output fill:#d4edda,stroke:#28a745,stroke-width:2px
     classDef package fill:#e6f2ff,stroke:#0066cc,stroke-width:2px,stroke-dasharray: 5 5
 
-    %% 2. The building blocks 
+    %% 2. The building blocks
     subgraph Components ["DataArray Components"]
         direction LR
         NP["Raw NumPy Array<br><span style='color:#6c757d; font-size:0.9em; font-style:italic;'>Complex FID data</span>"]:::component
         Dims["Dimensions<br><span style='color:#6c757d; font-size:0.9em; font-style:italic;'>'time', 'repetitions'</span>"]:::component
-        Coords["Coordinates<br><span style='color:#6c757d; font-size:0.9em; font-style:italic;'>- array of fid times [ms]<br>- array of repetition times [s]</span>"]:::component
-        Meta["Metadata (attrs)<br><span style='color:#6c757d; font-size:0.9em; font-style:italic;'>BW, dwell_time</span>"]:::component
+        Coords["Coordinates<br><span style='color:#6c757d; font-size:0.9em; font-style:italic;'>- array of fid times [s]<br>- array of repetition times [s]</span>"]:::component
+        Meta["Metadata (attrs)<br><span style='color:#6c757d; font-size:0.9em; font-style:italic;'>b0_field, reference_frequency</span>"]:::component
     end
 
     %% 3. The Core Object
@@ -103,6 +118,14 @@ flowchart TD
     Pkg["🧬 xmris package"]:::package -.->|"<span style='color:#6c757d; font-size:0.9em; font-style:italic;'>injects MRI physics<br>via extension</span>"| Acc
 
 ```
+
+---
+
+## 🏗️ Want to Understand the Design?
+
+If you are curious about *why* xmris is built this way — why metadata lives in `.attrs`, why dimensions are flexible but attributes are strictly guarded, or what the `@requires_attrs` decorator does — read the architecture guide:
+
+* [**The xmris Architecture: Why We Built It This Way**](notebooks/basics/architecture.ipynb)
 
 ---
 

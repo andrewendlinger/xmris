@@ -8,7 +8,7 @@ Read this entire document carefully before writing any code. It dictates the str
 
 * **Name:** `xmris`
 * **Purpose:** An N-dimensional, xarray-based toolbox for Magnetic Resonance Imaging (MRI) and Spectroscopy (MRS).
-* **Core Philosophy:** "Xarray in, xarray out." The pipeline is entirely functional. We leverage xarray's named dimensions, coordinates, and attributes to preserve physics metadata, track data lineage, and avoid alignment errors.
+* **Core Philosophy:** "Xarray in, xarray out." The pipeline is entirely functional. We leverage xarray's named dimensions, coordinates, and attributes to preserve physics metadata, track data lineage, and avoid alignment errors. 
 
 ### 2. Tech Stack & Tooling
 
@@ -21,72 +21,87 @@ Read this entire document carefully before writing any code. It dictates the str
 
 Functions are strictly segregated into domain-specific nested modules under the hood, but are exposed to the user via a unified `xarray` **Accessor**.
 
-* **Internal Modules (`src/xmris/`):**
-    * `config.py`: Contains the global `DEFAULTS` object mapping standard dimensions and attributes.
+* **Internal Modules (`src/xmris/core/` and beyond):**
+    * `config.py`: Contains the global singletons (`ATTRS`, `DIMS`, `COORDS`, `VARS`) which serve as the single source of truth for xarray string keys and metadata.
+    * `validation.py`: Contains the `@requires_attrs` decorator.
     * `processing/`: Core mathematical transforms (e.g., `fourier.py`, `fid.py`, `phase.py`).
     * `vendor/`: Hardware-specific sanitization (e.g., `bruker.py`).
     * `fitting/`: Mathematical modeling (e.g., `amares.py`).
 
-* **User API (`src/xmris/accessor.py`):** Users interact via the `.xmr` namespace (e.g., `da.xmr.fftc()`). All user-facing functions must be registered here.
+* **User API (`src/xmris/core/accessor.py`):** Users interact via the `.xmr` namespace (e.g., `da.xmr.to_ppm()`). All user-facing functions must be registered to the `XmrisAccessor` class.
 
-### 4. Strict Coding Rules (The "7 Commandments")
+### 4. Strict Coding Rules (The "8 Commandments")
 
 Whenever you generate a new function for `xmris`, you MUST follow these rules:
 
-1. **Xarray First:** The first argument of every internal function is `da: xr.DataArray`.
-2. **Functional Purity:** NEVER modify data in-place. Always return a *new* `xr.DataArray` (e.g., using `da.copy(data=new_vals)`).
-3. **Data Lineage:** You MUST preserve coordinates and attributes. Append new processing parameters to `da.attrs` so the user has a permanent record of what was done to the data.
-4. **The `DEFAULTS` Config:** NEVER hardcode magic strings for dimensions (like `"Time"`) or attributes (like `"MHz"`). Import `DEFAULTS` from `xmris.config`. Function arguments for dimensions should default to `None` and implement the fallback pattern (e.g., `dim = dim or DEFAULTS.time.dim`).
-5. **Type Hinting:** Fully type-hint all function signatures. 
-6. **NumPy Docstrings:** Use standard NumPy-style docstrings. These are critical as `quartodoc` parses them for the online API reference.
-7. **Accessor Integration:** Any user-facing function must be mapped to the `XmrisAccessor` class.
+1. **Xarray First:** The pipeline relies on `xarray.DataArray` and `xarray.Dataset`.
+2. **Functional Purity:** NEVER modify data in-place. Always return a *new* object.
+3. **Data Lineage:** You MUST preserve coordinates and attributes. Append new processing parameters to `da.attrs` so the user has a permanent record of what was done to the data. Keep `.attrs` strictly to quantifiable mathematical parameters applied (e.g., `phase_p0=15.0`); do NOT use boolean flags or descriptive string flags (e.g., `phase_applied=True`) to avoid metadata bloat.
+4. **No Magic Strings (The Config):** NEVER hardcode raw strings for dimensions (like `"time"`) or attributes (like `"reference_frequency"`). Import the singletons `ATTRS`, `DIMS`, `COORDS`, and `VARS` from `xmris.core.config`. These contain `XmrisTerm` objects that evaluate as strings but carry `.unit` and `.long_name` metadata. Note that this only applies for INSIDE the xmris package and must not affect user code and examples. The user is free to use 'time' etc. to keep the entrance barrier low.
+    * **CRITICAL:** If a new function requires a dimension, coordinate, or lineage attribute that is not already in the vocabulary, **you must propose adding it to `config.py`**. Furthermore, you must **explicitly highlight and mention** to the user in your response any new `ATTRS`, `DIMS`, or `COORDS` you are introducing so they can be tracked.
+5. **Accessor Defaults:** Method signatures that take a dimension must use the config constant directly as the default (e.g., `def func(self, dim: str = DIMS.time):`). Do NOT default to `None`.
+6. **Strict Validation:** * Validate hidden state (attributes) using the `@requires_attrs(...)` decorator.
+    * Validate dimensions explicitly inside the function using `_check_dims(self._obj, dim, "func_name")`.
+7. **Coordinate Building:** When creating new coordinates, do not manually mutate `.attrs`. Instead, use the internal `as_variable(TERM, dim, data)` helper to bundle data and metadata into a fully formed `xr.Variable` before assigning it via `.assign_coords()`.
+8. **MyST Markdown Links:** When writing documentation, never rely on auto-generated header slugs for internal links. Always define explicit MyST targets (e.g., `(my-target)=`) immediately above the header, and link to it via `[text](#my-target)`.
 
 ### 5. Testing & Documentation Strategy
 
-We do not use traditional hidden `test_*.py` files. Our tests *are* our documentation. We use **Jupyter Notebooks** in the `notebooks/` directory, managed via Jupytext (`py:percent` format).
+We do not use traditional hidden `test_*.py` files for mathematical processing. Our tests *are* our documentation. We use **Jupyter Notebooks** in the `notebooks/` directory, managed via Jupytext (`md:myst` format). (Note: Architecture is tested in standard pytest files).
 
-When asked to write tests for a new function, generate a Jupytext script structure that includes:
+When asked to write notebook tests for a new function, generate a Jupytext script structure that includes:
 1. Markdown cells explaining the math/physics.
 2. Python cells generating synthetic, noisy `xarray` data.
 3. Python cells applying the `xmris` function and plotting the result.
 4. **CRITICAL:** Python cells containing strict `assert` or `np.testing.assert_allclose` statements to mathematically prove the output values AND prove that xarray dimensions, coordinates, and attributes were preserved.
 5. **HIDE TESTS:** You MUST add the `# %% tags=["remove-cell"]` metadata to any cell containing pure `assert` statements so `mystmd` hides them from the final rendered website, while `nbmake` still executes them in CI.
 
-### Example Function Template
+In addition, make full use of the rich mystmd syntax (e.g. latex formulas, mermaid diagrams, dropdowns, highlights) - only where applicable.
+
+### Example Accessor Function Template
 
 ```python
 import xarray as xr
 import numpy as np
-from xmris.config import DEFAULTS
 
-def example_func(da: xr.DataArray, dim: str | None = None, scale: float = 1.0) -> xr.DataArray:
+from xmris.core.config import ATTRS, DIMS, COORDS
+from xmris.core.validation import requires_attrs
+from xmris.core.accessor import _check_dims, as_variable
+
+# 1. Validate hidden state (attributes) at the door
+@requires_attrs(ATTRS.reference_frequency)
+def example_func(self, dim: str = DIMS.time, scale: float = 1.0) -> xr.DataArray:
     """
     NumPy docstring here.
 
     Parameters
     ----------
-    da : xr.DataArray
-        Input data.
     dim : str, optional
-        Dimension to process. If None, falls back to DEFAULTS.time.dim.
+        Dimension to process. Defaults to DIMS.time.
     scale : float, optional
         Scaling factor applied, by default 1.0.
     """
-    # 0. Implement DEFAULTS fallback pattern
-    dim = dim or DEFAULTS.time.dim
-
-    if dim not in da.dims:
-        raise ValueError(f"Dimension '{dim}' missing.")
+    # 2. Validate the action space (dimensions)
+    _check_dims(self._obj, dim, "example_func")
     
-    # 1. Process data
-    new_vals = da.values * scale
+    # 3. Extract physics constants safely (decorator guarantees they exist)
+    mhz = self._obj.attrs[ATTRS.reference_frequency]
     
-    # 2. Rebuild DataArray safely
-    da_new = da.copy(data=new_vals)
+    # 4. Perform pure mathematics
+    raw_data = self._obj.data
+    new_vals = (raw_data * scale) / mhz
     
-    # 3. Preserve lineage by appending new processing parameters
-    new_attrs = da.attrs.copy()
-    new_attrs.update({"example_scale_applied": scale})
+    # 5. Build new coordinates safely using XmrisTerm metadata
+    new_time_coords = self._obj.coords[dim].values * 2.0
+    time_var = as_variable(COORDS.time, dim, new_time_coords)
     
-    return da_new.assign_attrs(new_attrs)
+    # 6. Rebuild DataArray and assign variables
+    da_new = self._obj.copy(data=new_vals)
+    da_new = da_new.assign_coords({COORDS.time: time_var})
+    
+    # 7. Preserve lineage by appending new processing parameters
+    da_new.attrs[ATTRS.example_scale_applied] = scale
+    
+    return da_new
 ```
+

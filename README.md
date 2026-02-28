@@ -60,8 +60,8 @@ data = np.random.randn(5, 1024) + 1j * np.random.randn(5, 1024)
 
 mrsi_data = xr.DataArray(
     data,
-    dims=["Voxel", "Time"],
-    coords={"Voxel": np.arange(5), "Time": time},
+    dims=["voxel", "time"],
+    coords={"voxel": np.arange(5), "time": time},
     attrs={"MHz": 120.0, "sw": 10000.0}
 )
 

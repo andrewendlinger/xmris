@@ -32,7 +32,7 @@ import numpy as np
 import xarray as xr
 
 # Ensure xmris accessors are registered
-import xmris.accessor
+import xmris.core.accessor
 from xmris import PlotQCGridConfig, PlotTrajectoryConfig
 
 # Write a simple Prior Knowledge file to disk
@@ -97,9 +97,9 @@ for i in range(n_rep):
     noise_level = 0.4
 
     # Simulate subject motion / RF coil spike scaled to the timeline
-    if i in (14,15,16):
+    if i in (14, 15, 16):
         noise_level = 5.0  # Massive spike
-    elif i in (44,45,46,47,48):
+    elif i in (44, 45, 46, 47, 48):
         noise_level = 2.0  # Minor spike
 
     noise = rng.normal(0, noise_level, n_points) + 1j * rng.normal(
@@ -110,17 +110,17 @@ for i in range(n_rep):
 # Package into an xarray DataArray using standard lowercase dimension names
 da_dyn = xr.DataArray(
     data,
-    dims=["Repetition", "Time"],
-    coords={"Repetition": rep_axis, "Time": time_axis},
+    dims=["repetition", "time"],
+    coords={"repetition": rep_axis, "time": time_axis},
     attrs={"MHz": mhz},
 )
 
 # Assign proper units for plotting
-da_dyn.coords["Repetition"].attrs["units"] = "s"
-da_dyn.coords["Time"].attrs["units"] = "s"
+da_dyn.coords["repetition"].attrs["units"] = "s"
+da_dyn.coords["time"].attrs["units"] = "s"
 
 # Let's quickly peek at the first raw spectrum to ensure it looks reasonable
-da_dyn.sel(Repetition=0).xmr.to_spectrum(dim="Time").real.plot(figsize=(5, 2))
+da_dyn.sel(Repetition=0).xmr.to_spectrum(dim="time").real.plot(figsize=(5, 2))
 plt.title("Repetition 0: Raw Spectrum")
 # plt.xlim(100, -1100)
 plt.show()
@@ -176,7 +176,7 @@ ds_dyn = da_dyn.xmr.fit_amares(
 fig, ax = plt.subplots(figsize=(8, 4))
 
 # We can pass custom Matplotlib Axes, allowing us to combine this with other plots if needed!
-ds_dyn.xmr.plot.trajectory(dim="Repetition", ax=ax)
+ds_dyn.xmr.plot.trajectory(dim="repetition", ax=ax)
 
 plt.show()
 
@@ -202,7 +202,7 @@ qc_cfg = PlotQCGridConfig(
 )
 
 fig_qc = ds_dyn.xmr.plot.qc_grid(
-    dim="Repetition",
+    dim="repetition",
     config=qc_cfg,
 )
 plt.show()
@@ -215,12 +215,11 @@ plt.show()
 qc_cfg = PlotQCGridConfig(
     crlb_threshold=20.0,
     xlim=(500, -1500),  # Zoom in to the peaks
-
 )
 
 # select spectra between 28 and 32 seconds (xarray for the win! we don't need to count indices here, that would be `.isel`).
 fig_qc = ds_dyn.sel(Repetition=slice(28, 32)).xmr.plot.qc_grid(
-    dim="Repetition",
+    dim="repetition",
     config=qc_cfg,
 )
 plt.show()

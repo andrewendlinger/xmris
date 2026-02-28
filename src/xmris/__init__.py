@@ -1,73 +1,93 @@
-# 0. Expose the submodules for quartodoc (Griffe) traversal
-from . import accessor, config, fitting, processing, utils, vendor  # noqa: I001
+# =============================================================================
+# 0. Submodules (Required to expose the namespace for quartodoc / Griffe)
+# =============================================================================
+from . import config, core, fitting, processing, vendor, visualization
 
-# 1. Configuration (The Central Nervous System)
-from .config import DEFAULTS
-
-# 2. Accessor (Importing this automatically registers the .xmr namespace)
-from .accessor import XmrisAccessor, XmrisDatasetAccessor
-
-# 3. Utilities
-from .utils import to_complex, to_real_imag
-
-# 4. Core Processing
-from .processing.fid import apodize_exp, apodize_lg, to_fid, to_spectrum, zero_fill
-from .processing.fourier import fft, fftc, fftshift, ifft, ifftc, ifftshift
-from .processing.phase import autophase, phase
-
-# 5. Vendor Specific
-from .vendor.bruker import remove_digital_filter
-
-# 6. Fitting
-from .fitting.amares import fit_amares
-
-# 7. Visualisation
-from .visualization.plot import (
-    PlotHeatmapConfig,
-    PlotRidgeConfig,
-    PlotTrajectoryConfig,
-    PlotQCGridConfig,
+# =============================================================================
+# 1. Global Configuration & Singletons (The Central Nervous System)
+# =============================================================================
+from .config import DEFAULTS  # Legacy patch (branch refactor/18)
+from .core import (
+    ATTRS,
+    COORDS,
+    DIMS,
+    VARS,
 )
 
-# Explicitly define the public API.
+# =============================================================================
+# 2. Xarray Accessors (Importing these automatically registers the .xmr namespace)
+# =============================================================================
+from .core.accessor import XmrisAccessor, XmrisDatasetAccessor
+
+# =============================================================================
+# 4. Modeling & Fitting
+# =============================================================================
+from .fitting.amares import fit_amares
+
+# =============================================================================
+# 3. Core Signal Processing & Utilities
+# =============================================================================
+from .processing.fid import apodize_exp, apodize_lg, to_fid, to_spectrum, zero_fill
+from .processing.fourier import fft, fftc, fftshift, ifft, ifftc, ifftshift
+from .processing.phasing import autophase, phase
+from .processing.utils import to_complex, to_real_imag
+
+# =============================================================================
+# 5. Vendor Integrations
+# =============================================================================
+from .vendor.bruker import remove_digital_filter
+
+# =============================================================================
+# 6. Visualization & Aesthetics
+# =============================================================================
+from .visualization.plot import (
+    PlotHeatmapConfig,
+    PlotQCGridConfig,
+    PlotRidgeConfig,
+    PlotTrajectoryConfig,
+)
+
+# =============================================================================
+# Explicitly define the public API
+# =============================================================================
 __all__ = [
-    # --- Submodules (Required for quartodoc to build the pages) ---
-    "accessor",
+    # --- Submodules ---
+    "core",
     "config",
     "fitting",
     "processing",
-    "utils",
     "vendor",
-    # --- Flat API (For the users) ---
-    # Config
-    "DEFAULTS",
-    # Accessor
+    "visualization",
+    # --- 1. Config & Singletons ---
+    "ATTRS",
+    "COORDS",
+    "DIMS",
+    "VARS",
+    "DEFAULTS",  # Legacy patch (branch refactor/18)
+    # --- 2. Accessors ---
     "XmrisAccessor",
     "XmrisDatasetAccessor",
-    # Utilities
+    # --- 3. Core Processing & Utilities ---
     "to_complex",
     "to_real_imag",
-    # FID Operations
     "apodize_exp",
     "apodize_lg",
     "to_fid",
     "to_spectrum",
     "zero_fill",
-    # Fourier Transforms
     "fft",
     "fftc",
     "fftshift",
     "ifft",
     "ifftc",
     "ifftshift",
-    # Phase Correction
     "autophase",
     "phase",
-    # Vendor
-    "remove_digital_filter",
-    # Fitting
+    # --- 4. Fitting ---
     "fit_amares",
-    # Visualization - Plotting Configs
+    # --- 5. Vendor ---
+    "remove_digital_filter",
+    # --- 6. Visualization Configs ---
     "PlotRidgeConfig",
     "PlotHeatmapConfig",
     "PlotTrajectoryConfig",

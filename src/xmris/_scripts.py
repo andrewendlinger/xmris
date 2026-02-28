@@ -164,6 +164,9 @@ def docs_api() -> None:
     docs_dir = _get_docs_dir()
     api_dir = docs_dir / "api_reference"
 
+    print("-" * 80)
+    print("QUARTODOC".center(80, " "))
+    print("-" * 80)
     print("🧹 Clearing old API reference files...")
     if api_dir.exists():
         shutil.rmtree(api_dir)
@@ -187,18 +190,44 @@ def docs_api() -> None:
         # 1. Fix internal file extensions to point to standard Markdown
         content = content.replace(".qmd", ".md")
 
-        # 2. Remove Quarto-specific CSS class attributes (e.g., {.doc ...})
-        content = re.sub(r"\{\.doc.*?\}", "", content)
-
-        # 3. Translate Quarto Anchors to MyST Target format
-        # Converts: # Heading {#anchor}  ->  (anchor)= \n # Heading
+        # 2 & 3. Extract Quarto Anchors and clean up Quarto attribute blocks
+        # Converts: ### Heading {.doc-method #anchor}  ->  (anchor)= \n ### Heading
+        # And safely drops the Quarto-specific CSS classes in the process.
         content = re.sub(
-            r"^(#+)\s+(.*?)\s*\{\s*#([\w\.\-]+)[^\}]*\}",
-            r"(\3)=\n\1 \2",
+            r"^(.*?)\s*\{[^\}]*?#([\w\.\-]+)[^\}]*\}\s*$",
+            r"(\2)=\n\1",
             content,
             flags=re.MULTILINE,
         )
 
+        # Strip any leftover pure CSS blocks that didn't have an ID (e.g., {.doc-signature})
+        content = re.sub(r"\s*\{\.[^\}]+\}", "", content)
+
+        # =====================================================================
+        # NEW: DEAD LINK CLEANER
+        # Quartodoc often lists inherited methods or properties in the summary
+        # table but doesn't generate their body, resulting in dead markdown links.
+        # =====================================================================
+
+        # 1. Find all the valid MyST targets we just created in this file
+        valid_targets = set(re.findall(r"^\(([\w\.\-]+)\)=", content, flags=re.MULTILINE))
+
+        # 2. Define a replacer that checks if the link target actually exists
+        def link_replacer(match):
+            text = match.group(1)
+            anchor = match.group(2)
+            if anchor in valid_targets:
+                return match.group(0)  # Target exists! Keep the full markdown link.
+            else:
+                # IT IS DANGEROUS TO SILENTLY HIDE THIS. Print a warning to the developer!
+                print(
+                    f"   ⚠️  Target missing for `#{anchor}`. Downgrading link to plain text."
+                )
+                return f"`{text}`"  # Downgrade to code text.
+
+        # 3. Find all local markdown links [text](#anchor) and run them through the replacer
+        content = re.sub(r"\[([^\]]+)\]\(#([\w\.\-]+)\)", link_replacer, content)
+        # =====================================================================
         # 4. Auto-link Xarray type hints using MyST cross-reference syntax
         content = re.sub(
             r"\b(xr\.DataArray|xarray\.DataArray)\b",
@@ -251,6 +280,9 @@ def docs_notebooks() -> None:
     """
     docs_dir = _get_docs_dir()
 
+    print("-" * 80)
+    print("MYST".center(80, " "))
+    print("-" * 80)
     print("🚀 Launching MyST preview server...")
     try:
         # Run myst from within the docs directory

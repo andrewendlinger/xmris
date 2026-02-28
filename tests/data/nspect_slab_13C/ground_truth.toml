@@ -1,0 +1,70 @@
+# =============================================================================
+# DATASET: NSPECT 13C
+# =============================================================================
+[nspect_13c]
+dataset_name = "E10 NSPECT slab 13C"
+path = ".data/raw/20260201_224326_13C_Phantom_UreaLacAlanine_13C_Phantom_UreaLacAlanin_2_1_2/10"
+# --- Hardware Metadata ---
+vendor = "Bruker"
+system = "AVANCE NEO 3.0T"
+system_frequency = "127.63 MHz"
+gradient = "B-GA105S"
+coil = "RF RES 128 1h/13C 103/040 L/L TR"
+vendor_version = "PV-360.3.6"
+
+[nspect_13c.spectrum_view]
+urea    = { hz = 17.905,  ppm = 163.56, amplitude = 2.0e3 }
+alanine = { hz = 436.447, ppm = 176.6,  amplitude = 3.8e2 }
+lactate = { hz = 651.701, ppm = 183.3,  amplitude = 3.7e2 }
+
+[nspect_13c.fid_view]
+length    = { value = 0.2, unit = "ms", note = "[WRONG, paravision bug]" }
+amplitude = { value = 1.8e4 }
+
+[nspect_13c.parameters.general]
+tr                    = { value = 500.0,    unit = "ms",        pv_key = "PVM_RepetitionTime" }
+acq_duration          = { value = 409.60,   unit = "ms",        pv_key = "PVM_SpecAcquisitionTime" }
+acq_points            = { value = 2048,                         pv_key = "PVM_SpecMatrix[0]" }
+acq_bw                = { value = 5000.0,   unit = "Hz",        pv_key = "PVM_SpecSWH[0]" }
+acq_bw_ppm            = { value = 155.80,   unit = "ppm",       pv_key = "PVM_SpecSW[0]" }
+dwelltime             = { value = 100.0,    unit = "us",        pv_key = "PVM_SpecDwellTime[0]" }
+spectral_resolution   = { value = 1.22,     unit = "Hz/points", pv_key = "PVM_SpecNomRes[0]" }
+averages              = { value = 250,                          pv_key = "PVM_NAverages" }
+repetitions           = { value = 1,                            pv_key = "PVM_NRepetitions" }
+fa                    = { value = 90.0,     unit = "degree",    pv_key = "ExcPulse1.Flipangle" }
+excitation_pulse      = { value = "bp",                         pv_key = "ExcPulse1Enum" }
+echo_time             = { value = 0.837,    unit = "ms",        pv_key = "EchoTime" }
+pre_acquisition_delay = { value = 0.050,    unit = "ms",        pv_key = "DeadTime" }
+slice_selection       = { value = "ON",                         pv_key = "SliceSelOnOff" }
+slice_number          = { value = 1,                            pv_key = "SliceNum" }
+slice_orientation     = { value = "axial",                      pv_key = "SliceOri[0]" }
+slice_thickness       = { value = 10.0,     unit = "mm",        pv_key = "SliceThick[0]" }
+slice_offset          = { value = 1.0,      unit = "mm",        pv_key = "SliceOffset[0]" }
+rephase_duration      = { value = 0.241,    unit = "ms",        pv_key = "SliceRephDur" }
+
+[nspect_13c.parameters.frequency]
+nucleus                  = { value = "13C",                         pv_key = "PVM_Nucleus1Enum" }
+reference_chemical_shift = { value = 0.0,          unit = "ppm",    pv_key = "PVM_FrqRefPpm[0]" }
+chemical_shift_offset    = { value = 163.0,        unit = "ppm",    pv_key = "PVM_FrqWorkOffsetPpm[0]" }
+working_chemical_shift   = { value = 163.0,        unit = "ppm",    pv_key = "PVM_FrqWorkPpm[0]" }
+reference_frequency      = { value = 32.0914426,   unit = "MHz",    pv_key = "PVM_FrqRef[0]" }
+frequency_offset         = { value = 5230.91,      unit = "Hz",     pv_key = "PVM_FrqWorkOffset[0]" }
+working_frequency        = { value = 32.0966735,   unit = "MHz",    pv_key = "PVM_FrqWork[0]" }
+
+[nspect_13c.parameters.transmit]
+nucleus                = { value = "13C",                               pv_key = "PVM_Nucleus1Enum" }
+reference_power_mode   = { value = "User",                              pv_key = "PVM_RefPowMod1" }
+reference_power        = { value = 4.8,                 unit = "W",     pv_key = "PVM_RefPowCh1" }
+reference_power_status = { value = "Manually Adjusted",                 pv_key = "PVM_RefPowStat1" }
+
+[nspect_13c.parameters.rx_filter_info]
+groupDelay          = { value = 76.1250, unit = "samples", pv_key = "ACQ_RxFilterInfo[0].groupDelay" }
+compensatedGrpDelay = { value = 0.0,                       pv_key = "ACQ_RxFilterInfo[0].compensatedGrpDelay" }
+waitTime            = { value = 8.0,     unit = "us",      pv_key = "ACQ_RxFilterInfo[0].waitTime" }
+
+[nspect_13c.parameters.rx_filter_settings]
+hwFilterType = { value = "HwFilter_BypassFir",         pv_key = "ACQ_RxFilterSettings[0].hwFilterType" }
+swFilterType = { value = "SwFilter_LowPasSharp_Decim", pv_key = "ACQ_RxFilterSettings[0].swFilterType" }
+hwDecim      = { value = 3000,                         pv_key = "ACQ_RxFilterSettings[0].hwDecim" }
+swDecim      = { value = 16,                           pv_key = "ACQ_RxFilterSettings[0].swDecim" }
+
