@@ -38,7 +38,7 @@ import xarray as xr
 import matplotlib.pyplot as plt
 
 # Import the simulation function from xmris
-from xmris.processing.simulation import simulate_fid
+from xmris.fitting.simulation import simulate_fid
 ```
 
 ## 2. Simulating a Noisy 1H (Proton) Spectrum

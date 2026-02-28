@@ -110,12 +110,14 @@ project:
         # --- 4. Core Submenu ---
         - title: Core Utilities
           children:
-            - file: api_reference/accessor.md
+            - file: api_reference/core.accessor.md
               title: Xarray Accessors
-            - file: api_reference/config.md
+            - file: api_reference/core.config.md
               title: Global Config
-            - file: api_reference/utils.md
+            - file: api_reference/core.utils.md
               title: Utilities
+            - file: api_reference/core.validation.md
+              title: Validation
 
     # 6. Contribute
     - title: Contribute

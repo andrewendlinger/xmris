@@ -47,7 +47,7 @@ Whenever you generate a new function for `xmris`, you MUST follow these rules:
 
 ### 5. Testing & Documentation Strategy
 
-We do not use traditional hidden `test_*.py` files for mathematical processing. Our tests *are* our documentation. We use **Jupyter Notebooks** in the `notebooks/` directory, managed via Jupytext (`py:percent` format). (Note: Architecture is tested in standard pytest files).
+We do not use traditional hidden `test_*.py` files for mathematical processing. Our tests *are* our documentation. We use **Jupyter Notebooks** in the `notebooks/` directory, managed via Jupytext (`md:myst` format). (Note: Architecture is tested in standard pytest files).
 
 When asked to write notebook tests for a new function, generate a Jupytext script structure that includes:
 1. Markdown cells explaining the math/physics.
@@ -55,6 +55,8 @@ When asked to write notebook tests for a new function, generate a Jupytext scrip
 3. Python cells applying the `xmris` function and plotting the result.
 4. **CRITICAL:** Python cells containing strict `assert` or `np.testing.assert_allclose` statements to mathematically prove the output values AND prove that xarray dimensions, coordinates, and attributes were preserved.
 5. **HIDE TESTS:** You MUST add the `# %% tags=["remove-cell"]` metadata to any cell containing pure `assert` statements so `mystmd` hides them from the final rendered website, while `nbmake` still executes them in CI.
+
+In addition, make full use of the rich mystmd syntax (e.g. latex formulas, mermaid diagrams, dropdowns, highlights) - only where applicable.
 
 ### Example Accessor Function Template
 

@@ -1,6 +1,7 @@
 quartodoc:
   package: xmris
   dir: api_reference
+
   sections:
     - title: Signal Processing
       desc: Core MRI/MRS fourier transforms, FID processing, and phase correction.
@@ -20,6 +21,7 @@ quartodoc:
     - title: Modeling & Fitting
       desc: Spectral NMR fitting based on pyAMARES.
       contents:
+        - fitting.simulation
         - fitting.amares
 
     - title: Vendor Integrations
@@ -30,6 +32,7 @@ quartodoc:
     - title: Core Objects & Utilities
       desc: Custom xarray accessors, configurations, and utilities.
       contents:
-        - accessor
-        - config
-        - utils
+        - core.accessor
+        - core.config
+        - core.utils
+        - core.validation
