@@ -188,8 +188,10 @@ def simulate_fid(
 
         # Split variance for complex noise: scale std by 1/sqrt(2)
         noise_std_channel = noise_std_total / np.sqrt(2)
-        noise_real = np.random.normal(0, noise_std_channel, fid_data.shape)
-        noise_imag = np.random.normal(0, noise_std_channel, fid_data.shape)
+        # use the new Generator API instead of legacy np.random functions
+        rng = np.random.default_rng()
+        noise_real = rng.normal(0, noise_std_channel, fid_data.shape)
+        noise_imag = rng.normal(0, noise_std_channel, fid_data.shape)
 
         fid_data = fid_data + (noise_real + 1j * noise_imag)
 
