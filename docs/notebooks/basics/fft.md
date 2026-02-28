@@ -1,4 +1,4 @@
-```{code-cell} ipython3
+```{code-cell}
 :tags: [remove-cell]
 
 import matplotlib.pyplot as plt
@@ -50,7 +50,7 @@ This architecture allows `xmris` to intercept your request and automatically inj
 For more info see [xmris Architecture: Why We Built It This Way](./architecture.ipynb)
 :::
 
-```{code-cell} ipython3
+```{code-cell}
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
@@ -64,7 +64,7 @@ import xmris  # Registers the .xmr accessor
 
 Let's generate a simple, synthetic time-domain signal: a decaying sine wave with a 50 Hz frequency offset.
 
-```{code-cell} ipython3
+```{code-cell}
 # Create a synthetic 1D signal (Time domain)
 t = np.linspace(0, 1, 1024, endpoint=False)
 fid_data = np.exp(-t / 0.1) * np.exp(1j * 2 * np.pi * 50.0 * t)
@@ -87,7 +87,7 @@ Now, we apply the Fourier transform.
 
 Instead, we use the pure `.xmr.fft()` followed by an explicit `.xmr.fftshift()`. By providing `out_dim="frequency"`, the toolbox automatically calculates the reciprocal coordinate values (Hz) based on the input dwell time and renames the dimension for us.
 
-```{code-cell} ipython3
+```{code-cell}
 # Transform to Frequency Domain, calculate Hz axis, and center the output
 da_spectrum = (
     da_fid
@@ -102,8 +102,8 @@ ax.set_title("Frequency Domain Spectrum (Real Part)")
 plt.show()
 ```
 
-```{code-cell} ipython3
-:tags: [remove-cell]
+```{code-cell}
+:tags: [hide-cell]
 
 # --- AUTOMATED TESTS (Pytest-nbmake) ---
 # This cell is hidden in the MyST docs but executed in CI.
@@ -130,7 +130,7 @@ assert np.isclose(energy_time, energy_freq), "FFT energy conservation failed!"
 
 The true power of `xarray` + `xmris` shines in multi-dimensional data. Let's create a synthetic 2D $k$-space using custom dimension strings (`"kx"` and `"ky"`). We will use a simple 2D rectangle, which analytically transforms into a 2D sinc function in the image domain.
 
-```{code-cell} ipython3
+```{code-cell}
 # Create a synthetic 2D k-space (64x64 matrix)
 kspace_data = np.zeros((64, 64), dtype=complex)
 kspace_data[24:40, 24:40] = 1.0  # 16x16 rect in the center
@@ -152,7 +152,7 @@ Unlike the 1D signal starting at $t=0$, imaging data is symmetrically sampled ar
 
 We use the convenience wrapper `.xmr.ifftc()` to handle these shifts automatically. By passing a **list of dimensions**, we perform a 2D inverse Fourier transform and seamlessly map `["kx", "ky"]` to `["x", "y"]` in a single line.
 
-```{code-cell} ipython3
+```{code-cell}
 # Transform to Image Domain (2D IFFT with symmetric shifts) and rename dimensions
 da_image = da_kspace.xmr.ifftc(dim=["kx", "ky"], out_dim=["x", "y"])
 
@@ -163,7 +163,7 @@ ax.set_title("Image Space (2D Sinc)")
 plt.show()
 ```
 
-```{code-cell} ipython3
+```{code-cell}
 :tags: [remove-cell]
 
 # --- AUTOMATED TESTS (Pytest-nbmake) ---

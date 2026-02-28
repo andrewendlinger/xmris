@@ -14,14 +14,13 @@ project:
     - title: Basics
       children:
         - file: notebooks/basics/architecture.ipynb
-          title: xmris Architecture
-        - file: notebooks/basics/fft.ipynb
-          title: Basics of FFT
-        - file: notebooks/basics/fid_transformations.ipynb
-          title: FID to Spectrum
+          title: The xmris Architecture
         - file: notebooks/basics/complex_numbers.ipynb
-          title: Complex Numbers
-
+          title: 01. Complex Numbers
+        - file: notebooks/basics/fft.ipynb
+          title: 02. FFT Basics
+        - file: notebooks/basics/fid_transformations.ipynb
+          title: 03. FID & Spectrum
     # 2. GROUP: A chronological processing pipeline
     - title: Processing Pipeline
       children:

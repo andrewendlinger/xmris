@@ -170,8 +170,6 @@ def fft(
             da_transformed, dim=d, out_dim=o_dim, term=term
         )
 
-    # 3. Preserve Lineage
-    da_transformed.attrs["fft_applied"] = True
     return da_transformed
 
 
@@ -225,7 +223,6 @@ def ifft(
             da_transformed, dim=d, out_dim=o_dim, term=term
         )
 
-    da_transformed.attrs["ifft_applied"] = True
     return da_transformed
 
 

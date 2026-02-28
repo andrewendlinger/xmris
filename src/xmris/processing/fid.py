@@ -1,11 +1,13 @@
 import numpy as np
 import xarray as xr
 
+from xmris.core.config import COORDS, DIMS
+from xmris.core.utils import _check_dims, as_variable
 from xmris.processing.fourier import fft, fftshift, ifft, ifftshift
 
 
 def to_spectrum(
-    da: xr.DataArray, dim: str = "time", out_dim: str = "frequency"
+    da: xr.DataArray, dim: str = DIMS.time, out_dim: str = DIMS.frequency
 ) -> xr.DataArray:
     """
     Convert a time-domain Free Induction Decay (FID) to a frequency-domain spectrum.
@@ -20,31 +22,51 @@ def to_spectrum(
     da : xr.DataArray
         The input time-domain FID data.
     dim : str, optional
-        The time dimension to transform, by default "time".
+        The time dimension to transform, by default `DIMS.time`.
     out_dim : str, optional
-        The name of the resulting frequency dimension, by default "frequency".
+        The name of the resulting frequency dimension, by default `DIMS.frequency`.
 
     Returns
     -------
     xr.DataArray
         The frequency-domain spectrum with centered zero-frequency coordinates.
     """
-    if dim not in da.dims:
-        raise ValueError(f"Dimension '{dim}' not found in DataArray.")
+    _check_dims(da, dim, "to_spectrum")
 
     # 1. Standard FFT (handles transform and creates unshifted frequency coords)
     da_freq = fft(da, dim=dim, out_dim=out_dim)
 
     # 2. Shift the frequency domain to center the DC component
-    return fftshift(da_freq, dim=out_dim)
+    da_spectrum = fftshift(da_freq, dim=out_dim)
+
+    return da_spectrum
 
 
 def to_fid(
-    da: xr.DataArray, dim: str = "frequency", out_dim: str = "time"
+    da: xr.DataArray, dim: str = DIMS.frequency, out_dim: str = DIMS.time
 ) -> xr.DataArray:
-    """Convert a frequency-domain spectrum back to a time-domain FID."""
-    if dim not in da.dims:
-        raise ValueError(f"Dimension '{dim}' not found in DataArray.")
+    """
+    Convert a frequency-domain spectrum back to a time-domain FID.
+
+    This is the mathematical inverse of `to_spectrum`. It inverse-shifts the
+    data to position 0 Hz at the array boundary, computes the IFFT, and
+    reconstructs strictly positive time coordinates.
+
+    Parameters
+    ----------
+    da : xr.DataArray
+        The input frequency-domain data.
+    dim : str, optional
+        The frequency dimension to transform, by default `DIMS.frequency`.
+    out_dim : str, optional
+        The name of the resulting time dimension, by default `DIMS.time`.
+
+    Returns
+    -------
+    xr.DataArray
+        The reconstructed time-domain FID.
+    """
+    _check_dims(da, dim, "to_fid")
 
     # 1. Inverse shift the frequency domain to put the DC component at index 0
     # This prepares the data for the standard IFFT algorithm
@@ -66,27 +88,38 @@ def to_fid(
             dt = 1.0 / (n_points * df)
 
             t_coords = np.arange(n_points) * dt
-            da_fid = da_fid.assign_coords({out_dim: t_coords})
 
+            # Re-inject metadata if mapping to standard DIMS.time
+            term = COORDS.time if out_dim == DIMS.time else None
+
+            if term:
+                time_var = as_variable(term, out_dim, t_coords)
+            else:
+                time_var = xr.Variable(out_dim, t_coords)
+
+            da_fid = da_fid.assign_coords({out_dim: time_var})
+
+    da_fid.attrs["to_fid_applied"] = True
     return da_fid
 
 
-def apodize_exp(da: xr.DataArray, dim: str = "time", lb: float = 1.0) -> xr.DataArray:
+def apodize_exp(da: xr.DataArray, dim: str = DIMS.time, lb: float = 1.0) -> xr.DataArray:
     """
     Apply an exponential weighting filter function for line broadening.
 
     During apodization, the time-domain FID signal $f(t)$ is multiplied with a filter
-    function $f_{filter}(t) = e^{-t/T_L}$. This improves the
-    Signal-to-Noise Ratio (SNR) because data points at the end of the FID, which
-    primarily contain noise, are attenuated. The time constant $T_L$ is calculated
-    from the desired line broadening in Hz.
+    function $f_{filter}(t) = e^{-t/T_L}$. This improves the Signal-to-Noise Ratio (SNR)
+    because data points at the end of the FID, which primarily contain noise, are
+    attenuated. The time constant $T_L$ is calculated from the desired line broadening
+    in Hz.
+
 
     Parameters
     ----------
     da : xr.DataArray
         The input time-domain data.
     dim : str, optional
-        The dimension corresponding to time, by default "time".
+        The dimension corresponding to time, by default `DIMS.time`.
     lb : float, optional
         The desired line broadening factor in Hz, by default 1.0.
 
@@ -95,8 +128,7 @@ def apodize_exp(da: xr.DataArray, dim: str = "time", lb: float = 1.0) -> xr.Data
     xr.DataArray
         A new apodized DataArray, preserving coordinates and attributes.
     """
-    if dim not in da.dims:
-        raise ValueError(f"Dimension '{dim}' not found in DataArray.")
+    _check_dims(da, dim, "apodize_exp")
 
     t = da.coords[dim]
 
@@ -104,13 +136,18 @@ def apodize_exp(da: xr.DataArray, dim: str = "time", lb: float = 1.0) -> xr.Data
     # This simplifies to: exp(-pi * lb * t)
     weight = np.exp(-np.pi * lb * t)
 
-    # Functional application
-    da_apodized = da * weight
-    return da_apodized.assign_attrs(da.attrs)
+    # Functional application (transpose ensures broadcasting doesn't scramble axis order)
+    da_apodized = (da * weight).transpose(*da.dims).assign_attrs(da.attrs)
+
+    # Record lineage
+    da_apodized.attrs["apodization"] = "exponential"
+    da_apodized.attrs["apodization_lb"] = lb
+
+    return da_apodized
 
 
 def apodize_lg(
-    da: xr.DataArray, dim: str = "time", lb: float = 1.0, gb: float = 1.0
+    da: xr.DataArray, dim: str = DIMS.time, lb: float = 1.0, gb: float = 1.0
 ) -> xr.DataArray:
     """
     Apply a Lorentzian-to-Gaussian transformation filter.
@@ -125,7 +162,7 @@ def apodize_lg(
     da : xr.DataArray
         The input time-domain data.
     dim : str, optional
-        The dimension corresponding to time, by default "time".
+        The dimension corresponding to time, by default `DIMS.time`.
     lb : float, optional
         The Lorentzian line broadening to cancel in Hz, by default 1.0.
     gb : float, optional
@@ -136,8 +173,7 @@ def apodize_lg(
     xr.DataArray
         A new apodized DataArray, preserving coordinates and attributes.
     """
-    if dim not in da.dims:
-        raise ValueError(f"Dimension '{dim}' not found in DataArray.")
+    _check_dims(da, dim, "apodize_lg")
 
     t = da.coords[dim]
 
@@ -153,27 +189,38 @@ def apodize_lg(
     else:
         weight_gaussian = 1.0
 
-    da_apodized = da * (weight_lorentzian * weight_gaussian)
-    return da_apodized.assign_attrs(da.attrs)
+    weight = weight_lorentzian * weight_gaussian
+
+    da_apodized = (da * weight).transpose(*da.dims).assign_attrs(da.attrs)
+
+    # Record lineage
+    da_apodized.attrs["apodization"] = "lorentzian-to-gaussian"
+    da_apodized.attrs["apodization_lb"] = lb
+    da_apodized.attrs["apodization_gb"] = gb
+
+    return da_apodized
 
 
 def zero_fill(
     da: xr.DataArray,
-    dim: str = "time",
+    dim: str = DIMS.time,
     target_points: int = 1024,
     position: str = "end",
 ) -> xr.DataArray:
     """
     Pad the specified dimension with zero amplitude points.
 
-    Artificially extend the data with zeros and increase digital resolution.
+    Artificially extends the data with zeros to interpolate and increase the
+    apparent digital resolution of the resulting spectrum.
+
+
 
     Parameters
     ----------
     da : xr.DataArray
         The input data.
     dim : str, optional
-        The dimension along which to pad zeros, by default "time".
+        The dimension along which to pad zeros, by default `DIMS.time`.
     target_points : int, optional
         The total number of points desired after padding, by default 1024.
     position : {"end", "symmetric"}, optional
@@ -185,8 +232,7 @@ def zero_fill(
     xr.DataArray
         A new DataArray padded with zeros to the target length, preserving metadata.
     """
-    if dim not in da.dims:
-        raise ValueError(f"Dimension '{dim}' not found in DataArray.")
+    _check_dims(da, dim, "zero_fill")
 
     current_points = da.sizes[dim]
     if target_points <= current_points:
@@ -219,6 +265,24 @@ def zero_fill(
                 start_coord = old_coords[0] - (pad_width[0] * delta)
                 new_coords = start_coord + np.arange(target_points) * delta
 
-            da_padded = da_padded.assign_coords({dim: new_coords})
+            # Try to match dim against known config vocabulary to rebuild metadata
+            term = None
+            for candidate in [COORDS.time, COORDS.frequency, COORDS.chemical_shift]:
+                if candidate == dim:
+                    term = candidate
+                    break
 
-    return da_padded.assign_attrs(da.attrs)
+            if term:
+                new_var = as_variable(term, dim, new_coords)
+            else:
+                # Retain old raw attributes if it's a custom dimension
+                new_var = xr.Variable(dim, new_coords, attrs=da.coords[dim].attrs)
+
+            da_padded = da_padded.assign_coords({dim: new_var})
+
+    # Restore lost attrs and record lineage
+    da_padded = da_padded.assign_attrs(da.attrs)
+    da_padded.attrs["zero_fill_target"] = target_points
+    da_padded.attrs["zero_fill_position"] = position
+
+    return da_padded

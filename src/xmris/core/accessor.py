@@ -1,22 +1,35 @@
+"""
+The primary xarray accessor namespace for the xmris package.
+
+This module exposes the `.xmr` namespace to xarray DataArrays and Datasets.
+It uses a "Hybrid Mixin" pattern: the user-facing API remains perfectly flat
+for fluent method chaining (e.g., `da.xmr.apodize_exp().xmr.fft()`), while
+the underlying developer API is strictly modularized into Mixin classes.
+"""
+
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 
-# Import our new core architecture
+# Import our core architecture
 from xmris.core.config import ATTRS, COORDS, DIMS
-
-# (Assuming imports for fid, fourier, phase, etc. remain the same)
 from xmris.core.utils import _check_dims, as_variable
 from xmris.core.validation import requires_attrs
+
+# Processing imports
 from xmris.processing.fid import apodize_exp, apodize_lg, to_fid, to_spectrum, zero_fill
 from xmris.processing.fourier import fft, fftc, fftshift, ifft, ifftc, ifftshift
 from xmris.processing.phase import autophase, phase
 from xmris.vendor.bruker import remove_digital_filter
 
-# Import the config type for type-hinting, but defer the actual plotting function
+# Deferred plot configs
 from xmris.visualization.plot import PlotHeatmapConfig, PlotRidgeConfig
+
+# =============================================================================
+# Sub-Accessors (Terminal / Visualization tools)
+# =============================================================================
 
 
 class XmrisDatasetPlotAccessor:
@@ -46,22 +59,6 @@ class XmrisDatasetPlotAccessor:
         return plot_qc_grid(self._obj, dim=dim, config=config)
 
 
-@xr.register_dataset_accessor("xmr")
-class XmrisDatasetAccessor:
-    """Accessor for xmris xr.Datasets (e.g., AMARES fitting results)."""
-
-    def __init__(self, xarray_obj: xr.Dataset):
-        self._obj = xarray_obj
-        self._plot = None
-
-    @property
-    def plot(self) -> XmrisDatasetPlotAccessor:
-        """Access xmris plotting functionalities."""
-        if self._plot is None:
-            self._plot = XmrisDatasetPlotAccessor(self._obj)
-        return self._plot
-
-
 class XmrisPlotAccessor:
     """Sub-accessor for xmris plotting functionalities (accessed via .xmr.plot)."""
 
@@ -76,15 +73,10 @@ class XmrisPlotAccessor:
         config: PlotRidgeConfig | None = None,
     ) -> plt.Axes:
         """Generate a ridge plot (2D waterfall) of stacked 1D spectra."""
-        # Deferred import to keep main package load times fast
         from xmris.visualization.plot import plot_ridge as _plot_ridge
 
         return _plot_ridge(
-            da=self._obj,
-            x_dim=x_dim,
-            stack_dim=stack_dim,
-            ax=ax,
-            config=config,
+            da=self._obj, x_dim=x_dim, stack_dim=stack_dim, ax=ax, config=config
         )
 
     def heatmap(
@@ -102,37 +94,53 @@ class XmrisPlotAccessor:
         )
 
 
-@xr.register_dataarray_accessor("xmr")
-class XmrisAccessor:
-    """
-    Accessor for xarray DataArrays to perform MRI and MRS operations.
+# =============================================================================
+# Mixins (Developer API Modularity)
+# =============================================================================
 
-    This class is registered under the `.xmr` namespace. It provides a
-    fluent, method-chaining API for signal processing, spectroscopy, and
-    imaging functions directly on xarray objects while preserving coordinates
-    and metadata.
 
-    Attributes
-    ----------
-    _obj : xr.DataArray
-        The underlying xarray DataArray object being operated on.
-    """
+class XmrisSpectrumCoordsMixin:
+    """Mixin providing operations to translate physical coordinate systems."""
 
-    def __init__(self, xarray_obj: xr.DataArray):
-        """Initialize the accessor with the xarray object."""
-        self._obj = xarray_obj
-        self._plot = None  # Cache for the plot sub-accessor
+    @requires_attrs(ATTRS.reference_frequency, ATTRS.carrier_ppm)
+    def to_ppm(self, dim: str = DIMS.frequency) -> xr.DataArray:
+        """Convert relative frequency axis [Hz] to absolute chemical shift axis [ppm]."""
+        _check_dims(self._obj, dim, "to_ppm")
 
-    # --- Plotting Sub-Accessor ---
-    @property
-    def plot(self) -> XmrisPlotAccessor:
-        """Access xmris plotting functionalities."""
-        # Lazy initialization: only create the object if the user asks for it
-        if self._plot is None:
-            self._plot = XmrisPlotAccessor(self._obj)
-        return self._plot
+        mhz = self._obj.attrs[ATTRS.reference_frequency]
+        carrier_ppm = self._obj.attrs[ATTRS.carrier_ppm]
+        hz_coords = self._obj.coords[dim].values
 
-    # --- Shifts ---
+        # 1. Calculate the math
+        ppm_coords = carrier_ppm + (hz_coords / mhz)
+
+        # 2. Build the fully-formed xarray Variable (data + metadata)
+        shift_var = as_variable(COORDS.chemical_shift, dim, ppm_coords)
+
+        # 3. Assign and swap in one clean sweep
+        obj = self._obj.assign_coords({COORDS.chemical_shift: shift_var})
+        return obj.swap_dims({dim: COORDS.chemical_shift})
+
+    @requires_attrs(ATTRS.reference_frequency, ATTRS.carrier_ppm)
+    def to_hz(self, dim: str = COORDS.chemical_shift) -> xr.DataArray:
+        """Convert absolute chemical shift axis [ppm] to relative frequency axis [Hz]."""
+        _check_dims(self._obj, dim, "to_hz")
+
+        mhz = self._obj.attrs[ATTRS.reference_frequency]
+        carrier_ppm = self._obj.attrs[ATTRS.carrier_ppm]
+        ppm_coords = self._obj.coords[dim].values
+
+        hz_coords = (ppm_coords - carrier_ppm) * mhz
+
+        # Pack the data and metadata together instantly
+        freq_var = as_variable(COORDS.frequency, dim, hz_coords)
+
+        obj = self._obj.assign_coords({COORDS.frequency: freq_var})
+        return obj.swap_dims({dim: DIMS.frequency})
+
+
+class XmrisFourierMixin:
+    """Mixin providing generalized N-dimensional Fourier transforms and shifts."""
 
     def fftshift(self, dim: str | list[str]) -> xr.DataArray:
         """
@@ -146,77 +154,82 @@ class XmrisAccessor:
         """
         Apply ifftshift by rolling data and coordinates along specified dimensions.
 
-        The inverse of :meth:`fftshift`.
+        The exact inverse of :meth:`fftshift`.
         """
         return ifftshift(self._obj, dim=dim)
 
-    # --- Pure Transforms ---
-
     def fft(
         self,
-        dim: str | list[str] = "time",
+        dim: str | list[str] = DIMS.time,
         out_dim: str | list[str] | None = None,
     ) -> xr.DataArray:
         """
-        Perform a standard N-dimensional FFT (no shifts).
+        Perform a standard N-dimensional Fast Fourier Transform (no shifts).
 
-        Optionally renames the transformed dimension(s) using `out_dim`.
+        Parameters
+        ----------
+        dim : str or list of str, optional
+            Dimension(s) to transform, by default `DIMS.time`.
+        out_dim : str or list of str, optional
+            Optional new dimension name(s), by default None.
+
+        Returns
+        -------
+        xr.DataArray
+            The transformed DataArray.
         """
         return fft(self._obj, dim=dim, out_dim=out_dim)
 
     def ifft(
         self,
-        dim: str | list[str] = "time",
+        dim: str | list[str] = DIMS.frequency,
         out_dim: str | list[str] | None = None,
     ) -> xr.DataArray:
         """
         Perform a standard N-dimensional Inverse FFT (no shifts).
 
-        Optionally renames the transformed dimension(s) using `out_dim`.
+        Parameters
+        ----------
+        dim : str or list of str, optional
+            Dimension(s) to transform, by default `DIMS.frequency`.
+        out_dim : str or list of str, optional
+            Optional new dimension name(s), by default None.
+
+        Returns
+        -------
+        xr.DataArray
+            The transformed DataArray.
         """
         return ifft(self._obj, dim=dim, out_dim=out_dim)
 
-    # --- Centered Transforms ---
-
     def fftc(
         self,
-        dim: str | list[str] = "time",
+        dim: str | list[str] = DIMS.time,
         out_dim: str | list[str] | None = None,
     ) -> xr.DataArray:
-        """
-        Perform an N-dimensional centered FFT.
-
-        This applies necessary shifts before and after the transform to ensure
-        the DC component is centered. Optionally renames dimensions using `out_dim`.
-        """
+        """Perform a centered N-dimensional FFT (ifftshift -> fft -> fftshift)."""
         return fftc(self._obj, dim=dim, out_dim=out_dim)
 
     def ifftc(
         self,
-        dim: str | list[str] = "time",
+        dim: str | list[str] = DIMS.frequency,
         out_dim: str | list[str] | None = None,
     ) -> xr.DataArray:
-        """
-        Perform an N-dimensional centered Inverse FFT.
-
-        This applies necessary shifts before and after the transform to ensure
-        the DC component is centered. Optionally renames dimensions using `out_dim`.
-        """
+        """Perform a centered N-dimensional Inverse FFT (ifftshift -> ifft -> fftshift)."""  # noqa: E501
         return ifftc(self._obj, dim=dim, out_dim=out_dim)
 
-    # --- Apodization ---
 
-    def apodize_exp(self, dim: str = "time", lb: float = 1.0) -> xr.DataArray:
+class XmrisProcessingMixin:
+    """Mixin providing common NMR/MRI Free Induction Decay processing tools."""
+
+    def apodize_exp(self, dim: str = DIMS.time, lb: float = 1.0) -> xr.DataArray:
         """
         Multiply the time-domain signal by a decreasing mono-exponential filter.
-
-        This improves the Signal-to-Noise Ratio (SNR) by applying a line
-        broadening factor parameterized in Hz.
 
         Parameters
         ----------
         dim : str, optional
-            The dimension corresponding to time, by default "time".
+            The dimension corresponding to time, by default `DIMS.time`.
         lb : float, optional
             The desired line broadening factor in Hz, by default 1.0.
 
@@ -228,18 +241,15 @@ class XmrisAccessor:
         return apodize_exp(self._obj, dim=dim, lb=lb)
 
     def apodize_lg(
-        self, dim: str = "time", lb: float = 1.0, gb: float = 1.0
+        self, dim: str = DIMS.time, lb: float = 1.0, gb: float = 1.0
     ) -> xr.DataArray:
         """
         Apply a Lorentzian-to-Gaussian transformation filter.
 
-        This applies the filter to the time-domain signal for resolution
-        enhancement, parameterized in Hz.
-
         Parameters
         ----------
         dim : str, optional
-            The dimension corresponding to time, by default "time".
+            The dimension corresponding to time, by default `DIMS.time`.
         lb : float, optional
             The Lorentzian line broadening to cancel in Hz, by default 1.0.
         gb : float, optional
@@ -252,63 +262,57 @@ class XmrisAccessor:
         """
         return apodize_lg(self._obj, dim=dim, lb=lb, gb=gb)
 
-    # --- FID Specific Operations ---
-
-    def to_spectrum(self, dim: str = "time", out_dim: str = "frequency") -> xr.DataArray:
+    def to_spectrum(
+        self, dim: str = DIMS.time, out_dim: str = DIMS.frequency
+    ) -> xr.DataArray:
         """
         Convert a time-domain FID to a frequency-domain spectrum.
 
-        Applies a Fast Fourier Transform (FFT) and centers the zero-frequency component.
-
         Parameters
         ----------
         dim : str, optional
-            The time dimension to transform, by default "time".
+            The time dimension to transform, by default `DIMS.time`.
         out_dim : str, optional
-            The name of the resulting frequency dimension, by default "frequency".
+            The name of the resulting frequency dimension, by default `DIMS.frequency`.
 
         Returns
         -------
         xr.DataArray
-            The frequency-domain spectrum.
+            The centered frequency-domain spectrum.
         """
         return to_spectrum(self._obj, dim=dim, out_dim=out_dim)
 
-    def to_fid(self, dim: str = "frequency", out_dim: str = "time") -> xr.DataArray:
+    def to_fid(self, dim: str = DIMS.frequency, out_dim: str = DIMS.time) -> xr.DataArray:
         """
         Convert a frequency-domain spectrum to a time-domain FID.
-
-        Applies an inverse shift and Inverse Fast Fourier Transform (IFFT).
 
         Parameters
         ----------
         dim : str, optional
-            The frequency dimension to transform, by default "frequency".
+            The frequency dimension to transform, by default `DIMS.frequency`.
         out_dim : str, optional
-            The name of the resulting time dimension, by default "time".
+            The name of the resulting time dimension, by default `DIMS.time`.
 
         Returns
         -------
         xr.DataArray
-            The time-domain FID data.
+            The un-shifted time-domain FID data.
         """
         return to_fid(self._obj, dim=dim, out_dim=out_dim)
 
     def zero_fill(
         self,
-        dim: str = "time",
+        dim: str = DIMS.time,
         target_points: int = 1024,
         position: str = "end",
     ) -> xr.DataArray:
         """
         Pad the specified dimension with zero amplitude points.
 
-        Artificially extend the data with zeros and increase digital resolution.
-
         Parameters
         ----------
         dim : str, optional
-            The dimension along which to pad zeros, by default "time".
+            The dimension along which to pad zeros, by default `DIMS.time`.
         target_points : int, optional
             The total number of points desired after padding, by default 1024.
         position : {"end", "symmetric"}, optional
@@ -318,11 +322,61 @@ class XmrisAccessor:
         Returns
         -------
         xr.DataArray
-            A new DataArray padded with zeros to the target length, preserving metadata.
+            A new DataArray padded with zeros to the target length.
         """
         return zero_fill(
             self._obj, dim=dim, target_points=target_points, position=position
         )
+
+
+# =============================================================================
+# Main User API Registration
+# =============================================================================
+
+
+@xr.register_dataset_accessor("xmr")
+class XmrisDatasetAccessor:
+    """Accessor for xmris xr.Datasets (e.g., fitting results)."""
+
+    def __init__(self, xarray_obj: xr.Dataset):
+        self._obj = xarray_obj
+        self._plot = None
+
+    @property
+    def plot(self) -> XmrisDatasetPlotAccessor:
+        """Access xmris plotting functionalities."""
+        if self._plot is None:
+            self._plot = XmrisDatasetPlotAccessor(self._obj)
+        return self._plot
+
+
+@xr.register_dataarray_accessor("xmr")
+class XmrisAccessor(XmrisSpectrumCoordsMixin, XmrisFourierMixin, XmrisProcessingMixin):
+    """
+    Main Accessor for xarray DataArrays to perform MRI and MRS operations.
+
+    This class is registered under the `.xmr` namespace. It inherits from
+    several domain-specific Mixins to provide a fluent, method-chaining API
+    (e.g., `da.xmr.apodize_exp().xmr.to_spectrum().xmr.to_ppm()`) without
+    creating an unmanageable monolithic class.
+
+    Attributes
+    ----------
+    _obj : xr.DataArray
+        The underlying xarray DataArray object being operated on.
+    """
+
+    def __init__(self, xarray_obj: xr.DataArray):
+        """Initialize the accessor with the xarray object."""
+        self._obj = xarray_obj
+        self._plot = None  # Cache for the plot sub-accessor
+
+    @property
+    def plot(self) -> XmrisPlotAccessor:
+        """Access xmris plotting functionalities for DataArrays."""
+        if self._plot is None:
+            self._plot = XmrisPlotAccessor(self._obj)
+        return self._plot
 
     # --- Phase Correction ---
 
@@ -488,44 +542,6 @@ class XmrisAccessor:
         return remove_digital_filter(
             self._obj, group_delay=group_delay, dim=dim, keep_length=keep_length
         )
-
-    # --- Coordinate Math ---
-
-    @requires_attrs(ATTRS.reference_frequency, ATTRS.carrier_ppm)
-    def to_ppm(self, dim: str = DIMS.frequency) -> xr.DataArray:
-        """Convert relative frequency axis [Hz] to absolute chemical shift axis [ppm]."""
-        _check_dims(self._obj, dim, "to_ppm")
-
-        mhz = self._obj.attrs[ATTRS.reference_frequency]
-        carrier_ppm = self._obj.attrs[ATTRS.carrier_ppm]
-        hz_coords = self._obj.coords[dim].values
-
-        # 1. Calculate the math
-        ppm_coords = carrier_ppm + (hz_coords / mhz)
-
-        # 2. Build the fully-formed xarray Variable (data + metadata)
-        shift_var = as_variable(COORDS.chemical_shift, dim, ppm_coords)
-
-        # 3. Assign and swap in one clean sweep
-        obj = self._obj.assign_coords({COORDS.chemical_shift: shift_var})
-        return obj.swap_dims({dim: COORDS.chemical_shift})
-
-    @requires_attrs(ATTRS.reference_frequency, ATTRS.carrier_ppm)
-    def to_hz(self, dim: str = COORDS.chemical_shift) -> xr.DataArray:
-        """Convert absolute chemical shift axis [ppm] to relative frequency axis [Hz]."""
-        _check_dims(self._obj, dim, "to_hz")
-
-        mhz = self._obj.attrs[ATTRS.reference_frequency]
-        carrier_ppm = self._obj.attrs[ATTRS.carrier_ppm]
-        ppm_coords = self._obj.coords[dim].values
-
-        hz_coords = (ppm_coords - carrier_ppm) * mhz
-
-        # Pack the data and metadata together instantly
-        freq_var = as_variable(COORDS.frequency, dim, hz_coords)
-
-        obj = self._obj.assign_coords({COORDS.frequency: freq_var})
-        return obj.swap_dims({dim: DIMS.frequency})
 
     # --- Utility / Formatting ---
 

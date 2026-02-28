@@ -37,7 +37,7 @@ Whenever you generate a new function for `xmris`, you MUST follow these rules:
 1. **Xarray First:** The pipeline relies on `xarray.DataArray` and `xarray.Dataset`.
 2. **Functional Purity:** NEVER modify data in-place. Always return a *new* object.
 3. **Data Lineage:** You MUST preserve coordinates and attributes. Append new processing parameters to `da.attrs` so the user has a permanent record of what was done to the data.
-4. **No Magic Strings (The Config):** NEVER hardcode raw strings for dimensions (like `"time"`) or attributes (like `"reference_frequency"`). Import the singletons `ATTRS`, `DIMS`, `COORDS`, and `VARS` from `xmris.core.config`. These contain `XmrisTerm` objects that evaluate as strings but carry `.unit` and `.long_name` metadata.
+4. **No Magic Strings (The Config):** NEVER hardcode raw strings for dimensions (like `"time"`) or attributes (like `"reference_frequency"`). Import the singletons `ATTRS`, `DIMS`, `COORDS`, and `VARS` from `xmris.core.config`. These contain `XmrisTerm` objects that evaluate as strings but carry `.unit` and `.long_name` metadata. Note that this only applies for INSIDE the xmris package and must not affect user code and examples. The user is free to use 'time' etc. to keep the entrance barrier low.
 5. **Accessor Defaults:** Method signatures that take a dimension must use the config constant directly as the default (e.g., `def func(self, dim: str = DIMS.time):`). Do NOT default to `None`.
 6. **Strict Validation:** * Validate hidden state (attributes) using the `@requires_attrs(...)` decorator.
     * Validate dimensions explicitly inside the function using `_check_dims(self._obj, dim, "func_name")`.
