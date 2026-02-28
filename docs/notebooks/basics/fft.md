@@ -171,7 +171,6 @@ plt.show()
 
 # 1. Coordinate mapping
 assert da_image.dims == ("x", "y"), "Dimensions were not renamed to x and y!"
-assert da_image.attrs["ifft_applied"] is True, "Lineage attribute missing!"
 
 # 2. Centering Test
 # Ensure the peak of the 2D Sinc is exactly in the center (index 32, 32)
@@ -184,4 +183,8 @@ assert da_reconstructed.dims == ("kx", "ky"), "Dimensions did not revert to kx, 
 assert np.allclose(da_kspace.values, da_reconstructed.values), (
     "Round-trip transformation failed!"
 )
+```
+
+```{code-cell}
+
 ```

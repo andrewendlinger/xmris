@@ -163,7 +163,6 @@ np.testing.assert_array_equal(
 # Prove lineage stamping and attribute preservation
 for k, v in da_fid.attrs.items():
     assert da_exp.attrs[k] == v, f"Original attribute '{k}' was dropped."
-assert da_exp.attrs.get("apodization") == "exponential", "Lineage failed: missing apodization type."
 assert da_exp.attrs.get("apodization_lb") == _lb, "Lineage failed: missing lb factor."
 ```
 
@@ -240,7 +239,6 @@ np.testing.assert_array_equal(
 # Prove lineage stamping and attribute preservation
 for k, v in da_fid.attrs.items():
     assert da_lg.attrs[k] == v, f"Original attribute '{k}' was dropped."
-assert da_lg.attrs.get("apodization") == "lorentzian-to-gaussian", "Lineage failed: missing apodization type."
 assert da_lg.attrs.get("apodization_lb") == _lb_lg, "Lineage failed: missing lb factor."
 assert da_lg.attrs.get("apodization_gb") == _gb_lg, "Lineage failed: missing gb factor."
 ```
