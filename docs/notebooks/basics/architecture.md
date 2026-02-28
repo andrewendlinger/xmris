@@ -353,11 +353,10 @@ The decorator does two things:
 If a required attribute is missing, the bouncer intercepts the call *before* any math runs
 and tells the user exactly what is wrong and how to fix it using standard `xarray` methods:
 
-```{dropdown} 💡 Click to view the actual xmris error message
+:::{dropdown} 💡 Click to view the actual xmris error message
 ```python
 spectrum.xmr.to_ppm()
-```
-```
+
 ValueError: Method 'to_ppm' requires the following missing attributes
 in `obj.attrs`: ['reference_frequency', 'carrier_ppm'].
 
@@ -367,17 +366,18 @@ To fix this, assign them using standard xarray methods:
 No `KeyError`. No stack trace through numpy internals. Just a clear message with
 copy-pasteable fix code.
 
-```
+:::
 
 ### 2. Self-Documenting Functions
 
 At import time, the decorator dynamically injects a **"Required Attributes"** section into
 each function's docstring by pulling descriptions and units directly from the Data Dictionary:
 
-```{dropdown} 📖 Click to view the auto-generated docstring section
+:::{dropdown} 📖 Click to view the auto-generated docstring section
 ```python
 help(spectrum.xmr.to_ppm)
 ```
+
 ```
 Convert the frequency axis coordinates from Hz to ppm.
 
@@ -392,7 +392,7 @@ Because the docstring is generated from the *same config* that powers the runtim
 validation, it is **physically impossible** for the documentation to drift out of
 sync with the code.
 
-```
+:::
 
 ---
 
@@ -440,7 +440,7 @@ result = fid.xmr.apodize_exp(dim=DIMS.time, lb=5.0)
 And if you pass a dimension that doesn't exist at all, `xmris` gives you a clear,
 actionable error — just like the attribute bouncer:
 
-```{dropdown} 💡 Click to view the dimension error message
+:::{dropdown} 💡 Click to view the dimension error message
 ```python
 fid.xmr.apodize_exp(dim="randomname")
 ```
@@ -454,7 +454,7 @@ or rename your data's axes using xarray:
     >>> obj = obj.rename({'randomname': DIMS.time})
 ```
 
-```
+:::
 
 ### The Design Rule
 

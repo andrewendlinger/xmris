@@ -21,6 +21,8 @@ project:
           title: 02. FFT Basics
         - file: notebooks/basics/fid_transformations.ipynb
           title: 03. FID & Spectrum
+        - file: notebooks/basics/hz_and_ppm.ipynb
+          title: 03. Hz and ppm
     # 2. GROUP: A chronological processing pipeline
     - title: Processing Pipeline
       children:
