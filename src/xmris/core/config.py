@@ -87,17 +87,38 @@ class BaseVocabulary:
 class XmrisAttributes(BaseVocabulary):
     """Official metadata attribute keys for xmris xarray objects (`.attrs`)."""
 
+    reference_frequency: str = field(
+        default="reference_frequency",
+        metadata={
+            "description": (
+                "The measured Larmor frequency of the target nucleus. This reflects the actual B0 "
+                "field during the scan, not a theoretical constant. It serves as the denominator "
+                "to convert frequency shifts (Hz) to parts-per-million (ppm). Maps to Bruker "
+                "'PVM_FrqRef'/'BF1' and DICOM 'ImagingFrequency' (0018,0084) or "
+                "'TransmitterFrequency' (0018,9098)."
+            ),
+            "unit": "MHz",
+        },
+    )
+
+    carrier_ppm: str = field(
+        default="carrier_ppm",
+        metadata={
+            "description": (
+                "The absolute chemical shift at the center of the RF excitation bandwidth. "
+                "In the digitized baseband signal, this is the exact chemical shift located at 0 Hz. "
+                "For standard 1H MRS, this is typically water (4.7 ppm). Maps to Bruker "
+                "'PVM_FrqWorkPpm'."
+            ),
+            "unit": "ppm",
+        },
+    )
+
     b0_field: str = field(
         default="b0_field",
         metadata={"description": "Static main magnetic field strength.", "unit": "T"},
     )
-    reference_frequency: str = field(
-        default="reference_frequency",
-        metadata={
-            "description": "Spectrometer working/reference frequency.",
-            "unit": "MHz",
-        },
-    )
+
     p0: str = field(
         default="p0",
         metadata={"description": "Zero-order phase angle.", "unit": "degrees"},

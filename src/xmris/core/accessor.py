@@ -506,24 +506,37 @@ class XmrisAccessor:
 
     # --- Coordinate Math ---
 
-    @requires_attrs(ATTRS.b0_field, ATTRS.reference_frequency)
+    @requires_attrs(ATTRS.reference_frequency, ATTRS.carrier_ppm)
     def to_ppm(self, dim: str = DIMS.frequency) -> xr.DataArray:
-        """
-        Convert the frequency axis coordinates from Hz to parts-per-million (ppm).
-
-        This relies on the spectrometer reference frequency and the static B0 field.
-        """
+        """Convert relative frequency axis [Hz] to absolute chemical shift axis [ppm]."""
         _check_dims(self._obj, dim, "to_ppm")
 
-        # We can safely access this without KeyError fears thanks to the bouncer!
+        # 1. Aggressively recalculate to guarantee sync with current .attrs
         mhz = self._obj.attrs[ATTRS.reference_frequency]
+        carrier_ppm = self._obj.attrs["carrier_ppm"]
         hz_coords = self._obj.coords[dim].values
 
-        # Calculate ppm: (Hz / MHz)
-        ppm_coords = hz_coords / mhz
+        ppm_coords = carrier_ppm + (hz_coords / mhz)
 
-        # Assign new coordinate using our config standard
-        return self._obj.assign_coords({COORDS.chemical_shift: (dim, ppm_coords)})
+        # 2. Assign the new coordinate AND make it the primary dimension
+        obj = self._obj.assign_coords({COORDS.chemical_shift: (dim, ppm_coords)})
+        return obj.swap_dims({dim: COORDS.chemical_shift})
+
+    @requires_attrs(ATTRS.reference_frequency, ATTRS.carrier_ppm)
+    def to_hz(self, dim: str = COORDS.chemical_shift) -> xr.DataArray:
+        """Convert absolute chemical shift axis [ppm] to relative frequency axis [Hz]."""
+        _check_dims(self._obj, dim, "to_hz")
+
+        # 1. Aggressively recalculate to guarantee sync with current .attrs
+        mhz = self._obj.attrs[ATTRS.reference_frequency]
+        carrier_ppm = self._obj.attrs["carrier_ppm"]
+        ppm_coords = self._obj.coords[dim].values
+
+        hz_coords = (ppm_coords - carrier_ppm) * mhz
+
+        # 2. Assign the new coordinate AND make it the primary dimension
+        obj = self._obj.assign_coords({DIMS.frequency: (dim, hz_coords)})
+        return obj.swap_dims({dim: DIMS.frequency})
 
     # --- Utility / Formatting ---
 
