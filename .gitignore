@@ -48,18 +48,7 @@ coverage.xml
 .tox/
 .nox/
 htmlcov/
-# Ignore everything under tests/data
-tests/data/**
 
-# Re-allow the specific directories so Git can see inside them
-!tests/data/nspect_slab_1H/
-!tests/data/nspect_slab_13C/
-
-# Re-allow ONLY these exact files
-!tests/data/nspect_slab_1H/ground_truth.toml
-!tests/data/nspect_slab_1H/rawdatajob0.npy
-!tests/data/nspect_slab_13C/ground_truth.toml
-!tests/data/nspect_slab_13C/rawdatajob0.npy
 
 # ==============================================================================
 # 4. Jupyter & IPython
@@ -117,3 +106,22 @@ $RECYCLE.BIN/
 *.ima
 *.dcm
 .
+
+
+# ==============================================================================
+# 7. TEST DATA
+# ==============================================================================
+# we will ignore the rules in 7. for now, and submit small test data (<10MB)
+
+# Ignore everything under tests/data
+tests/data/**
+
+# Re-allow the specific directories so Git can see inside them
+!tests/data/nspect_slab_1H/
+!tests/data/nspect_slab_13C/
+
+# Re-allow ONLY these exact files
+!tests/data/nspect_slab_1H/ground_truth.toml
+!tests/data/nspect_slab_1H/rawdatajob0.nc
+!tests/data/nspect_slab_13C/ground_truth.toml
+!tests/data/nspect_slab_13C/rawdatajob0.nc
