@@ -85,7 +85,7 @@ plt.show()
 
 ## 2. Manual Phase Correction
 
-:::{tip}
+:::{tip} Interactive manual phase correction
 Use the [Interactive Phasing Widget](../visualization/widget/01_widget_phase.ipynb) to interactivley adjust $p_0$ and $p_1$.
 :::
 
@@ -113,12 +113,6 @@ print(f"  phase_p0: {da_manual.attrs.get('phase_p0')}")
 print(f"  phase_p1: {da_manual.attrs.get('phase_p1')}")
 print(f"  phase_pivot: {da_manual.attrs.get('phase_pivot')}")
 ```
-
-:::{dropdown} Under the Hood: No Magic Strings
-As a user, you can pass simple strings like `"frequency"` to `xmris` functions. However, internally, the package never uses raw strings. It maps your input to a strict global vocabulary (`xmris.core.config.DIMS` and `COORDS`).
-
-This architecture allows `xmris` to intercept your request and automatically validate that the operation is physically possible for the given dimensions!
-:::
 
 ```{code-cell} ipython3
 :tags: [remove-cell]
@@ -148,59 +142,25 @@ np.testing.assert_allclose(
 )
 ```
 
-## 3. Automated Phase Correction (`autophase`)
+:::{dropdown} 🧬 Metadata Lineage: Phase Attributes
+When you apply phase correction, `xmris` appends the following attributes to the `DataArray`. This ensures that any downstream analysis or automated pipeline knows exactly how the complex signal was rotated.
 
-Finding the perfect phase angles manually is tedious. We can use an entropy-minimization
+| Attribute | Unit | Description |
+| :--- | :--- | :--- |
+| `phase_p0` | degrees | **Zero-order phase.** A constant phase shift applied uniformly to all points. |
+| `phase_p1` | degrees | **First-order phase.** The total phase "twist" accumulated across the entire spectral range. |
+| `phase_pivot` | (varies) | **Pivot point.** The coordinate value where the first-order phase contribution is exactly zero. |
+| `phase_pivot_coord` | string | **Coordinate context.** The name of the dimension (e.g., `frequency` or `chemical_shift`) the pivot belongs to. |
+
+**Mathematical Note:** The phase angle $\phi$ at any coordinate $x$ is calculated as:
+$$\phi(x) = p_0 + p_1 \cdot \frac{x - x_{pivot}}{x_{max} - x_{min}}$$
+:::
+
+## Next up: Automated Phase Correction (`autophase`)
+
+Finding the perfect phase angles manually is tedious. We can use algorithms such as entropy-minimization
 algorithm (ACME) to find the global phase minimum automatically.
 
-However, ACME struggles with high noise floors. The `autophase()` method solves this by
-executing a hidden "sacrificial apodization" step:
-
-1. It temporarily inverse-transforms the spectrum back to the time domain.
-2. It applies severe exponential line broadening (`lb`) to crush the noise.
-3. It transforms the smoothed data back to the frequency domain.
-4. It runs the ACME algorithm on the smoothed data to accurately determine $p_0$ and $p_1$.
-5. It applies those angles to the **original, high-resolution** input spectrum.
-
-```{code-cell} ipython3
-# Apply autophase. A line broadening of 15 Hz is used purely for the
-# hidden optimizer calculation to suppress the noise.
-da_auto = da_ruined.xmr.autophase(dim="frequency", lb=15.0)
-
-fig, ax = plt.subplots(figsize=(8, 3))
-da_ruined.real.plot(ax=ax, color="lightgray", label="Unphased")
-da_auto.real.plot(ax=ax, color="tab:green", label="Auto Phased")
-plt.legend()
-plt.title(
-    f"Automated Phase Correction (Calculated p0={da_auto.attrs['phase_p0']:.1f}°, p1={da_auto.attrs['phase_p1']:.1f}°)"
-)
-plt.show()
-```
-
-```{code-cell} ipython3
-:tags: [remove-cell]
-
-# STRICT TESTS: Automated Phase Correction
-assert "phase_p0" in da_auto.attrs and "phase_p1" in da_auto.attrs
-
-# Prove metadata preservation
-assert da_auto.dims == da_ruined.dims, "Dimensions altered by the IFFT/FFT roundtrip."
-np.testing.assert_array_equal(
-    da_auto.coords["frequency"].values,
-    da_ruined.coords["frequency"].values,
-    err_msg="Coords altered by the IFFT/FFT roundtrip.",
-)
-assert da_auto.attrs["sequence"] == "sLASER", "Original attributes dropped."
-
-# Prove autophase did not alter the fundamental unphased magnitude (ensuring the
-# sacrificial LB wasn't accidentally applied to the final output)
-np.testing.assert_allclose(
-    np.abs(da_auto.values),
-    np.abs(da_ruined.values),
-    rtol=1e-5,
-    atol=1e-5,
-    err_msg="Autophase altered the absolute magnitude of the spectrum.",
-)
-```
-
-```
+:::{tip} Automated phase correction
+The dedicated documentation is here: [Automated Phase Correction](./autophasing.ipynb).
+:::

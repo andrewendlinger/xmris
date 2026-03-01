@@ -446,33 +446,59 @@ class XmrisPhasingMixin:
         return phase(self._obj, dim=dim, p0=p0, p1=p1, pivot=pivot)
 
     def autophase(
-        self, dim: str = DIMS.frequency, lb: float = 10.0, temp_time_dim: str = DIMS.time
+        self,
+        dim: str = DIMS.frequency,
+        method: str = "acme",
+        peak_width: int = 100,
+        lb: float = 0.0,
+        temp_time_dim: str = DIMS.time,
+        **kwargs,
     ) -> xr.DataArray:
         """
         Automatically calculate and apply phase correction to a spectrum.
 
-        Uses a hidden "sacrificial apodization" step to improve SNR temporarily
-        for the optimizer, calculating the correct phase angles, and applying
-        them to the raw, input spectrum.
-
         Parameters
         ----------
+        da : xr.DataArray
+            The input frequency-domain spectrum.
         dim : str, optional
-            The frequency dimension, by default `DIMS.frequency`.
+            The coordinate dimension to operate on, by default `DIMS.frequency`.
+        method : {"acme", "peak_minima", "positivity"}, optional
+            The scoring algorithm to use. "acme" relies on entropy and is best for
+            multi-peak high SNR spectra. "positivity" and "peak_minima" are optimized
+            for sparse/noisy spectra. By default "acme".
+        peak_width : float, optional
+            Width of the ROI (in units of `dim`, e.g., Hz or ppm) for the local methods.
+            Concentrates the solver on the region surrounding the target peak.
+            By default 0.5.
+        target_coord : float | None, optional
+            The explicit coordinate (e.g. 171.0 ppm) to target for local methods.
+            If None, the coordinate of the maximum absolute magnitude is used.
+        p0_only : bool, optional
+            If True, locks p1=0 and only optimizes the zero-order phase. Highly
+            recommended for sparse spectra evaluated over a narrow `peak_width`.
         lb : float, optional
-            The line broadening (in Hz) used for the sacrificial apodization.
-            Higher values suppress more noise. By default 10.0.
+            Optional exponential line broadening (in Hz). Can help smooth extreme
+            noise for ACME, but usually unnecessary for local methods. By default 0.0.
         temp_time_dim : str, optional
-            The name used for the temporary time dimension during the inverse
-            transform. By default `DIMS.time`.
+            The name used for the temporary time dimension if lb > 0.
+        **kwargs :
+            Additional keyword arguments passed to `scipy.optimize.differential_evolution`.
 
         Returns
         -------
         xr.DataArray
-            The phased high-resolution spectrum. Phase angles are stored in
-            `DataArray.attrs['phase_p0']` and `DataArray.attrs['phase_p1']`.
-        """
-        return autophase(self._obj, dim=dim, lb=lb, temp_time_dim=temp_time_dim)
+            The phased spectrum.
+        """  # noqa: E501
+        return autophase(
+            self._obj,
+            dim=dim,
+            method=method,
+            peak_width=peak_width,
+            lb=lb,
+            temp_time_dim=temp_time_dim,
+            **kwargs,
+        )
 
 
 # =============================================================================

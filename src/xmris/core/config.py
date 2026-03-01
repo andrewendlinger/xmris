@@ -135,10 +135,10 @@ class XmrisAttributes(BaseVocabulary):
     reference_frequency = XmrisTerm(
         "reference_frequency",
         description=(
-            "The measured Larmor frequency of the target nucleus. This reflects the"
-            "actual B0 field during the scan, not a theoretical constant. It serves as"
+            "The measured Larmor frequency of the target nucleus. This reflects the "
+            "actual B0 field during the scan, not a theoretical constant. It serves as "
             "the denominator to convert frequency shifts (Hz) to parts-per-million (ppm)."
-            "Maps to Bruker 'PVM_FrqRef' and potentially DICOM 'ImagingFrequency'"
+            " Maps to Bruker 'PVM_FrqRef' and potentially DICOM 'ImagingFrequency'"
             "(0018,0084) or 'TransmitterFrequency' (0018,9098)."
         ),
         unit="MHz",
@@ -148,8 +148,8 @@ class XmrisAttributes(BaseVocabulary):
         "carrier_ppm",
         description=(
             "The absolute chemical shift at the center of the RF excitation bandwidth. "
-            "In the digitized baseband signal, this is the exact chemical shift located"
-            "at 0 Hz. For standard 1H MRS, this is typically water (4.7 ppm). Maps to"
+            "In the digitized baseband signal, this is the exact chemical shift located "
+            "at 0 Hz. For standard 1H MRS, this is typically water (4.7 ppm). Maps to "
             "Bruker 'PVM_FrqWorkPpm'."
         ),
         unit="ppm",
@@ -162,10 +162,33 @@ class XmrisAttributes(BaseVocabulary):
 
     # --- Phase Parameters ---
     phase_p0 = XmrisTerm(
-        "phase_p0", description="Zero-order phase angle applied.", unit="degrees"
+        "phase_p0",
+        description=(
+            "Zero-order (frequency-independent) phase angle applied uniformly "
+            "across the spectrum."
+        ),
+        unit="degrees",
     )
     phase_p1 = XmrisTerm(
-        "phase_p1", description="First-order phase angle applied.", unit="degrees"
+        "phase_p1",
+        description=(
+            "First-order (frequency-dependent) phase angle. "
+            "Represents the total phase twist applied across the entire spectral sweep "
+            "width, anchored at the pivot."
+        ),
+        unit="degrees",
+    )
+    phase_pivot = XmrisTerm(
+        "phase_pivot",
+        description=(
+            "Coordinate value where the first-order phase contribution "
+            "evaluates to exactly 0.0."
+        ),
+        unit="dimension-dependent",
+    )
+    phase_pivot_coord = XmrisTerm(
+        "phase_pivot_coord",
+        description="The coordinate dimension in which the phase pivot was defined.",
     )
 
     # --- Apodization Parameters ---
