@@ -33,7 +33,7 @@ project:
         - file: notebooks/pipeline/phase.ipynb
           title: 3. Phase Correction
         - file: notebooks/pipeline/autophasing.ipynb
-          title: 3. Auto Phase Correction
+          title: 4. Automated Phase Correction
     # 3. GROUP: Advanced Quantification
     - title: Spectral Fitting & Simulation
       children:
