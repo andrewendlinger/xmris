@@ -114,12 +114,6 @@ print(f"  phase_p1: {da_manual.attrs.get('phase_p1')}")
 print(f"  phase_pivot: {da_manual.attrs.get('phase_pivot')}")
 ```
 
-:::{dropdown} Under the Hood: No Magic Strings
-As a user, you can pass simple strings like `"frequency"` to `xmris` functions. However, internally, the package never uses raw strings. It maps your input to a strict global vocabulary (`xmris.core.config.DIMS` and `COORDS`).
-
-This architecture allows `xmris` to intercept your request and automatically validate that the operation is physically possible for the given dimensions!
-:::
-
 ```{code-cell} ipython3
 :tags: [remove-cell]
 
@@ -148,7 +142,21 @@ np.testing.assert_allclose(
 )
 ```
 
-## 3. Automated Phase Correction (`autophase`)
+:::{dropdown} 🧬 Metadata Lineage: Phase Attributes
+When you apply phase correction, `xmris` appends the following attributes to the `DataArray`. This ensures that any downstream analysis or automated pipeline knows exactly how the complex signal was rotated.
+
+| Attribute | Unit | Description |
+| :--- | :--- | :--- |
+| `phase_p0` | degrees | **Zero-order phase.** A constant phase shift applied uniformly to all points. |
+| `phase_p1` | degrees | **First-order phase.** The total phase "twist" accumulated across the entire spectral range. |
+| `phase_pivot` | (varies) | **Pivot point.** The coordinate value where the first-order phase contribution is exactly zero. |
+| `phase_pivot_coord` | string | **Coordinate context.** The name of the dimension (e.g., `frequency` or `chemical_shift`) the pivot belongs to. |
+
+**Mathematical Note:** The phase angle $\phi$ at any coordinate $x$ is calculated as:
+$$\phi(x) = p_0 + p_1 \cdot \frac{x - x_{pivot}}{x_{max} - x_{min}}$$
+:::
+
+## Next up: Automated Phase Correction (`autophase`)
 
 Finding the perfect phase angles manually is tedious. We can use algorithms such as entropy-minimization
 algorithm (ACME) to find the global phase minimum automatically.
