@@ -3331,7 +3331,6 @@ source = { editable = "." }
 dependencies = [
     { name = "anywidget" },
     { name = "joblib" },
-    { name = "nmrglue" },
     { name = "numpy" },
     { name = "pyamares" },
     { name = "xarray" },
@@ -3357,7 +3356,6 @@ dev = [
 requires-dist = [
     { name = "anywidget", specifier = ">=0.9.21" },
     { name = "joblib", specifier = ">=1.5.3" },
-    { name = "nmrglue", specifier = ">=0.11" },
     { name = "numpy", specifier = ">=1.26.0" },
     { name = "pyamares", git = "https://github.com/andrewendlinger/pyAMARES?branch=xmris-compatible" },
     { name = "xarray", specifier = "<2025.11.0" },
