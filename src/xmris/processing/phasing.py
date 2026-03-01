@@ -15,27 +15,32 @@ def phase(
     pivot: float = None,
 ) -> xr.DataArray:
     """
-    Apply zero- and first-order phase correction to a spectrum.
+    Apply zero- and first-order (linear) phase correction to a spectrum.
 
     Parameters
     ----------
     da : xr.DataArray
         The input frequency-domain spectrum. Must be complex-valued.
     dim : str, optional
-        The frequency dimension along which to apply phase correction,
+        The coordinate dimension along which to apply phase correction,
         by default `DIMS.frequency`.
     p0 : float, optional
-        Zero-order phase angle in degrees, by default 0.0.
+        Zero-order phase angle in degrees. This is a constant phase shift
+        applied uniformly to all coordinates. By default 0.0.
     p1 : float, optional
-        First-order phase angle in degrees, by default 0.0.
+        First-order phase angle in degrees. This represents the total phase
+        twist applied across the entire spectral range (`max_coord - min_coord`).
+        By default 0.0.
     pivot : float, optional
-        The coordinate value (e.g., ppm or Hz) around which p1 is pivoted.
-        If None, standard index-0 pivoting is used.
+        The coordinate value (e.g., ppm or Hz) around which `p1` is anchored.
+        At this exact coordinate, the first-order phase contribution is 0.0.
+        If None, standard maximum-magnitude pivoting is used.
 
     Returns
     -------
     xr.DataArray
-        The phase-corrected spectrum. Phase angles are appended to the attributes.
+        The phase-corrected spectrum. Phase parameters (p0, p1, pivot, and
+        pivot_coord) are appended to the dataset attributes to preserve lineage.
     """
     _check_dims(da, dim, "phase")
 
@@ -65,10 +70,10 @@ def phase(
     da_phased = da * np.exp(1.0j * phase_array)
 
     # Transfer original attributes and append the new phase parameters
-    da_phased.attrs = da.attrs.copy()
     da_phased.attrs[ATTRS.phase_p0] = p0
     da_phased.attrs[ATTRS.phase_p1] = p1
-    da_phased.attrs["phase_pivot"] = pivot
+    da_phased.attrs[ATTRS.phase_pivot] = pivot
+    da_phased.attrs[ATTRS.phase_pivot_coord] = dim
 
     return da_phased
 
