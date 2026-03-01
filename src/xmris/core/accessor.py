@@ -94,6 +94,72 @@ class XmrisPlotAccessor:
         )
 
 
+class XmrisWidgetAccessor:
+    """Sub-accessor for xmris interactive widget functionalities.
+
+    This class provides a dedicated namespace for interactive UI components
+    powered by AnyWidget. It is accessed via the `.xmr.widget` attribute
+    on an xarray DataArray.
+    """
+
+    def __init__(self, obj: xr.DataArray):
+        """
+        Initialize the widget sub-accessor.
+
+        Parameters
+        ----------
+        obj : xr.DataArray
+            The underlying xarray DataArray object being operated on.
+        """
+        self._obj = obj
+
+    def phase_spectrum(self):
+        """
+        Open an interactive zero- and first-order phase correction widget.
+
+        This method launches an AnyWidget-based user interface directly in the
+        Jupyter Notebook. It allows for manual, real-time adjustment of the
+        zero-order ($p_0$) and first-order ($p_1$) phase angles of a 1-D
+        complex-valued NMR/MRS spectrum.
+
+        Returns
+        -------
+        NMRPhaseWidget
+            The interactive widget instance. Assigning this to a variable allows
+            you to programmatically extract the optimized phase angles after
+            interacting with the UI.
+
+        Raises
+        ------
+        ValueError
+            If the underlying DataArray is not 1-dimensional or does not contain
+            complex-valued data.
+
+        Notes
+        -----
+        - **Zero-order phase ($p_0$)**: Click and drag vertically on the canvas.
+        - **First-order phase ($p_1$)**: Hold `Shift`, then click and drag vertically.
+        - The pivot point for $p_1$ is automatically set to the chemical shift (ppm)
+          of the maximum magnitude peak.
+
+        Examples
+        --------
+        >>> widget = da.xmr.widget.phase_spectrum()
+        >>> display(widget)
+
+        Once you have phased the spectrum by eye in the UI, you can extract
+        the exact angles back into Python:
+
+        >>> p0_opt = widget.p0
+        >>> p1_opt = widget.p1
+        """
+        # Lazy import to avoid loading AnyWidget/frontend assets unless requested
+        from xmris.visualization.widget import phase_spectrum
+
+        # Return the widget instance so it renders and can be assigned
+        return phase_spectrum(self._obj)
+
+
 # =============================================================================
 # Mixins (Developer API Modularity)
 # =============================================================================
@@ -429,6 +495,7 @@ class XmrisAccessor(
         """Initialize the accessor with the xarray object."""
         self._obj = xarray_obj
         self._plot = None  # Cache for the plot sub-accessor
+        self._widget = None  # Cache for the widget sub-accessor
 
     @property
     def plot(self) -> XmrisPlotAccessor:
@@ -436,6 +503,13 @@ class XmrisAccessor(
         if self._plot is None:
             self._plot = XmrisPlotAccessor(self._obj)
         return self._plot
+
+    @property
+    def widget(self) -> XmrisWidgetAccessor:
+        """Access xmris plotting functionalities for DataArrays."""
+        if self._widget is None:
+            self._widget = XmrisWidgetAccessor(self._obj)
+        return self._widget
 
     # --- Fitting ---
 

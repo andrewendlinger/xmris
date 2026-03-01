@@ -28,6 +28,7 @@ classifiers = [
 keywords = ["mri", "mrs", "xarray", "spectroscopy", "nmr"]
 
 dependencies = [
+    "anywidget>=0.9.21",
     "joblib>=1.5.3",
     "nmrglue>=0.11",
     "numpy>=1.26.0",
