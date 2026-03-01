@@ -113,7 +113,7 @@ class XmrisWidgetAccessor:
         """
         self._obj = obj
 
-    def phase_spectrum(self):
+    def phase_spectrum(self, *args, **kwargs):
         """
         Open an interactive zero- and first-order phase correction widget.
 
@@ -157,7 +157,7 @@ class XmrisWidgetAccessor:
         from xmris.visualization.widget import phase_spectrum
 
         # Return the widget instance so it renders and can be assigned
-        return phase_spectrum(self._obj)
+        return phase_spectrum(self._obj, *args, **kwargs)
 
 
 # =============================================================================
@@ -399,7 +399,11 @@ class XmrisPhasingMixin:
     """Mixin providing common MR spectra phasing tools."""
 
     def phase(
-        self, dim: str = DIMS.frequency, p0: float = 0.0, p1: float = 0.0
+        self,
+        dim: str = DIMS.frequency,
+        p0: float = 0.0,
+        p1: float = 0.0,
+        pivot: float = None,
     ) -> xr.DataArray:
         """
         Apply zero- and first-order phase correction to the spectrum.
@@ -413,6 +417,9 @@ class XmrisPhasingMixin:
             Zero-order phase angle in degrees, by default 0.0.
         p1 : float, optional
             First-order phase angle in degrees, by default 0.0.
+        pivot : float, optional
+            The coordinate value (e.g., ppm or Hz) around which p1 is pivoted.
+            If None, standard nmrglue index-0 pivoting is used.
 
         Returns
         -------
@@ -420,7 +427,7 @@ class XmrisPhasingMixin:
             The phase-corrected spectrum with phase_p0 and phase_p1 stored
             in the attributes.
         """
-        return phase(self._obj, dim=dim, p0=p0, p1=p1)
+        return phase(self._obj, dim=dim, p0=p0, p1=p1, pivot=pivot)
 
     def autophase(
         self, dim: str = DIMS.frequency, lb: float = 10.0, temp_time_dim: str = DIMS.time

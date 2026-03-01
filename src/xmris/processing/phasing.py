@@ -7,7 +7,11 @@ from xmris.processing.fid import apodize_exp, to_fid, to_spectrum
 
 
 def phase(
-    da: xr.DataArray, dim: str = DIMS.frequency, p0: float = 0.0, p1: float = 0.0
+    da: xr.DataArray,
+    dim: str = DIMS.frequency,
+    p0: float = 0.0,
+    p1: float = 0.0,
+    pivot: float = None,
 ) -> xr.DataArray:
     """
     Apply zero- and first-order phase correction to a spectrum.
@@ -23,6 +27,9 @@ def phase(
         Zero-order phase angle in degrees, by default 0.0.
     p1 : float, optional
         First-order phase angle in degrees, by default 0.0.
+    pivot : float, optional
+        The coordinate value (e.g., ppm or Hz) around which p1 is pivoted.
+        If None, standard nmrglue index-0 pivoting is used.
 
     Returns
     -------
@@ -31,21 +38,35 @@ def phase(
     """
     _check_dims(da, dim, "phase")
 
-    # nmrglue operates on the last axis by default.
-    # Transpose the working dimension to the end to ensure safe N-dimensional application.
+    # If a pivot is provided, translate human UI angles to nmrglue array angles
+    if pivot is not None:
+        coords = da.coords[dim].values
+        x_range = coords[-1] - coords[0]
+
+        if x_range != 0:
+            # Shift p0 to match what nmrglue expects at index 0
+            p0_ng = p0 + p1 * ((coords[0] - pivot) / x_range)
+            # nmrglue expects p1 to be the total phase twist across the array
+            p1_ng = p1
+        else:
+            p0_ng, p1_ng = p0, p1
+    else:
+        p0_ng, p1_ng = p0, p1
+
     da_transposed = da.transpose(..., dim)
 
-    # nmrglue's ps expects the data array and angles in degrees
-    phased_values = ng.process.proc_base.ps(da_transposed.values, p0=p0, p1=p1)
+    # Pass the translated angles to nmrglue
+    phased_values = ng.process.proc_base.ps(da_transposed.values, p0=p0_ng, p1=p1_ng)
 
-    # Reconstruct the DataArray and transpose back to original dimension order
     da_phased = da_transposed.copy(data=phased_values)
     da_phased = da_phased.transpose(*da.dims)
 
-    # Preserve original attributes and explicitly stamp mathematical lineage
     da_phased = da_phased.assign_attrs(da.attrs)
+    # Save the exact numbers the user input for reproducibility
     da_phased.attrs[ATTRS.phase_p0] = p0
     da_phased.attrs[ATTRS.phase_p1] = p1
+    if pivot is not None:
+        da_phased.attrs["phase_pivot"] = pivot
 
     return da_phased
 

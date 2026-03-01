@@ -17,13 +17,21 @@ class PhaseWidget(anywidget.AnyWidget):
     _esm = _HERE / "phase.js"
     _css = _HERE / "phase.css"
 
-    # Abstracted coordinate traits
+    # Layout traits
+    width = traitlets.Int(740).tag(sync=True)
+    height = traitlets.Int(400).tag(sync=True)
+    show_grid = traitlets.Bool(True).tag(sync=True)
+
+    # Coordinate traits
     x_coords = traitlets.List().tag(sync=True)
     x_label = traitlets.Unicode("Chemical Shift [ppm]").tag(sync=True)
+
+    # Data traits
     reals = traitlets.List().tag(sync=True)
     imags = traitlets.List().tag(sync=True)
     mag = traitlets.List().tag(sync=True)
 
+    # Phase traits
     p0 = traitlets.Float(0.0).tag(sync=True)
     p1 = traitlets.Float(0.0).tag(sync=True)
     pivot_val = traitlets.Float(0.0).tag(sync=True)
@@ -32,7 +40,9 @@ class PhaseWidget(anywidget.AnyWidget):
 # ============================================================================
 # 2. Convenience wrapper for xarray
 # ============================================================================
-def phase_spectrum(da: xr.DataArray) -> PhaseWidget:
+def phase_spectrum(
+    da: xr.DataArray, width: int = 740, height: int = 400, show_grid: bool = True
+) -> PhaseWidget:
     """Create an interactive phase correction viewer for a 1-D complex xarray.
 
     Automatically detects if the spectral dimension is in ppm or Hz,
@@ -44,11 +54,9 @@ def phase_spectrum(da: xr.DataArray) -> PhaseWidget:
     if not np.iscomplexobj(da.values):
         raise ValueError("The spectrum must be complex-valued to perform phasing.")
 
-    # 1. Identify the spectral dimension and its unit
     spec_dim = None
     x_label = ""
 
-    # We sniff the dimension names to match xmris's conventions
     for d in da.dims:
         d_str = str(d).lower()
         if any(k in d_str for k in ("ppm", "chem", "shift")):
@@ -60,24 +68,23 @@ def phase_spectrum(da: xr.DataArray) -> PhaseWidget:
             x_label = "Frequency [Hz]"
             break
 
-    # Fallback if no explicit string matched: use the raw dimension name
     if spec_dim is None:
         spec_dim = da.dims[0]
-        x_label = str(spec_dim)  # e.g., "points" or "time"
+        x_label = str(spec_dim)
 
     x_vals = da.coords[spec_dim].values.astype(float)
     vals = da.values
 
-    # 2. Calculate magnitude for axis scaling
     mag_vals = np.abs(vals).astype(float)
-
-    # 3. Find the pivot (x-coordinate of the maximum magnitude peak)
     max_idx = np.argmax(mag_vals)
     pivot = float(x_vals[max_idx])
 
     return PhaseWidget(
+        width=width,
+        height=height,
+        show_grid=show_grid,
         x_coords=x_vals.tolist(),
-        x_label=x_label,  # <-- Pass the fully formatted label string
+        x_label=x_label,
         reals=np.real(vals).astype(float).tolist(),
         imags=np.imag(vals).astype(float).tolist(),
         mag=mag_vals.tolist(),
