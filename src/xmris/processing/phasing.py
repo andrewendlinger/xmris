@@ -1,4 +1,4 @@
-import nmrglue as ng
+import numpy as np
 import xarray as xr
 
 from xmris.core.config import ATTRS, DIMS
@@ -19,7 +19,7 @@ def phase(
     Parameters
     ----------
     da : xr.DataArray
-        The input frequency-domain spectrum.
+        The input frequency-domain spectrum. Must be complex-valued.
     dim : str, optional
         The frequency dimension along which to apply phase correction,
         by default `DIMS.frequency`.
@@ -29,7 +29,7 @@ def phase(
         First-order phase angle in degrees, by default 0.0.
     pivot : float, optional
         The coordinate value (e.g., ppm or Hz) around which p1 is pivoted.
-        If None, standard nmrglue index-0 pivoting is used.
+        If None, standard index-0 pivoting is used.
 
     Returns
     -------
@@ -38,35 +38,36 @@ def phase(
     """
     _check_dims(da, dim, "phase")
 
-    # If a pivot is provided, translate human UI angles to nmrglue array angles
-    if pivot is not None:
-        coords = da.coords[dim].values
-        x_range = coords[-1] - coords[0]
+    # If pivot isn't explicitly provided, default to the max magnitude
+    # to perfectly match the initial behavior of the JS widget
+    if pivot is None:
+        pivot = float(da.coords[dim].values[np.argmax(np.abs(da.values))])
 
-        if x_range != 0:
-            # Shift p0 to match what nmrglue expects at index 0
-            p0_ng = p0 + p1 * ((coords[0] - pivot) / x_range)
-            # nmrglue expects p1 to be the total phase twist across the array
-            p1_ng = p1
-        else:
-            p0_ng, p1_ng = p0, p1
+    # Extract coordinates and determine the absolute range (matching JS: max - min)
+    coords = da.coords[dim]
+    x_min = float(coords.min())
+    x_max = float(coords.max())
+    x_range = x_max - x_min
+
+    # Convert degrees to radians
+    p0_rad = np.radians(p0)
+    p1_rad = np.radians(p1)
+
+    # Calculate the phase array using physical coordinates (matches JS 1:1)
+    if x_range == 0:
+        phase_array = p0_rad
     else:
-        p0_ng, p1_ng = p0, p1
+        phase_array = p0_rad + p1_rad * ((coords - pivot) / x_range)
 
-    da_transposed = da.transpose(..., dim)
+    # Apply the complex phase shift: data * exp(i * phase)
+    # xarray automatically broadcasts the coordinate math across the correct dimension
+    da_phased = da * np.exp(1.0j * phase_array)
 
-    # Pass the translated angles to nmrglue
-    phased_values = ng.process.proc_base.ps(da_transposed.values, p0=p0_ng, p1=p1_ng)
-
-    da_phased = da_transposed.copy(data=phased_values)
-    da_phased = da_phased.transpose(*da.dims)
-
-    da_phased = da_phased.assign_attrs(da.attrs)
-    # Save the exact numbers the user input for reproducibility
+    # Transfer original attributes and append the new phase parameters
+    da_phased.attrs = da.attrs.copy()
     da_phased.attrs[ATTRS.phase_p0] = p0
     da_phased.attrs[ATTRS.phase_p1] = p1
-    if pivot is not None:
-        da_phased.attrs["phase_pivot"] = pivot
+    da_phased.attrs["phase_pivot"] = pivot
 
     return da_phased
 
@@ -106,6 +107,8 @@ def autophase(
         The phased spectrum. Applied angles are stored in `attrs[ATTRS.phase_p0]`
         and `attrs[ATTRS.phase_p1]`.
     """
+    from nmrglue.process.proc_autophase import autops
+
     _check_dims(da, dim, "autophase")
 
     # 1. Transform spectrum back to a temporary FID
@@ -120,9 +123,7 @@ def autophase(
     # 4. Calculate phase angles using nmrglue's ACME algorithm on the smooth data
     # Ensure the target dimension is last for nmrglue's underlying routines
     temp_smooth_transposed = temp_smooth_spec.transpose(..., dim)
-    _, (p0, p1) = ng.process.proc_autophase.autops(
-        temp_smooth_transposed.values, "acme", return_phases=True
-    )
+    _, (p0, p1) = autops(temp_smooth_transposed.values, "acme", return_phases=True)
 
     # 5. Apply the calculated angles to the ORIGINAL, untouched spectrum
     # The phase() function will automatically handle the lineage stamping for p0 and p1

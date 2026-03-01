@@ -24,12 +24,13 @@ lineshapes, rather than pure absorptive peaks.
 
 A phase correction applies a frequency-dependent phase angle, $\phi(\omega)$, to the spectrum:
 
-$$S_{phased}(\omega) = S(\omega) \cdot e^{i \cdot \phi(\omega)}$$
+$$S_{phased}(\omega) = S(\omega) \cdot e^{i \phi(\omega)}$$
 
-Where the phase angle is typically modeled as a linear polynomial consisting of a zero-order
-(frequency-independent) term $p_0$ and a first-order (frequency-dependent) term $p_1$:
+Where the phase angle is modeled as a linear polynomial consisting of a zero-order
+(frequency-independent) term $p_0$ and a first-order (frequency-dependent) term $p_1$.
+To ensure the first-order twist scales predictably regardless of the spectral sweep width, $p_1$ is anchored around a physical `pivot` coordinate (by default, the point of maximum magnitude) and scaled by the absolute spectral range:
 
-$$\phi(\omega) = p_0 + p_1 \cdot \frac{\omega}{\omega_{max}}$$
+$$\phi(\omega) = p_0 + p_1 \cdot \frac{\omega - \omega_{pivot}}{\omega_{max} - \omega_{min}}$$
 
 ```{code-cell} ipython3
 import matplotlib.pyplot as plt
@@ -69,6 +70,7 @@ da_fid = xr.DataArray(
 da_spec = da_fid.xmr.to_spectrum()
 
 # Intentionally ruin the phase: p0 = 120 degrees, p1 = -45 degrees
+# The pivot defaults to the peak with the maximum magnitude (50 Hz)
 da_ruined = da_spec.xmr.phase(p0=120.0, p1=-45.0)
 
 fig, axes = plt.subplots(1, 2, figsize=(12, 3))
@@ -85,10 +87,10 @@ plt.show()
 
 We can manually apply zero- and first-order phase correction (in degrees) using the `.xmr.phase()` method.
 Because this is an `xarray` accessor, the exact quantifiable phase angles used are permanently appended to the
-`DataArray` attributes (as `phase_p0` and `phase_p1`) to safely preserve the data lineage.
+`DataArray` attributes (as `phase_p0`, `phase_p1`, and `phase_pivot`) to safely preserve the data lineage.
 
 Since we know we ruined the spectrum with $p_0 = 120^\circ$ and $p_1 = -45^\circ$, we can restore it
-by applying the exact inverse.
+by applying the exact inverse. Because phase corrections do not alter the absolute magnitude of the spectrum, the default calculated `pivot` remains perfectly symmetric!
 
 ```{code-cell} ipython3
 # Apply the inverse phase angles and specify the dimension
@@ -105,6 +107,7 @@ plt.show()
 print("Stored Phase Attributes:")
 print(f"  phase_p0: {da_manual.attrs.get('phase_p0')}")
 print(f"  phase_p1: {da_manual.attrs.get('phase_p1')}")
+print(f"  phase_pivot: {da_manual.attrs.get('phase_pivot')}")
 ```
 
 :::{dropdown} Under the Hood: No Magic Strings
@@ -118,6 +121,7 @@ This architecture allows `xmris` to intercept your request and automatically val
 
 # STRICT TESTS: Manual Phase Correction
 assert "phase_p0" in da_manual.attrs and "phase_p1" in da_manual.attrs
+assert "phase_pivot" in da_manual.attrs
 assert da_manual.attrs["phase_p0"] == -120.0
 assert da_manual.attrs["phase_p1"] == 45.0
 

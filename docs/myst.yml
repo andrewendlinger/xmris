@@ -46,12 +46,18 @@ project:
     # 4. GROUP: Visualization / plotting
     - title: Visualization
       children:
-        - file: notebooks/visualization/01_plotting_basics.ipynb
-          title: 1. Intro with RidgePlot
-        - file: notebooks/visualization/02_plotting_heatmap.ipynb
-          title: 2. 1D+Time, NMR time series
-        - file: notebooks/visualization/03_plotting_fit_1d.ipynb
-          title: 3. 1D+Time, pyAMARES data
+        - title: Plotting
+          children:
+            - file: notebooks/visualization/plot/01_plotting_basics.ipynb
+              title: 1. Intro with RidgePlot
+            - file: notebooks/visualization/plot/02_plotting_heatmap.ipynb
+              title: 2. 1D+Time, NMR time series
+            - file: notebooks/visualization/plot/03_plotting_fit_1d.ipynb
+              title: 3. 1D+Time, pyAMARES data
+        - title: Widgets
+          children:
+            - file: notebooks/visualization/widget/01_widget_phase.ipynb
+              title: 1. Spectrum phasing
 
     # 4. GROUP: Visualization / plotting
     - title: Vendor Specific

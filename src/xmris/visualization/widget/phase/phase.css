@@ -1,4 +1,6 @@
-/* Container - Modern Card Look */
+/* =========================================
+   Container & Layout
+   ========================================= */
 .nmr-viewer {
     position: relative;
     display: flex;
@@ -11,19 +13,31 @@
     border: 1px solid #e0e0e0;
     border-radius: 8px;
     box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-    overflow: hidden; /* Keeps sharp corners clean */
+    overflow: hidden; /* Ensures sharp corners are maintained */
 }
 
-/* Canvas Area */
+/* =========================================
+   Canvas Area
+   ========================================= */
 .nmr-canvas-container {
     position: relative;
     background: #fafafa;
     border-bottom: 1px solid #eee;
 }
-.nmr-canvas { cursor: crosshair; outline: none; display: block; }
-.nmr-canvas:focus { box-shadow: inset 0 0 0 2px rgba(100,150,200,.15); }
 
-/* Floating Legend */
+.nmr-canvas {
+    cursor: crosshair;
+    outline: none;
+    display: block;
+}
+
+.nmr-canvas:focus {
+    box-shadow: inset 0 0 0 2px rgba(100,150,200,.15);
+}
+
+/* =========================================
+   Floating Legend
+   ========================================= */
 .nmr-legend {
     position: absolute;
     top: 12px;
@@ -39,12 +53,16 @@
     align-items: center;
     gap: 6px;
     box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-    pointer-events: none; /* Mouse ignores it */
+    pointer-events: none; /* Prevents mouse events from interfering with canvas drag */
 }
+
+/* Legend line indicators */
 .leg-re { display: inline-block; width: 10px; height: 3px; background: #0055aa; border-radius: 1px; }
 .leg-im { display: inline-block; width: 10px; height: 2px; background: #e63946; border-radius: 1px; }
 
-/* Control Bar */
+/* =========================================
+   Control Bar (Bottom)
+   ========================================= */
 .nmr-bar {
     display: flex;
     width: 100%;
@@ -54,10 +72,11 @@
     padding: 10px 14px;
     background: #fff;
 }
+
 .nmr-grp { display: flex; align-items: center; gap: 10px; }
 .nmr-lbl { font-size: 13px; color: #444; font-weight: 600; }
 
-/* Clean Input Boxes */
+/* Input fields for phase parameters */
 .nmr-input {
     width: 55px;
     padding: 4px;
@@ -71,9 +90,13 @@
     outline: none;
     transition: border-color 0.2s;
 }
-.nmr-input:focus { border-color: #0055aa; background: #fff; }
 
-/* Buttons */
+.nmr-input:focus {
+    border-color: #0055aa;
+    background: #fff;
+}
+
+/* Base styling for interactive buttons */
 .nmr-btn {
     padding: 5px 10px;
     font-size: 12px;
@@ -86,11 +109,19 @@
     align-items: center;
     justify-content: center;
 }
-.nmr-btn-outline { border: 1px solid #ccc; background: #fff; color: #333; }
-.nmr-btn-outline:hover { background: #f0f0f0; border-color: #bbb; }
 
+.nmr-btn-outline {
+    border: 1px solid #ccc;
+    background: #fff;
+    color: #333;
+}
 
-/* Hints Text */
+.nmr-btn-outline:hover {
+    background: #f0f0f0;
+    border-color: #bbb;
+}
+
+/* Contextual hints text */
 .nmr-hints {
     font-size: 11px;
     color: #888;
@@ -100,12 +131,12 @@
 }
 
 /* =========================================
-   Success Banner & Copy Button
+   Completion State (Banner & Copying)
    ========================================= */
 .nmr-success-banner {
     padding: 16px;
-    border: 1px solid #b7eb8f;
-    background: #f6ffed;
+    border: 1px solid #cce0f5;
+    background: #f8fbff; /* Professional light blue, matching widget theme */
     border-radius: 8px;
     width: 100%;
     box-sizing: border-box;
@@ -117,7 +148,7 @@
     font-weight: 600;
     margin-bottom: 8px;
     font-size: 15px;
-    color: #389e0d;
+    color: #0055aa; /* Aligned with the real-line color */
 }
 
 .nmr-success-subtitle {
@@ -140,17 +171,27 @@
     border-radius: 4px;
     font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
     font-size: 13px;
-    color: #000;
     display: flex;
     align-items: center;
-    user-select: all; /* Allows 1-click highlighting */
 }
 
-/* Copy Button Base Style */
+/* Usage hint text - unselectable and grayed out */
+.nmr-code-hint {
+    color: #999;
+    user-select: none;
+}
+
+/* The actual text to be copied */
+.nmr-code-target {
+    color: #000;
+    user-select: all; /* Allows 1-click highlighting of just the target code */
+}
+
+/* Actionable copy button */
 .nmr-copy-btn {
     padding: 0 16px;
-    border: 1px solid #389e0d;
-    background: #52c41a;
+    border: 1px solid #004488;
+    background: #0055aa;
     color: white;
     border-radius: 4px;
     cursor: pointer;
@@ -160,15 +201,16 @@
 }
 
 .nmr-copy-btn:hover {
-    background: #47b313; /* Slightly darker green on hover */
+    background: #004488;
 }
 
-/* Modifier Classes for JS State Toggling */
+/* Dynamic modifiers for JavaScript state toggling */
 .nmr-copy-btn.copied {
-    background: #389e0d;
+    background: #28a745; /* Transition to green only upon successful action */
+    border-color: #218838;
 }
 
 .nmr-copy-btn.failed {
-    background: #d9363e;
-    border-color: #a8071a;
+    background: #dc3545;
+    border-color: #c82333;
 }
