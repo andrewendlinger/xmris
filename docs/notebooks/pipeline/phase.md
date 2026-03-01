@@ -85,6 +85,10 @@ plt.show()
 
 ## 2. Manual Phase Correction
 
+:::{tip}
+Use the [Interactive Phasing Widget](../visualization/widget/01_widget_phase.ipynb) to interactivley adjust $p_0$ and $p_1$.
+:::
+
 We can manually apply zero- and first-order phase correction (in degrees) using the `.xmr.phase()` method.
 Because this is an `xarray` accessor, the exact quantifiable phase angles used are permanently appended to the
 `DataArray` attributes (as `phase_p0`, `phase_p1`, and `phase_pivot`) to safely preserve the data lineage.
