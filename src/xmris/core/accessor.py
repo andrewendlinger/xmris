@@ -113,18 +113,37 @@ class XmrisWidgetAccessor:
         """
         self._obj = obj
 
-    def phase_spectrum(self, *args, **kwargs):
-        """
-        Open an interactive zero- and first-order phase correction widget.
+    def phase_spectrum(
+        self,
+        width: int = 740,
+        height: int = 400,
+        show_grid: bool = True,
+        show_pivot: bool = True,
+        **kwargs,
+    ):
+        """Open an interactive zero- and first-order phase correction widget.
 
         This method launches an AnyWidget-based user interface directly in the
         Jupyter Notebook. It allows for manual, real-time adjustment of the
-        zero-order ($p_0$) and first-order ($p_1$) phase angles of a 1-D
+        zero-order (p0) and first-order (p1) phase angles of a 1-D
         complex-valued NMR/MRS spectrum.
+
+        Parameters
+        ----------
+        width : int, optional
+            Width of the widget in pixels. Default is 740.
+        height : int, optional
+            Height of the widget in pixels. Default is 400.
+        show_grid : bool, optional
+            Toggle the background grid visibility. Default is True.
+        show_pivot : bool, optional
+            Toggle the visibility of the p1 pivot indicator. Default is True.
+        **kwargs
+            Additional arguments passed to the underlying PhaseWidget.
 
         Returns
         -------
-        NMRPhaseWidget
+        PhaseWidget
             The interactive widget instance. Assigning this to a variable allows
             you to programmatically extract the optimized phase angles after
             interacting with the UI.
@@ -137,27 +156,24 @@ class XmrisWidgetAccessor:
 
         Notes
         -----
-        - **Zero-order phase ($p_0$)**: Click and drag vertically on the canvas.
-        - **First-order phase ($p_1$)**: Hold `Shift`, then click and drag vertically.
-        - The pivot point for $p_1$ is automatically set to the chemical shift (ppm)
-          of the maximum magnitude peak.
+        - **Zero-order phase (p0)**: Adjusts the phase uniformly across the spectrum.
+        - **First-order phase (p1)**: Adjusts phase linearly relative to a pivot point.
+        - The pivot point (p_pivot) is automatically set to the coordinate
+          corresponding to the maximum magnitude peak.
 
-        Examples
-        --------
-        >>> widget = da.xmr.widget.phase_spectrum()
-        >>> display(widget)
-
-        Once you have phased the spectrum by eye in the UI, you can extract
-        the exact angles back into Python:
-
-        >>> p0_opt = widget.p0
-        >>> p1_opt = widget.p1
         """
         # Lazy import to avoid loading AnyWidget/frontend assets unless requested
         from xmris.visualization.widget import phase_spectrum
 
-        # Return the widget instance so it renders and can be assigned
-        return phase_spectrum(self._obj, *args, **kwargs)
+        # The underlying function handles the 1-D and complex-type validation
+        return phase_spectrum(
+            self._obj,
+            width=width,
+            height=height,
+            show_grid=show_grid,
+            show_pivot=show_pivot,
+            **kwargs,
+        )
 
 
 # =============================================================================
