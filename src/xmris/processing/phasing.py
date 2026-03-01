@@ -69,7 +69,22 @@ def phase(
     # xarray automatically broadcasts the coordinate math across the correct dimension
     da_phased = da * np.exp(1.0j * phase_array)
 
-    # Transfer original attributes and append the new phase parameters
+    # 1. Explicitly copy original attributes to the new object
+    da_phased.attrs = da.attrs.copy()
+
+    # 2. Safety Check: Warn if applying phase in a new coordinate space
+    if pivot is not None and ATTRS.phase_pivot_coord in da_phased.attrs:
+        old_coord = da_phased.attrs[ATTRS.phase_pivot_coord]
+        if old_coord != dim:
+            import warnings
+
+            warnings.warn(
+                f"Applying phase in '{dim}', but previous phase operations "
+                f"were recorded in '{old_coord}'. Ensure your pivot value "
+                f"({pivot}) matches the current dimension's units."
+            )
+
+    # 3. Append new processing parameters to the copied dict
     da_phased.attrs[ATTRS.phase_p0] = p0
     da_phased.attrs[ATTRS.phase_p1] = p1
     da_phased.attrs[ATTRS.phase_pivot] = pivot
