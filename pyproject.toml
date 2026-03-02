@@ -119,8 +119,13 @@ convention = "numpy"
 # --- Jupytext ---
 [tool.jupytext]
 formats = "ipynb,md:myst"
-notebook_metadata_filter = "-all"
-cell_metadata_filter = "all,-trusted"
+# Strip all notebook-level metadata EXCEPT the essential kernel and format info.
+# This prevents noisy diffs from Python version changes or Jupytext version bumps.
+notebook_metadata_filter = "-all, kernelspec, jupytext.text_representation.extension, jupytext.text_representation.format_name"
+
+# Strip all cell-level metadata EXCEPT tags (which MyST needs for rendering).
+# This permanently kills the VSCode languageId injections and execution counts.
+cell_metadata_filter = "-all, tags, name"
 
 [tool.uv.sources]
 # Uncomment the local repository for simultaneous development of both packages

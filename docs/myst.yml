@@ -6,6 +6,12 @@ project:
   references:
     xarray:
       url: https://docs.xarray.dev/en/stable/
+  exclude:
+    - "notebooks/**/*.ipynb"
+  execute:
+    # 'cache' runs the notebooks and caches the outputs.
+    # It only re-runs a notebook if the markdown/code actually changed.
+    drive: cache
 
   toc:
     - file: index.md
@@ -13,35 +19,37 @@ project:
     # 1. GROUP: Core concepts and basic usage
     - title: Basics
       children:
-        - file: notebooks/basics/architecture.ipynb
+        - file: notebooks/basics/architecture.md
           title: The xmris Architecture
-        - file: notebooks/basics/complex_numbers.ipynb
+        - file: notebooks/basics/complex_numbers.md
           title: 01. Complex Numbers
-        - file: notebooks/basics/fft.ipynb
+        - file: notebooks/basics/fft.md
           title: 02. FFT Basics
-        - file: notebooks/basics/fid_transformations.ipynb
+        - file: notebooks/basics/fid_transformations.md
           title: 03. FID & Spectrum
-        - file: notebooks/basics/hz_and_ppm.ipynb
+        - file: notebooks/basics/hz_and_ppm.md
           title: 03. Hz and ppm
+
     # 2. GROUP: A chronological processing pipeline
     - title: Processing Pipeline
       children:
-        - file: notebooks/pipeline/zero_fill.ipynb
+        - file: notebooks/pipeline/zero_fill.md
           title: 1. Zero Filling
-        - file: notebooks/pipeline/apodization.ipynb
+        - file: notebooks/pipeline/apodization.md
           title: 2. Apodization
-        - file: notebooks/pipeline/phase.ipynb
+        - file: notebooks/pipeline/phase.md
           title: 3. Phase Correction
-        - file: notebooks/pipeline/autophasing.ipynb
+        - file: notebooks/pipeline/autophasing.md
           title: 4. Automated Phase Correction
+
     # 3. GROUP: Advanced Quantification
     - title: Spectral Fitting & Simulation
       children:
-        - file: notebooks/fitting/simufid.ipynb
+        - file: notebooks/fitting/simufid.md
           title: FID Simulation
-        - file: notebooks/fitting/pyamares.ipynb
+        - file: notebooks/fitting/pyamares.md
           title: pyAMARES - Part I
-        - file: notebooks/fitting/pyamares_advanced.ipynb
+        - file: notebooks/fitting/pyamares_advanced.md
           title: pyAMARES - Part II
 
     # 4. GROUP: Visualization / plotting
@@ -49,29 +57,29 @@ project:
       children:
         - title: Plotting
           children:
-            - file: notebooks/visualization/plot/01_plotting_basics.ipynb
+            - file: notebooks/visualization/plot/01_plotting_basics.md
               title: 1. Intro with RidgePlot
-            - file: notebooks/visualization/plot/02_plotting_heatmap.ipynb
+            - file: notebooks/visualization/plot/02_plotting_heatmap.md
               title: 2. 1D+Time, NMR time series
-            - file: notebooks/visualization/plot/03_plotting_fit_1d.ipynb
+            - file: notebooks/visualization/plot/03_plotting_fit_1d.md
               title: 3. 1D+Time, pyAMARES data
         - title: Widgets
           children:
-            - file: notebooks/visualization/widget/01_widget_phase.ipynb
+            - file: notebooks/visualization/widget/01_widget_phase.md
               title: 1. Spectrum phasing
-            - file: notebooks/visualization/widget/02_widget_scroller.ipynb
-              title: 1. Spectrum phasing
+            - file: notebooks/visualization/widget/02_widget_scroller.md
+              title: 2. Srcolling through spectra
 
-    # 4. GROUP: Visualization / plotting
+    # 5. GROUP: Vendor Specific
     - title: Vendor Specific
       children:
-        - file: notebooks/vendor/bruker_filter_removal.ipynb
+        - file: notebooks/vendor/bruker_filter_removal.md
           title: Bruker - Digital Filter
-        - file: notebooks/vendor/bruker_fid_loader.ipynb
+        - file: notebooks/vendor/bruker_fid_loader.md
           title: Bruker - FID Loading
 
 
-    # 5. API Ref
+    # 6. API Ref
     - title: API Reference
       file: api_reference/index.md
       children:
@@ -128,7 +136,7 @@ project:
             - file: api_reference/core.validation.md
               title: Validation
 
-    # 6. Contribute
+    # 7. Contribute
     - title: Contribute
       children:
         - file: contributing/guide.md
@@ -137,6 +145,8 @@ project:
           title: Environment Setup
         - file: contributing/publishing.md
           title: Publishing
+        - file: contributing/static_widgets.md
+          title: Adding widgets to docs
         - file: contributing/ai_context.md
           title: AI Context
 
