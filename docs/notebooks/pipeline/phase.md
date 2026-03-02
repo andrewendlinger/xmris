@@ -1,4 +1,13 @@
-+++ {"vscode": {"languageId": "plaintext"}}
+---
+jupytext:
+  text_representation:
+    extension: .md
+    format_name: myst
+kernelspec:
+  name: python3
+  language: python
+  display_name: Python 3 (ipykernel)
+---
 
 ---
 title: Spectrum - Phase Correction

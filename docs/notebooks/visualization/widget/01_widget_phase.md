@@ -1,7 +1,12 @@
-+++ {"vscode": {"languageId": "plaintext"}}
-
 ---
-title: Interactive Phase Correction Widget
+jupytext:
+  text_representation:
+    extension: .md
+    format_name: myst
+kernelspec:
+  display_name: Python 3 (ipykernel)
+  language: python
+  name: python3
 ---
 
 ```{code-cell} ipython3
@@ -62,10 +67,9 @@ You can launch the interactive viewer directly from the `xmris` package. Pass yo
 The widget will automatically detect your spectral dimension (e.g., `frequency`, `ppm`), set up the coordinates, and calculate the optimal pivot point based on the maximum signal magnitude.
 
 ```{code-cell} ipython3
-:tags: [remove-output]
-
 # Launch the interactive widget
-da_ruined.xmr.widget.phase_spectrum()
+w = da_ruined.xmr.widget.phase_spectrum()
+display(w)
 ```
 
 ![Screenshot of the widget (part 1)](../../../assets/notebook-assets/screenshot_widget_phase_spectrum.png)

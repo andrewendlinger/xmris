@@ -1,3 +1,14 @@
+---
+jupytext:
+  text_representation:
+    extension: .md
+    format_name: myst
+kernelspec:
+  name: python3
+  language: python
+  display_name: Python 3 (ipykernel)
+---
+
 # Internal Test: Bruker 13C Slab Reshaping and Validation
 
 ```{code-cell} ipython3

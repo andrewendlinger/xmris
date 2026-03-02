@@ -1,4 +1,13 @@
-+++ {"vscode": {"languageId": "plaintext"}}
+---
+jupytext:
+  text_representation:
+    extension: .md
+    format_name: myst
+kernelspec:
+  display_name: Python 3 (ipykernel)
+  language: python
+  name: python3
+---
 
 ---
 title: Visualizing Dynamic AMARES Fits
@@ -137,7 +146,6 @@ plt.show()
 We fit the dynamic series using the parallel batch processor.
 
 ```{code-cell} ipython3
-:lines_to_next_cell: 0
 :tags: [skip-execution]
 
 ds_dyn = da_dyn.xmr.fit_amares(

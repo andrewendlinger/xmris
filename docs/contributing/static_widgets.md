@@ -1,4 +1,16 @@
+---
+jupytext:
+  text_representation:
+    extension: .md
+    format_name: myst
+kernelspec:
+  display_name: .venv
+  language: python
+  name: python3
+---
+
 # Documenting Interactive Widgets
+
 
 The `xmris` package heavily utilizes [AnyWidget](https://anywidget.dev/) to provide interactive, browser-based UI components (like phase correction and spectra scrolling) directly inside Jupyter Notebooks. 
 

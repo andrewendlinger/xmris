@@ -1,4 +1,13 @@
-+++ {"lines_to_next_cell": 2, "vscode": {"languageId": "plaintext"}}
+---
+jupytext:
+  text_representation:
+    extension: .md
+    format_name: myst
+kernelspec:
+  name: python3
+  language: python
+  display_name: Python 3 (ipykernel)
+---
 
 ---
 title: Bruker - Digital Filter Group Delay
@@ -135,8 +144,6 @@ plt.show()
 We can easily sanitize this hardware-specific data using the `.xmr.remove_digital_filter()` method. We use `keep_length=True` to pad the end with pure zeros, maintaining our exact array length for FFTs. This approach allows us to chain operations directly on the ingested array.
 
 ```{code-cell} ipython3
-:lines_to_next_cell: 2
-
 # 1. Sanitize the vendor-specific data using the accessor
 da_clean = da_raw.xmr.remove_digital_filter(
     group_delay=delay_points, dim="Time", keep_length=True

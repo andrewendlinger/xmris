@@ -1,4 +1,13 @@
-+++ {"vscode": {"languageId": "plaintext"}}
+---
+jupytext:
+  text_representation:
+    extension: .md
+    format_name: myst
+kernelspec:
+  display_name: .venv
+  language: python
+  name: python3
+---
 
 ---
 title: Automated Phase Correction
@@ -153,7 +162,7 @@ spec_distorted = spec_ideal.xmr.phase(
 spec_corrected = spec_distorted.xmr.phase(
     dim="chemical_shift", p0=-p0_distort, p1=-p1_distort, pivot=pivot_val
 )
-````
+```
 
 ```{code-cell} ipython3
 :tags: [remove-cell]
@@ -283,7 +292,6 @@ spec_corrected_s = spec_distorted_s.xmr.phase(
 ```
 
 ```{code-cell} ipython3
-
 # Step 1-3.
 # --> Simulation of the spectrum is hidden in the collpased cell above.
 
