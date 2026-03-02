@@ -94,6 +94,9 @@ class XmrisPlotAccessor:
         )
 
 
+import xarray as xr
+
+
 class XmrisWidgetAccessor:
     """Sub-accessor for xmris interactive widget functionalities.
 
@@ -160,7 +163,6 @@ class XmrisWidgetAccessor:
         - **First-order phase (p1)**: Adjusts phase linearly relative to a pivot point.
         - The pivot point (p_pivot) is automatically set to the coordinate
           corresponding to the maximum magnitude peak.
-
         """
         # Lazy import to avoid loading AnyWidget/frontend assets unless requested
         from xmris.visualization.widget import phase_spectrum
@@ -172,6 +174,76 @@ class XmrisWidgetAccessor:
             height=height,
             show_grid=show_grid,
             show_pivot=show_pivot,
+            **kwargs,
+        )
+
+    def scroll_spectra(
+        self,
+        scroll_axis: str | None = None,
+        part: str = "real",
+        xlim: tuple[float, float] | None = None,
+        ylim: tuple[float, float] | None = None,
+        show_trace: bool = True,
+        trace_count: int = 10,
+        width: int = 740,
+        height: int = 400,
+        **kwargs,
+    ):
+        """Open an interactive widget to scroll through a 2-D series of spectra.
+
+        This method launches a user interface for exploring multi-dimensional
+        spectroscopy data (e.g., transient repetitions, averages). It includes
+        a timeline scrubber, animation playback, and fading historical traces.
+        Clicking "Extract Slice" provides a copyable `.isel(...)` code snippet
+        to isolate the current view while preserving pipeline lineage.
+
+        Parameters
+        ----------
+        scroll_axis : str, optional
+            The specific dimension to scroll through. If None, it attempts to
+            auto-detect 'repetitions' or 'averages', or falls back to the
+            non-spectral dimension.
+        part : {'real', 'imag', 'abs'}, optional
+            Which mathematical component of complex data to display. Default is 'real'.
+        xlim : tuple of float, optional
+            Static (min, max) bounds for the spectral axis.
+        ylim : tuple of float, optional
+            Static (min, max) bounds for intensity. If None, auto-ranges to the
+            global minimum and maximum of the dataset.
+        show_trace : bool, optional
+            Show fading historical traces behind the current scan. Default is True.
+        trace_count : int, optional
+            The number of historical traces to overlay. Default is 10.
+        width : int, optional
+            Width of the widget in pixels. Default is 740.
+        height : int, optional
+            Height of the widget in pixels. Default is 400.
+        **kwargs
+            Additional arguments passed to the underlying ScrollWidget.
+
+        Returns
+        -------
+        ScrollWidget
+            The interactive widget instance.
+
+        Raises
+        ------
+        ValueError
+            If the input DataArray is not exactly 2-dimensional.
+        """
+        # Lazy import to avoid loading AnyWidget/frontend assets unless requested
+        from xmris.visualization.widget import scroll_spectra
+
+        return scroll_spectra(
+            self._obj,
+            scroll_axis=scroll_axis,
+            part=part,
+            xlim=xlim,
+            ylim=ylim,
+            show_trace=show_trace,
+            trace_count=trace_count,
+            width=width,
+            height=height,
             **kwargs,
         )
 
