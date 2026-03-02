@@ -86,7 +86,8 @@ ipython_config.py
 # Ignore binary .ipynb files in the docs folder (Markdown/Script is the source).
 # If you want to commit selected notebooks, use `git add -f`.
 docs/**/*.ipynb
-
+docs/**/**/*.ipynb
+docs/**/**/**/*.ipynb
 # ==============================================================================
 # 6. IDEs & Operating System
 # ==============================================================================
