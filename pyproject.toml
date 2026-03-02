@@ -73,6 +73,7 @@ dev = [
     "ruff>=0.9.0",
     "pytest-cov>=5.0.0,<7.0.0", # Pin below 7.0.0 to fix nbmake subprocess tracking,
     "pytest-xdist>=3.8.0",
+    "jupyter-server>=2.17.0",
 ]
 
 # ==============================================================================
@@ -118,6 +119,10 @@ convention = "numpy"
 
 # --- Jupytext ---
 [tool.jupytext]
+# To sync up all your notebook / .md metadata do:
+#
+# >   uv run jupytext --set-kernel python3 ./docs/notebooks/**/*.md
+#
 formats = "ipynb,md:myst"
 # Strip all notebook-level metadata EXCEPT the essential kernel and format info.
 # This prevents noisy diffs from Python version changes or Jupytext version bumps.

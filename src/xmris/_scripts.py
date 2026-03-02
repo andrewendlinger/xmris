@@ -286,7 +286,7 @@ def docs_notebooks() -> None:
     print("🚀 Launching MyST preview server...")
     try:
         # Run myst from within the docs directory
-        subprocess.run(["myst", "start"], check=True, cwd=docs_dir)
+        subprocess.run(["myst", "start", "--execute"], check=True, cwd=docs_dir)
     except KeyboardInterrupt:
         print("\n👋 Preview server stopped.")
     except subprocess.CalledProcessError:
