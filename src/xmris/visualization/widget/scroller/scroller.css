@@ -1,0 +1,192 @@
+/* =========================================
+   Container & Layout
+   ========================================= */
+.nmr-viewer {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-family: system-ui, -apple-system, sans-serif;
+    user-select: none;
+    margin: 10px 0;
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    overflow: hidden;
+}
+
+/* =========================================
+   Canvas Area
+   ========================================= */
+.nmr-canvas-container {
+    position: relative;
+    background: #fafafa;
+    border-bottom: 1px solid #eee;
+}
+
+.nmr-canvas {
+    cursor: crosshair;
+    outline: none;
+    display: block;
+}
+
+.nmr-canvas:focus {
+    box-shadow: inset 0 0 0 2px rgba(100,150,200,.15);
+}
+
+/* =========================================
+   Timeline Scrubber
+   ========================================= */
+.nmr-timeline-container {
+    width: 100%;
+    padding: 8px 16px;
+    box-sizing: border-box;
+    background: #fff;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.nmr-slider {
+    flex-grow: 1;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 6px;
+    background: #e0e0e0;
+    border-radius: 3px;
+    outline: none;
+    cursor: pointer;
+}
+
+.nmr-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #0055aa;
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    transition: transform 0.1s;
+}
+
+.nmr-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.15);
+}
+
+.nmr-index-display {
+    font-size: 13px;
+    font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+    color: #555;
+    min-width: 80px;
+    text-align: right;
+}
+
+/* =========================================
+   Control Bar (Bottom)
+   ========================================= */
+.nmr-bar {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    box-sizing: border-box;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: #fff;
+}
+
+.nmr-grp { display: flex; align-items: center; gap: 10px; }
+.nmr-lbl { font-size: 13px; color: #444; font-weight: 600; display: flex; align-items: center; gap: 4px;}
+
+.nmr-input {
+    width: 45px;
+    padding: 4px;
+    font-size: 13px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    text-align: center;
+    font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+    color: #111;
+    background: #f9f9f9;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.nmr-input:focus { border-color: #0055aa; background: #fff; }
+
+.nmr-btn {
+    padding: 5px 10px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s;
+    outline: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.nmr-btn-outline {
+    border: 1px solid #ccc;
+    background: #fff;
+    color: #333;
+}
+
+.nmr-btn-outline:hover { background: #f0f0f0; border-color: #bbb; }
+
+.nmr-play-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    padding: 0;
+}
+
+/* Contextual hints */
+.nmr-hints { font-size: 11px; color: #888; font-style: italic; margin-right: 8px; }
+
+/* =========================================
+   Completion State
+   ========================================= */
+.nmr-success-banner {
+    padding: 16px;
+    border: 1px solid #cce0f5;
+    background: #f8fbff;
+    border-radius: 8px;
+    width: 100%;
+    box-sizing: border-box;
+    text-align: left;
+    font-family: system-ui, -apple-system, sans-serif;
+}
+.nmr-success-title { font-weight: 600; margin-bottom: 8px; font-size: 15px; color: #0055aa; }
+.nmr-success-subtitle { font-size: 13px; color: #555; margin-bottom: 12px; }
+.nmr-copy-container { display: flex; gap: 8px; align-items: stretch; }
+.nmr-code-block {
+    flex-grow: 1;
+    background: #fff;
+    border: 1px solid #d9d9d9;
+    padding: 10px 12px;
+    border-radius: 4px;
+    font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+}
+.nmr-code-hint { color: #999; user-select: none; }
+.nmr-code-target { color: #000; user-select: all; }
+.nmr-copy-btn {
+    padding: 0 16px;
+    border: 1px solid #004488;
+    background: #0055aa;
+    color: white;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 13px;
+    transition: all 0.2s ease;
+}
+.nmr-copy-btn:hover { background: #004488; }
+.nmr-copy-btn.copied { background: #28a745; border-color: #218838; }
+.nmr-copy-btn.failed { background: #dc3545; border-color: #c82333; }
