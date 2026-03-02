@@ -4,7 +4,7 @@ jupytext:
     extension: .md
     format_name: myst
 kernelspec:
-  display_name: Python 3 (ipykernel)
+  display_name: .venv
   language: python
   name: python3
 ---
@@ -85,6 +85,23 @@ The widget will automatically detect your spectral dimension (e.g., `ppm`) and a
 
 # Launch the interactive widget
 da_series.xmr.widget.scroll_spectra(show_trace=True, trace_count=5)
+```
+
+```{code-cell} ipython3
+:tags: [remove-input]
+
+from xmris.visualization.widget._static_exporter import export_widget_static
+from xmris.visualization.widget.scroller.scroller import scroll_spectra
+
+# This will render the interactive canvas in the docs!
+export_widget_static(
+    scroll_spectra,     # The widget generating function
+    da_series,          # Positional arguments
+    height_padding=110,
+    width_padding=0,
+    show_trace=True,
+    trace_count=5,
+)
 ```
 
 ### Using the Widget

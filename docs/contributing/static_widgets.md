@@ -36,9 +36,17 @@ da = xr.DataArray(10 / (1 + 1j * np.linspace(-20, 20, 1024)) + np.random.randn(1
 
 To display the widget in the docs, pass the **widget factory function** and **all its arguments** directly to `export_widget_static`:
 
-```{code-cell} ipython3
-:tags: [remove-input]
 
+
+```python
+# this is a dummy cell for the reader
+# we remove the output with the MyST cell tag `remove-output`
+da.xmr.widget.phase_spectrum()
+```
+
+```{code-cell} ipython3
+# this cell does the heavy lifting in an actual notebook we would
+# remove the cell but keep the output using the MyST cell tag `remove-input`
 from xmris.visualization.widget._static_exporter import export_widget_static
 from xmris.visualization.widget.phase.phase import phase_spectrum
 
