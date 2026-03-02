@@ -24,7 +24,7 @@ class ScrollWidget(anywidget.AnyWidget):
     spectra : list of list of float
         The 2D matrix of spectra to scroll through (e.g., [repetitions, points]).
     scroll_dim : str
-        The name of the dimension being scrolled through (for extraction logic).
+        The name of the dimension being scrolled through.
     current_index : int
         The currently displayed index of the `scroll_dim`.
     show_trace : bool
@@ -68,9 +68,9 @@ def scroll_spectra(
     Instantiate an interactive viewer for a 2-D xarray of spectra.
 
     This generates a UI allowing the user to scroll through repetitions,
-    averages, or any specified dimension. The widget includes an extraction
-    button to generate the exact `.isel()` snippet needed to isolate a specific
-    trace, preserving pipeline lineage.
+    averages, or any specified dimension. The widget includes an close
+    button that closes the main widget and generate the exact `.isel()` snippet
+    needed to isolate a specific trace, preserving pipeline lineage.
 
     Parameters
     ----------

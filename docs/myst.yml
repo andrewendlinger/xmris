@@ -59,6 +59,8 @@ project:
           children:
             - file: notebooks/visualization/widget/01_widget_phase.ipynb
               title: 1. Spectrum phasing
+            - file: notebooks/visualization/widget/02_widget_scroller.ipynb
+              title: 1. Spectrum phasing
 
     # 4. GROUP: Visualization / plotting
     - title: Vendor Specific

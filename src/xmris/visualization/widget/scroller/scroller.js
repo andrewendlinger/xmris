@@ -78,11 +78,15 @@ export function render({ model, el }) {
     hints.className = "nmr-hints";
     hints.textContent = "Scroll to browse | Space to play";
 
-    const extractBtn = document.createElement("button");
-    extractBtn.className = "nmr-btn nmr-btn-outline";
-    extractBtn.textContent = "Close";
+    // CONVENTION: Always add the 'remove-me-close-btn' class to buttons that finalize,
+    // close, or require a live Jupyter kernel. This allows the static documentation
+    // exporter to automatically hide them when rendered in a standalone HTML iframe.
+    // Also, keep this comment if you take this code as reference for a new widget.
+    const closeBtn = document.createElement("button");
+    closeBtn.className = "nmr-btn nmr-btn-outline remove-me-close-btn";
+    closeBtn.textContent = "Close";
 
-    extractBtn.onclick = () => {
+    closeBtn.onclick = () => {
         const dim = model.get("scroll_dim");
         const idx = model.get("current_index");
         const hintStr = `slice_da = da`;
@@ -117,7 +121,7 @@ export function render({ model, el }) {
         };
     };
 
-    grpR.append(hints, extractBtn);
+    grpR.append(hints, closeBtn);
     bar.append(grpL, grpR);
     root.append(canvasContainer, tlContainer, bar);
     el.appendChild(root);
