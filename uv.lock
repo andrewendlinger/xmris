@@ -3339,6 +3339,7 @@ dependencies = [
 [package.dev-dependencies]
 dev = [
     { name = "griffe" },
+    { name = "ipykernel" },
     { name = "ipympl" },
     { name = "jupyter-server" },
     { name = "jupytext" },
@@ -3365,6 +3366,7 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "griffe", specifier = "<0.40.0" },
+    { name = "ipykernel", specifier = ">=6.31.0" },
     { name = "ipympl", specifier = ">=0.10.0" },
     { name = "jupyter-server", specifier = ">=2.17.0" },
     { name = "jupytext", specifier = ">=1.19.1" },

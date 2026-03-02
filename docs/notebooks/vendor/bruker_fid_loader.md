@@ -4,9 +4,9 @@ jupytext:
     extension: .md
     format_name: myst
 kernelspec:
-  name: python3
-  language: python
   display_name: Python 3 (ipykernel)
+  language: python
+  name: python3
 ---
 
 # Visual Verification: FID Loader and Processing Pipeline

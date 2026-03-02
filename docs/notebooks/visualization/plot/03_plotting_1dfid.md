@@ -9,9 +9,7 @@ kernelspec:
   name: python3
 ---
 
----
-title: Visualizing Dynamic AMARES Fits
----
+# Visualizing Dynamic AMARES Fits
 
 ```{code-cell} ipython3
 :tags: [remove-cell]

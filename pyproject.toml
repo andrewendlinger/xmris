@@ -66,21 +66,19 @@ dev = [
     "pytest-cov>=5.0.0,<7.0.0", # Pin <7.0 to fix nbmake subprocess tracking
     "pytest-xdist>=3.8.0",
     "nbmake>=1.5.5",            # Treat notebooks as unit tests
-
     # --- Documentation ---
     "mystmd>=1.3.0",            # Python MyST CLI for docs building
     "quartodoc>=0.11.1",        # Converts code docstrings to markdown
     "griffe<0.40.0",            # Explicit pin to fix quartodoc parsing bug
     "jupyter-server>=2.17.0",   # Required for rendering docs
-
     # --- Code Quality ---
     "ruff>=0.9.0",
     "mypy>=1.15.0",
-
     # --- Interactive/Plotting ---
     "ipympl>=0.10.0",
     "matplotlib>=3.10.0",
     "jupytext>=1.19.1",
+    "ipykernel>=6.31.0",
 ]
 
 # ==============================================================================
@@ -125,14 +123,11 @@ convention = "numpy"
 # We edit in .md (git-friendly) or .ipynb (interactive), but only ever commit .md files.
 [tool.jupytext]
 # To fix missing kernels or sync metadata in bulk, run:
-# uv run jupytext --sync --set-kernel - ./docs/notebooks/**/*.md
-
+# uv run jupytext --sync --set-kernel python3 --display-name "Python 3 (xmris)" ./docs/notebooks/**/*.md
 formats = "ipynb,md:myst"
 
-# Notebook Metadata:
-# We strip 'display_name' (e.g., ".venv") to prevent noisy Git diffs from VS Code.
-# We keep only the essential machine identifier ('name') and language.
-notebook_metadata_filter = "-all, kernelspec.name, kernelspec.language, jupytext.text_representation.extension, jupytext.text_representation.format_name"
+# Include display_name to prevent notebook validation errors
+notebook_metadata_filter = "-all, kernelspec.name, kernelspec.language, kernelspec.display_name, jupytext.text_representation.extension, jupytext.text_representation.format_name"
 
 # Cell Metadata:
 # We strip execution counts and IDs to keep the Markdown clean.

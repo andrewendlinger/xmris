@@ -12,6 +12,7 @@ project:
     # 'cache' runs the notebooks and caches the outputs.
     # It only re-runs a notebook if the markdown/code actually changed.
     drive: cache
+    kernel: .venv
 
   toc:
     - file: index.md

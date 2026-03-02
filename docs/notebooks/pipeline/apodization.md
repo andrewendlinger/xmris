@@ -9,9 +9,7 @@ kernelspec:
   name: python3
 ---
 
----
-title: FID - Apodization
----
+# FID - Apodization
 
 ```{code-cell} ipython3
 :tags: [remove-cell]

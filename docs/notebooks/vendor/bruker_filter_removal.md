@@ -4,14 +4,12 @@ jupytext:
     extension: .md
     format_name: myst
 kernelspec:
-  name: python3
-  language: python
   display_name: Python 3 (ipykernel)
+  language: python
+  name: python3
 ---
 
----
-title: Bruker - Digital Filter Group Delay
----
+# Bruker - Digital Filter Group Delay
 
 ```{code-cell} ipython3
 :tags: [remove-cell]
