@@ -6,14 +6,14 @@ name = "xmris"
 version = "0.6.1"
 description = "An xarray-based MRI and MRS toolbox"
 readme = "README.md"
-requires-python = ">=3.10,<=3.13"# TEMP FIX FOR PYAMARES
+# Python restricted to <3.14 due to dependency constraints (pyamares)
+requires-python = ">=3.10,<=3.13"
 authors = [
     { name = "Andrecho", email = "37243793+andrewendlinger@users.noreply.github.com" }
 ]
-
 license = "AGPL-3.0-only"
 license-files = ["LICENSE"]
-
+keywords = ["mri", "mrs", "xarray", "spectroscopy", "nmr"]
 classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -25,14 +25,13 @@ classifiers = [
     "Operating System :: OS Independent",
     "Framework :: Jupyter",
 ]
-keywords = ["mri", "mrs", "xarray", "spectroscopy", "nmr"]
 
 dependencies = [
     "anywidget>=0.9.21",
     "joblib>=1.5.3",
     "numpy>=1.26.0",
-    "pyamares",
-    "xarray<2025.11.0", # FIX-pyamares
+    "pyamares",         # Sourced from git below
+    "xarray<2025.11.0", # Pinned for compatibility
 ]
 
 [project.urls]
@@ -40,114 +39,114 @@ Repository = "https://github.com/andrewendlinger/xmris"
 Documentation = "https://andrewendlinger.github.io/xmris/"
 
 [project.scripts]
-# Run 'uv run docs-api' to update Python API references
-docs-api = "xmris._scripts:docs_api"
-
-# Run 'uv run docs-notebooks' to work on tutorials/markdown
-docs-notebooks = "xmris._scripts:docs_notebooks"
-
-# Run 'uv run docs' to build everything from scratch
-docs = "xmris._scripts:docs_all"
+docs-api = "xmris._scripts:docs_api"             # Update API references
+docs-notebooks = "xmris._scripts:docs_notebooks" # Sync/Build tutorials
+docs = "xmris._scripts:docs_all"                 # Build full documentation
 
 # ==============================================================================
-# 2. BUILD SYSTEM
+# 2. BUILD SYSTEM & PACKAGE SOURCES
 # ==============================================================================
 [build-system]
 requires = ["uv_build>=0.10.0,<0.11.0"]
 build-backend = "uv_build"
+
+[tool.uv.sources]
+# Use the compatible branch of pyAMARES until upstream fixes are released.
+# To develop locally, comment out 'git' and uncomment 'path'.
+pyamares = { git = "https://github.com/andrewendlinger/pyAMARES", branch = "xmris-compatible" }
+# pyamares = { path = "../pyAMARES", editable = true }
 
 # ==============================================================================
 # 3. DEVELOPMENT DEPENDENCIES
 # ==============================================================================
 [dependency-groups]
 dev = [
-    "ipympl>=0.10.0",
-    "jupytext>=1.19.1",
-    "matplotlib>=3.10.0",
-    "mypy>=1.15.0",
-    "mystmd>=1.3.0",     # Docs: Python MyST CLI for docs building
-    "nbmake>=1.5.5",     # Pytest: plugin to treat Jupyter notebooks as unit tests
+    # --- Testing ---
     "pytest>=8.4.0",
-    "griffe<0.40.0",     # temporary explicit import to fix the quartodoc parsing bug
-    "quartodoc>=0.11.1", # Docs: converts code docstrings to markdown files for myst
-    "ruff>=0.9.0",
-    "pytest-cov>=5.0.0,<7.0.0", # Pin below 7.0.0 to fix nbmake subprocess tracking,
+    "pytest-cov>=5.0.0,<7.0.0", # Pin <7.0 to fix nbmake subprocess tracking
     "pytest-xdist>=3.8.0",
+    "nbmake>=1.5.5",            # Treat notebooks as unit tests
+    # --- Documentation ---
+    "mystmd>=1.3.0",            # Python MyST CLI for docs building
+    "quartodoc>=0.11.1",        # Converts code docstrings to markdown
+    "griffe<0.40.0",            # Explicit pin to fix quartodoc parsing bug
+    "jupyter-server>=2.17.0",   # Required for rendering docs
+    # --- Code Quality ---
+    "ruff>=0.9.0",
+    "mypy>=1.15.0",
+    # --- Interactive/Plotting ---
+    "ipympl>=0.10.0",
+    "matplotlib>=3.10.0",
+    "jupytext>=1.19.1",
+    "ipykernel>=6.31.0",
 ]
 
 # ==============================================================================
 # 4. TOOL CONFIGURATIONS
 # ==============================================================================
 
-# --- Pytest & Nbmake ---
+# --- Pytest ---
 [tool.pytest.ini_options]
-# Explanation of addopts:
-# --nbmake: treat notebooks as tests
-# --cov=xmris: track coverage specifically for your package source code
-# --cov-report=term-missing: print coverage % in the terminal and list missing line numbers
-# --cov-report=html: generate a clickable HTML report in a folder named `htmlcov`
-# -n auto: use all available CPU cores to run tests in parallel
-# --cov-report=xml so Codecov can read the results
-addopts = "--nbmake --cov=xmris --cov-report=term-missing --cov-report=html --cov-report=xml -n auto --cov-config=pyproject.toml"
+# -n auto: Parallel execution
+# --nbmake: Run notebooks as tests
+# --cov: Track coverage for 'xmris' only
+addopts = """
+    -n auto
+    --nbmake
+    --cov=xmris
+    --cov-report=term-missing
+    --cov-report=html
+    --cov-report=xml
+    --cov-config=pyproject.toml
+"""
+testpaths = ["tests", "docs/notebooks"]
 
-testpaths = [
-    "tests",
-    "docs/notebooks",
-]
-
-# --- Ruff (Linter & Formatter) ---
+# --- Ruff (Linter) ---
 [tool.ruff]
 line-length = 90
-target-version = "py312"  # Ensure this matches your expected runtime target
+target-version = "py312"
 
 [tool.ruff.lint]
-# Select rules: Errors (E), Failures (F), isort (I), NumPy (NPY), Docstrings (D), pyupgrade (UP)
-select = ["E", "F", "I", "NPY", "D", "UP"]
-ignore = ["D100", "D104"]
+select = ["E", "F", "I", "NPY", "D", "UP"] # Errors, Failures, Isort, NumPy, Docstrings, Upgrade
+ignore = ["D100", "D104"]                  # Ignore missing docstring in public module/package
 
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"
 
 [tool.ruff.lint.per-file-ignores]
-# Ignores the following for notebooks (.ipynb) and jupytext files (.py):
-# - E501: "Line too long"
-# - F401: "Unused import" (usually due to 'import xmris' to activate the accessor)
-# - E402: "Import not at top of file / double import"
+# Ignore line length, unused imports, and import positions in notebooks/scripts
 "docs/notebooks/*.py" = ["E501", "F401", "E402"]
 "docs/notebooks/*.ipynb" = ["E501", "F401", "E402"]
 
 # --- Jupytext ---
+# Tool for automatic two-way syncing between Jupyter Notebooks (.ipynb) and Markdown (.md).
+# We edit in .md (git-friendly) or .ipynb (interactive), but only ever commit .md files.
 [tool.jupytext]
+# To fix missing kernels or sync metadata in bulk, run:
+# uv run jupytext --sync --set-kernel python3 --display-name "Python 3 (xmris)" ./docs/notebooks/**/*.md
 formats = "ipynb,md:myst"
-notebook_metadata_filter = "-all"
-cell_metadata_filter = "all,-trusted"
 
-[tool.uv.sources]
-# Uncomment the local repository for simultaneous development of both packages
-# (longterm a uv workspace might be better)
-pyamares = { git = "https://github.com/andrewendlinger/pyAMARES", branch = "xmris-compatible" }
-# pyamares = { path = "../pyAMARES", editable = true } # (local dependency development workflow)
+# Include display_name to prevent notebook validation errors
+notebook_metadata_filter = "-all, kernelspec.name, kernelspec.language, kernelspec.display_name, jupytext.text_representation.extension, jupytext.text_representation.format_name"
+
+# Cell Metadata:
+# We strip execution counts and IDs to keep the Markdown clean.
+# We keep 'tags' (for MyST directives) and 'name' (for cross-referencing).
+cell_metadata_filter = "-all, tags, name"
 
 # ==============================================================================
 # 5. COVERAGE CONFIGURATION
 # ==============================================================================
 [tool.coverage.run]
-# Tell coverage to look inside the src directory
 source = ["xmris"]
 disable_warnings = ["no-data-collected"]
-
-omit = [
-    "*/tests/*",
-    "*/docs/*",
-    "*/_scripts.py", # This wildcard will catch it anywhere
-]
+omit = ["*/tests/*", "*/docs/*", "*/_scripts.py"]
 
 [tool.coverage.report]
-# Automatically ignore lines that match these patterns
 exclude_lines = [
     "pragma: no cover",
     "def __repr__",
-    "if TYPE_CHECKING:",       # Ignore typing imports
+    "if TYPE_CHECKING:",
     "raise NotImplementedError",
     "if __name__ == .__main__.:",
 ]

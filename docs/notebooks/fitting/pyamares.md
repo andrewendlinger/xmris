@@ -1,4 +1,13 @@
-+++ {"vscode": {"languageId": "plaintext"}}
+---
+jupytext:
+  text_representation:
+    extension: .md
+    format_name: myst
+kernelspec:
+  display_name: Python 3 (ipykernel)
+  language: python
+  name: python3
+---
 
 ---
 title: Time-Domain Fitting with AMARES
@@ -16,7 +25,6 @@ matplotlib_inline.backend_inline.set_matplotlib_formats("retina")
 # 2. Set a high baseline DPI
 plt.rcParams["figure.dpi"] = 150
 ```
-
 
 While Fourier transforms and phase corrections are essential for visualizing spectra, quantitative Magnetic Resonance Spectroscopy (MRS) requires extracting exact metabolite concentrations. Time-domain fitting is the gold standard for this, especially for *in vivo* data where peaks strongly overlap or are distorted by baseline effects.
 
@@ -163,7 +171,6 @@ We pass the `DataArray` to `.xmr.fit_amares()`.
 Under the hood, `xmris` evaluates the Signal-to-Noise Ratio (SNR) of all voxels, picks the one with the highest SNR to safely initialize the `pyAMARES` template, and then parallelizes the fitting across your CPU cores.
 
 ```{code-cell} ipython3
-:lines_to_next_cell: 0
 :tags: [skip-execution]
 
 # We use num_workers=4 to parallelize the fitting across our spatial dimensions!

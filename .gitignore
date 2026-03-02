@@ -1,77 +1,108 @@
 # ==============================================================================
-# 1. Environment & Package Management (uv)
+# 1. Environment & Package Management (uv / pip)
 # ==============================================================================
-# Ignore virtual environments
+# Python virtual environments
 .venv/
 venv/
 env/
 .env/
 
-# (Note: We DO NOT ignore pyproject.toml or uv.lock. Those must be committed!)
+# Note: We commit pyproject.toml and uv.lock to ensure reproducible builds.
+# If you are developing a library and strictly don't want the lock file, uncomment below:
+# uv.lock
 
 # ==============================================================================
-# 2. Python Caches & Build Artifacts
+# 2. Python Core & Build Artifacts
 # ==============================================================================
+# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 
-# Build directories
+# Distribution / Packaging
 build/
 dist/
-downloads/
-eggs/
+sdist/
+wheels/
+*.egg-info/
 .eggs/
+*.egg
 lib/
 lib64/
 parts/
-sdist/
 var/
-wheels/
-*.egg-info/
+eggs/
 .installed.cfg
-*.egg
+downloads/
 
 # ==============================================================================
-# 3. Tooling Caches (vscode, Ruff, MyPy, Pytest)
+# 3. Code Quality & Testing (Ruff, MyPy, Pytest)
 # ==============================================================================
-.vscode
-.ruff_cache/
-.mypy_cache/
+# Testing and coverage
 .pytest_cache/
+.tox/
+.nox/
 .coverage
 .coverage.*
 coverage.xml
 *.cover
-.cache/
-.tox/
-.nox/
 htmlcov/
 
+# Linters and Type Checkers
+.ruff_cache/
+.mypy_cache/
+.cache/
 
 # ==============================================================================
-# 4. Jupyter & IPython
+# 4. Documentation (MyST / Jupyter Book / Sphinx)
 # ==============================================================================
-.ipynb_checkpoints/
-profile_default/
-ipython_config.py
-*.jupyter_cache/
-
-# ==============================================================================
-# 5. Documentation (Jupyter Book / MyST)
-# ==============================================================================
-# Ignore the generated HTML and caches from building the docs
+# Generated build artifacts
+_build/
 docs/_build/
-docs/.jupyter_cache/
+
+# Generated API reference files (if auto-generated)
 docs/api_reference/
 docs/objects.json
-_build/
+
+# MyST execution cache (results of code blocks)
+.myst/
+docs/.jupyter_cache/
+*.jupyter_cache/
+_timestamp
 
 # ==============================================================================
-# 6. OS & IDE Generated Files
+# 5. Jupyter & Jupytext
 # ==============================================================================
-# Mac
+# Ignore Jupyter internal checkpoints
+.ipynb_checkpoints/
+*/.ipynb_checkpoints/
+
+# IPython configuration
+profile_default/
+ipython_config.py
+
+# JUPYTEXT WORKFLOW:
+# Ignore binary .ipynb files in the docs folder (Markdown/Script is the source).
+# If you want to commit selected notebooks, use `git add -f`.
+docs/**/*.ipynb
+docs/**/**/*.ipynb
+docs/**/**/**/*.ipynb
+# ==============================================================================
+# 6. IDEs & Operating System
+# ==============================================================================
+# VS Code
+.vscode/
+
+# JetBrains / PyCharm
+.idea/
+
+# Editor temporary files
+*.swp
+*.swo
+*~
+
+# macOS
 .DS_Store
 .AppleDouble
 .LSOverride
@@ -82,18 +113,11 @@ ehthumbs.db
 Desktop.ini
 $RECYCLE.BIN/
 
-# Editors
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
 # ==============================================================================
-# 7. MRI / MRS Data (CRITICAL)
+# 7. Scientific Data (MRI / MRS / NIfTI)
 # ==============================================================================
-# Never commit raw data, massive NetCDF files, or NIfTI images to GitHub!
-# If you need test data, use a small synthetic script or fetch it dynamically.
+# CRITICAL: Prevent committing large datasets or raw medical images.
+# These extensions should never be tracked by git.
 *.dat
 *.rda
 *.h5
@@ -105,22 +129,20 @@ $RECYCLE.BIN/
 *.raw
 *.ima
 *.dcm
-.
-
 
 # ==============================================================================
-# 7. TEST DATA
+# 8. Test Data Exceptions
 # ==============================================================================
-# we will ignore the rules in 7. for now, and submit small test data (<10MB)
+# Strategy: Ignore all data in tests/data, then whitelist specific small files.
 
-# Ignore everything under tests/data
+# 1. Ignore everything inside tests/data recursively
 tests/data/**
 
-# Re-allow the specific directories so Git can see inside them
+# 2. Re-include specific subdirectories (required for git to look inside them)
 !tests/data/nspect_slab_1H/
 !tests/data/nspect_slab_13C/
 
-# Re-allow ONLY these exact files
+# 3. Re-include ONLY specific ground truth and raw files (<10MB)
 !tests/data/nspect_slab_1H/ground_truth.toml
 !tests/data/nspect_slab_1H/rawdatajob0.nc
 !tests/data/nspect_slab_13C/ground_truth.toml

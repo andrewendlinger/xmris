@@ -1,3 +1,14 @@
+---
+jupytext:
+  text_representation:
+    extension: .md
+    format_name: myst
+kernelspec:
+  display_name: Python 3 (ipykernel)
+  language: python
+  name: python3
+---
+
 # The xmris Architecture: Why We Built It This Way
 
 Welcome to the engine room of `xmris`! If you are wondering why we rely so heavily on `xarray`, why we don't just pass sequence parameters as function arguments, or what the deal is with our decorators, you are in the right place.
@@ -302,7 +313,7 @@ class attribute — and the entire package updates automatically.
 :::{important}
 As an end user, you **do not need to interact with the config objects**. You simply
 name your dimensions and attributes using the lowercase conventions shown in the
-[Quick Start](../../../index.md), and
+[Quick Start](../../index.md), and
 xmris functions will discover them automatically. The config constants are a
 backend safety net — not a user-facing API.
 :::
@@ -507,6 +518,6 @@ for hidden state, and explicit arguments for action spaces, `xmris` strives for 
 * **Highly transparent** — docstrings generate themselves from the config; documentation can never drift from code.
 * **Easy to use** — clean, chainable APIs with zero parameter soup.
 
-For a quick-start example, head back to the [Welcome page](../../../index.md).
+For a quick-start example, head back to the [Welcome page](../../index.md).
 
 Happy processing!

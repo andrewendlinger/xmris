@@ -23,8 +23,8 @@ version = "4.12.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "exceptiongroup", marker = "python_full_version < '3.11'" },
-    { name = "idna", marker = "python_full_version < '3.11'" },
-    { name = "typing-extensions", marker = "python_full_version < '3.11'" },
+    { name = "idna" },
+    { name = "typing-extensions", marker = "python_full_version < '3.13'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/96/f0/5eb65b2bb0d09ac6776f2eb54adee6abe8228ea05b20a5ad0e4945de8aac/anyio-4.12.1.tar.gz", hash = "sha256:41cfcc3a4c85d3f05c932da7c26d0201ac36f72abd4435ba90d0464a3ffed703", size = 228685, upload-time = "2026-01-06T11:45:21.246Z" }
 wheels = [
@@ -60,7 +60,7 @@ name = "argon2-cffi"
 version = "25.1.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "argon2-cffi-bindings", marker = "python_full_version < '3.11'" },
+    { name = "argon2-cffi-bindings" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/0e/89/ce5af8a7d472a67cc819d5d998aa8c82c5d860608c4db9f46f1162d7dab9/argon2_cffi-25.1.0.tar.gz", hash = "sha256:694ae5cc8a42f4c4e2bf2ca0e64e51e23a040c6a517a85074683d3959e1346c1", size = 45706, upload-time = "2025-06-03T06:55:32.073Z" }
 wheels = [
@@ -72,7 +72,7 @@ name = "argon2-cffi-bindings"
 version = "25.1.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "cffi", marker = "python_full_version < '3.11'" },
+    { name = "cffi" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/5c/2d/db8af0df73c1cf454f71b2bbe5e356b8c1f8041c979f505b3d3186e520a9/argon2_cffi_bindings-25.1.0.tar.gz", hash = "sha256:b957f3e6ea4d55d820e40ff76f450952807013d361a65d7f28acc0acbf29229d", size = 1783441, upload-time = "2025-07-30T10:02:05.147Z" }
 wheels = [
@@ -98,8 +98,8 @@ name = "arrow"
 version = "1.4.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "python-dateutil", marker = "python_full_version < '3.11'" },
-    { name = "tzdata", marker = "python_full_version < '3.11'" },
+    { name = "python-dateutil" },
+    { name = "tzdata" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/b9/33/032cdc44182491aa708d06a68b62434140d8c50820a087fac7af37703357/arrow-1.4.0.tar.gz", hash = "sha256:ed0cc050e98001b8779e84d461b0098c4ac597e88704a655582b21d116e526d7", size = 152931, upload-time = "2025-10-18T17:46:46.761Z" }
 wheels = [
@@ -168,8 +168,8 @@ name = "beautifulsoup4"
 version = "4.14.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "soupsieve", marker = "python_full_version < '3.11'" },
-    { name = "typing-extensions", marker = "python_full_version < '3.11'" },
+    { name = "soupsieve" },
+    { name = "typing-extensions" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/c3/b0/1c6a16426d389813b48d95e26898aff79abbde42ad353958ad95cc8c9b21/beautifulsoup4-4.14.3.tar.gz", hash = "sha256:6292b1c5186d356bba669ef9f7f051757099565ad9ada5dd630bd9de5fa7fb86", size = 627737, upload-time = "2025-11-30T15:08:26.084Z" }
 wheels = [
@@ -220,7 +220,7 @@ name = "bleach"
 version = "6.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "webencodings", marker = "python_full_version < '3.11'" },
+    { name = "webencodings" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/07/18/3c8523962314be6bf4c8989c79ad9531c825210dd13a8669f6b84336e8bd/bleach-6.3.0.tar.gz", hash = "sha256:6f3b91b1c0a02bb9a78b5a454c92506aa0fdf197e1d5e114d2e00c6f64306d22", size = 203533, upload-time = "2025-10-27T17:57:39.211Z" }
 wheels = [
@@ -229,7 +229,7 @@ wheels = [
 
 [package.optional-dependencies]
 css = [
-    { name = "tinycss2", marker = "python_full_version < '3.11'" },
+    { name = "tinycss2" },
 ]
 
 [[package]]
@@ -1089,7 +1089,7 @@ name = "isoduration"
 version = "20.11.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "arrow", marker = "python_full_version < '3.11'" },
+    { name = "arrow" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/7c/1a/3c8edc664e06e6bd06cce40c6b22da5f1429aa4224d0c590f3be21c91ead/isoduration-20.11.0.tar.gz", hash = "sha256:ac2f9015137935279eac671f94f89eb00584f940f5dc49462a0c4ee692ba1bd9", size = 11649, upload-time = "2020-11-01T11:00:00.312Z" }
 wheels = [
@@ -1164,15 +1164,15 @@ wheels = [
 
 [package.optional-dependencies]
 format-nongpl = [
-    { name = "fqdn", marker = "python_full_version < '3.11'" },
-    { name = "idna", marker = "python_full_version < '3.11'" },
-    { name = "isoduration", marker = "python_full_version < '3.11'" },
-    { name = "jsonpointer", marker = "python_full_version < '3.11'" },
-    { name = "rfc3339-validator", marker = "python_full_version < '3.11'" },
-    { name = "rfc3986-validator", marker = "python_full_version < '3.11'" },
-    { name = "rfc3987-syntax", marker = "python_full_version < '3.11'" },
-    { name = "uri-template", marker = "python_full_version < '3.11'" },
-    { name = "webcolors", marker = "python_full_version < '3.11'" },
+    { name = "fqdn" },
+    { name = "idna" },
+    { name = "isoduration" },
+    { name = "jsonpointer" },
+    { name = "rfc3339-validator" },
+    { name = "rfc3986-validator" },
+    { name = "rfc3987-syntax" },
+    { name = "uri-template" },
+    { name = "webcolors" },
 ]
 
 [[package]]
@@ -1221,14 +1221,14 @@ name = "jupyter-events"
 version = "0.12.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "jsonschema", extra = ["format-nongpl"], marker = "python_full_version < '3.11'" },
-    { name = "packaging", marker = "python_full_version < '3.11'" },
-    { name = "python-json-logger", marker = "python_full_version < '3.11'" },
-    { name = "pyyaml", marker = "python_full_version < '3.11'" },
-    { name = "referencing", marker = "python_full_version < '3.11'" },
-    { name = "rfc3339-validator", marker = "python_full_version < '3.11'" },
-    { name = "rfc3986-validator", marker = "python_full_version < '3.11'" },
-    { name = "traitlets", marker = "python_full_version < '3.11'" },
+    { name = "jsonschema", extra = ["format-nongpl"] },
+    { name = "packaging" },
+    { name = "python-json-logger" },
+    { name = "pyyaml" },
+    { name = "referencing" },
+    { name = "rfc3339-validator" },
+    { name = "rfc3986-validator" },
+    { name = "traitlets" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/9d/c3/306d090461e4cf3cd91eceaff84bede12a8e52cd821c2d20c9a4fd728385/jupyter_events-0.12.0.tar.gz", hash = "sha256:fc3fce98865f6784c9cd0a56a20644fc6098f21c8c33834a8d9fe383c17e554b", size = 62196, upload-time = "2025-02-03T17:23:41.485Z" }
 wheels = [
@@ -1252,25 +1252,25 @@ name = "jupyter-server"
 version = "2.17.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "anyio", marker = "python_full_version < '3.11'" },
-    { name = "argon2-cffi", marker = "python_full_version < '3.11'" },
-    { name = "jinja2", marker = "python_full_version < '3.11'" },
-    { name = "jupyter-client", marker = "python_full_version < '3.11'" },
-    { name = "jupyter-core", marker = "python_full_version < '3.11'" },
-    { name = "jupyter-events", marker = "python_full_version < '3.11'" },
-    { name = "jupyter-server-terminals", marker = "python_full_version < '3.11'" },
-    { name = "nbconvert", marker = "python_full_version < '3.11'" },
-    { name = "nbformat", marker = "python_full_version < '3.11'" },
-    { name = "overrides", marker = "python_full_version < '3.11'" },
-    { name = "packaging", marker = "python_full_version < '3.11'" },
-    { name = "prometheus-client", marker = "python_full_version < '3.11'" },
-    { name = "pywinpty", marker = "python_full_version < '3.11' and os_name == 'nt'" },
-    { name = "pyzmq", marker = "python_full_version < '3.11'" },
-    { name = "send2trash", marker = "python_full_version < '3.11'" },
-    { name = "terminado", marker = "python_full_version < '3.11'" },
-    { name = "tornado", marker = "python_full_version < '3.11'" },
-    { name = "traitlets", marker = "python_full_version < '3.11'" },
-    { name = "websocket-client", marker = "python_full_version < '3.11'" },
+    { name = "anyio" },
+    { name = "argon2-cffi" },
+    { name = "jinja2" },
+    { name = "jupyter-client" },
+    { name = "jupyter-core" },
+    { name = "jupyter-events" },
+    { name = "jupyter-server-terminals" },
+    { name = "nbconvert" },
+    { name = "nbformat" },
+    { name = "overrides", marker = "python_full_version < '3.12'" },
+    { name = "packaging" },
+    { name = "prometheus-client" },
+    { name = "pywinpty", marker = "os_name == 'nt'" },
+    { name = "pyzmq" },
+    { name = "send2trash" },
+    { name = "terminado" },
+    { name = "tornado" },
+    { name = "traitlets" },
+    { name = "websocket-client" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/5b/ac/e040ec363d7b6b1f11304cc9f209dac4517ece5d5e01821366b924a64a50/jupyter_server-2.17.0.tar.gz", hash = "sha256:c38ea898566964c888b4772ae1ed58eca84592e88251d2cfc4d171f81f7e99d5", size = 731949, upload-time = "2025-08-21T14:42:54.042Z" }
 wheels = [
@@ -1282,8 +1282,8 @@ name = "jupyter-server-terminals"
 version = "0.5.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "pywinpty", marker = "python_full_version < '3.11' and os_name == 'nt'" },
-    { name = "terminado", marker = "python_full_version < '3.11'" },
+    { name = "pywinpty", marker = "os_name == 'nt'" },
+    { name = "terminado" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/f4/a7/bcd0a9b0cbba88986fe944aaaf91bfda603e5a50bda8ed15123f381a3b2f/jupyter_server_terminals-0.5.4.tar.gz", hash = "sha256:bbda128ed41d0be9020349f9f1f2a4ab9952a73ed5f5ac9f1419794761fb87f5", size = 31770, upload-time = "2026-01-14T16:53:20.213Z" }
 wheels = [
@@ -1819,20 +1819,20 @@ name = "nbconvert"
 version = "7.17.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "beautifulsoup4", marker = "python_full_version < '3.11'" },
-    { name = "bleach", extra = ["css"], marker = "python_full_version < '3.11'" },
-    { name = "defusedxml", marker = "python_full_version < '3.11'" },
-    { name = "jinja2", marker = "python_full_version < '3.11'" },
-    { name = "jupyter-core", marker = "python_full_version < '3.11'" },
-    { name = "jupyterlab-pygments", marker = "python_full_version < '3.11'" },
-    { name = "markupsafe", marker = "python_full_version < '3.11'" },
-    { name = "mistune", marker = "python_full_version < '3.11'" },
-    { name = "nbclient", marker = "python_full_version < '3.11'" },
-    { name = "nbformat", marker = "python_full_version < '3.11'" },
-    { name = "packaging", marker = "python_full_version < '3.11'" },
-    { name = "pandocfilters", marker = "python_full_version < '3.11'" },
-    { name = "pygments", marker = "python_full_version < '3.11'" },
-    { name = "traitlets", marker = "python_full_version < '3.11'" },
+    { name = "beautifulsoup4" },
+    { name = "bleach", extra = ["css"] },
+    { name = "defusedxml" },
+    { name = "jinja2" },
+    { name = "jupyter-core" },
+    { name = "jupyterlab-pygments" },
+    { name = "markupsafe" },
+    { name = "mistune" },
+    { name = "nbclient" },
+    { name = "nbformat" },
+    { name = "packaging" },
+    { name = "pandocfilters" },
+    { name = "pygments" },
+    { name = "traitlets" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/38/47/81f886b699450d0569f7bc551df2b1673d18df7ff25cc0c21ca36ed8a5ff/nbconvert-7.17.0.tar.gz", hash = "sha256:1b2696f1b5be12309f6c7d707c24af604b87dfaf6d950794c7b07acab96dda78", size = 862855, upload-time = "2026-01-29T16:37:48.478Z" }
 wheels = [
@@ -2686,7 +2686,7 @@ name = "rfc3339-validator"
 version = "0.1.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "six", marker = "python_full_version < '3.11'" },
+    { name = "six" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/28/ea/a9387748e2d111c3c2b275ba970b735e04e15cdb1eb30693b6b5708c4dbd/rfc3339_validator-0.1.4.tar.gz", hash = "sha256:138a2abdf93304ad60530167e51d2dfb9549521a836871b88d7f4695d0022f6b", size = 5513, upload-time = "2021-05-12T16:37:54.178Z" }
 wheels = [
@@ -2707,7 +2707,7 @@ name = "rfc3987-syntax"
 version = "1.1.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "lark", marker = "python_full_version < '3.11'" },
+    { name = "lark" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/2c/06/37c1a5557acf449e8e406a830a05bf885ac47d33270aec454ef78675008d/rfc3987_syntax-1.1.0.tar.gz", hash = "sha256:717a62cbf33cffdd16dfa3a497d81ce48a660ea691b1ddd7be710c22f00b4a0d", size = 14239, upload-time = "2025-07-18T01:05:05.015Z" }
 wheels = [
@@ -3050,9 +3050,9 @@ name = "terminado"
 version = "0.18.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "ptyprocess", marker = "python_full_version < '3.11' and os_name != 'nt'" },
-    { name = "pywinpty", marker = "python_full_version < '3.11' and os_name == 'nt'" },
-    { name = "tornado", marker = "python_full_version < '3.11'" },
+    { name = "ptyprocess", marker = "os_name != 'nt'" },
+    { name = "pywinpty", marker = "os_name == 'nt'" },
+    { name = "tornado" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/8a/11/965c6fd8e5cc254f1fe142d547387da17a8ebfd75a3455f637c663fb38a0/terminado-0.18.1.tar.gz", hash = "sha256:de09f2c4b85de4765f7714688fff57d3e75bad1f909b589fde880460c753fd2e", size = 32701, upload-time = "2024-03-12T14:34:39.026Z" }
 wheels = [
@@ -3064,7 +3064,7 @@ name = "tinycss2"
 version = "1.4.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "webencodings", marker = "python_full_version < '3.11'" },
+    { name = "webencodings" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/7a/fd/7a5ee21fd08ff70d3d33a5781c255cbe779659bd03278feb98b19ee550f4/tinycss2-1.4.0.tar.gz", hash = "sha256:10c0972f6fc0fbee87c3edb76549357415e94548c1ae10ebccdea16fb404a9b7", size = 87085, upload-time = "2024-10-24T14:58:29.895Z" }
 wheels = [
@@ -3339,7 +3339,9 @@ dependencies = [
 [package.dev-dependencies]
 dev = [
     { name = "griffe" },
+    { name = "ipykernel" },
     { name = "ipympl" },
+    { name = "jupyter-server" },
     { name = "jupytext" },
     { name = "matplotlib" },
     { name = "mypy" },
@@ -3364,7 +3366,9 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "griffe", specifier = "<0.40.0" },
+    { name = "ipykernel", specifier = ">=6.31.0" },
     { name = "ipympl", specifier = ">=0.10.0" },
+    { name = "jupyter-server", specifier = ">=2.17.0" },
     { name = "jupytext", specifier = ">=1.19.1" },
     { name = "matplotlib", specifier = ">=3.10.0" },
     { name = "mypy", specifier = ">=1.15.0" },

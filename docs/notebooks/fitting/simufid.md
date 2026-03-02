@@ -1,3 +1,14 @@
+---
+jupytext:
+  text_representation:
+    extension: .md
+    format_name: myst
+kernelspec:
+  display_name: Python 3 (ipykernel)
+  language: python
+  name: python3
+---
+
 # Simulating NMR Spectra with xmris
 
 In this tutorial, we will use the `xmris.processing.simulation` module to generate synthetic Free Induction Decay (FID) signals. Generating synthetic data is a critical step for validating fitting algorithms, building test suites, and understanding the physical parameters that govern magnetic resonance spectroscopy (MRS).
@@ -171,8 +182,4 @@ ax.text(171, 16, "Pyruvate", ha='center', va='bottom', fontsize=10)
 ax.text(161.0, 1.5, "Bicarbonate", ha='center', va='bottom', fontsize=10)
 
 plt.show()
-```
-
-```{code-cell} ipython3
-
 ```

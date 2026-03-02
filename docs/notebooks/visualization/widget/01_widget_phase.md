@@ -1,7 +1,12 @@
-+++ {"vscode": {"languageId": "plaintext"}}
-
 ---
-title: Interactive Phase Correction Widget
+jupytext:
+  text_representation:
+    extension: .md
+    format_name: myst
+kernelspec:
+  display_name: .venv
+  language: python
+  name: python3
 ---
 
 ```{code-cell} ipython3
@@ -68,9 +73,19 @@ The widget will automatically detect your spectral dimension (e.g., `frequency`,
 da_ruined.xmr.widget.phase_spectrum()
 ```
 
-![Screenshot of the widget (part 1)](../../../assets/notebook-assets/screenshot_widget_phase_spectrum.png)
+```{code-cell} ipython3
+:tags: [remove-input]
 
-+++
+from xmris.visualization.widget._static_exporter import export_widget_static
+from xmris.visualization.widget.phase.phase import phase_spectrum
+
+# This will render the interactive canvas in the docs!
+export_widget_static(
+    phase_spectrum,     # The widget generating function
+    da_ruined,          # Positional arguments
+    width=700,          # Keyword arguments
+)
+```
 
 ### Using the Widget
 
@@ -86,6 +101,8 @@ Once the widget is rendered in your notebook, you can interact with it using the
 Interactive widgets are great for exploration, but they are generally bad for reproducible science if the parameters stay trapped in the UI.
 
 When you have achieved the desired phase, click the **Close** button in the widget control bar. The canvas will unmount, and the widget will generate a strict, reproducible code snippet reflecting your final parameters.
+
+(Screenshot only)
 
 ![Screenshot of the widget (part 2)](../../../assets/notebook-assets/screenshot_widget_phase_spectrum_II.png)
 

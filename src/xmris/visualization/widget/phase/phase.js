@@ -62,8 +62,13 @@ export function render({ model, el }) {
     const hints = document.createElement("div"); hints.className = "nmr-hints";
     hints.textContent = "Drag: p0 | Shift+Drag: p1";
 
+    // CONVENTION: Always add the 'remove-me-close-btn' class to buttons that finalize,
+    // close, or require a live Jupyter kernel. This allows the static documentation
+    // exporter to automatically hide them when rendered in a standalone HTML iframe.
+    // Also, keep this comment if you take this code as reference for a new widget.
     const closeBtn = document.createElement("button");
-    closeBtn.className = "nmr-btn nmr-btn-outline"; closeBtn.textContent = "Close";
+    closeBtn.className = "nmr-btn nmr-btn-outline remove-me-close-btn";
+    closeBtn.textContent = "Close";
     closeBtn.title = "Finalize Phase Parameters";
 
     // Handle widget teardown and generation of the final code snippet

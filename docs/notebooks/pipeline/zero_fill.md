@@ -1,11 +1,19 @@
-+++ {"lines_to_next_cell": 0, "vscode": {"languageId": "plaintext"}}
+---
+jupytext:
+  text_representation:
+    extension: .md
+    format_name: myst
+kernelspec:
+  display_name: Python 3 (ipykernel)
+  language: python
+  name: python3
+---
 
 ---
 title: FID - Zero Filling
 ---
 
 ```{code-cell} ipython3
-:lines_to_next_cell: 0
 :tags: [remove-cell]
 
 import matplotlib.pyplot as plt
@@ -37,8 +45,6 @@ import xarray as xr
 # Ensure the accessor is registered
 import xmris
 ```
-
-+++ {"lines_to_next_cell": 2}
 
 ## 1. Generating a Realistic FID: Sampled Data
 
