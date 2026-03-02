@@ -126,7 +126,7 @@ def plot_spectra(spectra_list, title, target_coord=None, peak_width=None, xlim=N
 
 ## 1. Complex Multi-Peak Spectra (ACME)
 
-The ACME algorithm works best when there is plenty of signal to evaluate across the entire spectrum. Here, we simulate a dense spectrum, intentionally ruin the phase, and compare the automated solvers.
+The [ACME algorithm](https://doi.org/10.1016/S1090-7807(02)00069-1) works best when there is plenty of signal to evaluate across the entire spectrum. Here, we simulate a dense spectrum, intentionally ruin the phase, and compare the automated solvers.
 
 As expected, `acme` reconstructs the ground truth perfectly, whereas local ROI solvers struggle because they ignore the wider spectral context.
 
