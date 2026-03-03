@@ -131,9 +131,9 @@ If you are curious about *why* xmris is built this way — why metadata lives in
 
 ## 🧭 Where do I start?
 
-We recommend going through the example notebooks. They are designed to be read chronologically.
+We recommend going through the example notebooks. They are designed to be read more or less chronologically :)
 
-### 1. The Basics
+<!-- ### 1. The Basics
 
 Learn how <span style="color: #B05418;font-weight: bold;">x</span><span style="color: #002E7A;font-weight: bold;">mris</span> leverages `xarray` to make switching between the time and frequency domains completely painless.
 
@@ -183,4 +183,4 @@ Interactive routines:
 Need to check the exact arguments for a function? The complete scope of the library can be found in the API reference.
 
 * [The `.xmr` Accessor](api_reference/accessor.md)
-* [API Index](api_reference/index.md)
+* [API Index](api_reference/index.md) -->
