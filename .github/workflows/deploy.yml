@@ -34,14 +34,21 @@ jobs:
         with:
           enable-cache: true
 
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libegl1
+
       - name: Install dependencies
-        run: uv sync --only-group dev
+        # Syncing the WHOLE project ensures 'xmris' is installed in editable
+        # mode so the notebooks can find it during execution.
+        run: uv sync --all-extras
 
       - name: Build MyST Site
         run: |
           uv run docs-api
           cd docs
-          uv run myst build --html
+          uv run myst build --html --execute
 
       - name: Upload Build Artifacts
         uses: actions/upload-pages-artifact@v3
