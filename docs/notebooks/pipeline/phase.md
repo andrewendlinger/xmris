@@ -9,9 +9,7 @@ kernelspec:
   name: python3
 ---
 
----
-title: Spectrum - Phase Correction
----
+# Spectrum - Phase Correction
 
 ```{code-cell} ipython3
 :tags: [remove-cell]

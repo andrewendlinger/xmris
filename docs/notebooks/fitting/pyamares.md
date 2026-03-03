@@ -9,9 +9,7 @@ kernelspec:
   name: python3
 ---
 
----
-title: Time-Domain Fitting with AMARES
----
+# Time-Domain Fitting with AMARES
 
 ```{code-cell} ipython3
 :tags: [remove-cell]

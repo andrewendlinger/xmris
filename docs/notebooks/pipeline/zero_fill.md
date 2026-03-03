@@ -9,9 +9,7 @@ kernelspec:
   name: python3
 ---
 
----
-title: FID - Zero Filling
----
+# FID - Zero Filling
 
 ```{code-cell} ipython3
 :tags: [remove-cell]

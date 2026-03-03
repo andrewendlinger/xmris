@@ -9,9 +9,7 @@ kernelspec:
   name: python3
 ---
 
----
-title: Spectrum - Coordinate Transformations (Hz to ppm)
----
+# Spectrum - Coordinate Transformations (Hz to ppm)
 
 ```{code-cell} ipython3
 :tags: [remove-cell]

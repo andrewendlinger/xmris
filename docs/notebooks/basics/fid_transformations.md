@@ -9,9 +9,7 @@ kernelspec:
   name: python3
 ---
 
----
-title: FID - Transformations
----
+# FID - Transformations
 
 ```{code-cell} ipython3
 :tags: [remove-cell]

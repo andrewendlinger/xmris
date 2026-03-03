@@ -9,9 +9,7 @@ kernelspec:
   name: python3
 ---
 
----
-title: Automated Phase Correction
----
+# Automated Phase Correction
 
 (autophase-intro)=
 # Automated Phase Correction
