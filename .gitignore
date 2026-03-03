@@ -135,6 +135,10 @@ $RECYCLE.BIN/
 # ==============================================================================
 # Strategy: Ignore all data in tests/data, then whitelist specific small files.
 
+# Ignore everything inside tests/notebooks recursively
+tests/autogen_notebooks
+tests/autogen_notebooks/**
+
 # 1. Ignore everything inside tests/data recursively
 tests/data/**
 

@@ -39,9 +39,11 @@ Repository = "https://github.com/andrewendlinger/xmris"
 Documentation = "https://andrewendlinger.github.io/xmris/"
 
 [project.scripts]
-docs-api = "xmris._scripts:docs_api"             # Update API references
-docs-notebooks = "xmris._scripts:docs_notebooks" # Sync/Build tutorials
-docs = "xmris._scripts:docs_all"                 # Build full documentation
+docs-api = "xmris._scripts:docs_api"                    # Update API references
+docs-notebooks = "xmris._scripts:docs_notebooks"        # Sync/Build tutorials
+docs = "xmris._scripts:docs_all"                        # Build full documentation
+test-gen = "xmris._scripts:generate_test_notebooks"
+test = "xmris._scripts:run_tests"
 
 # ==============================================================================
 # 2. BUILD SYSTEM & PACKAGE SOURCES
@@ -99,7 +101,7 @@ addopts = """
     --cov-report=xml
     --cov-config=pyproject.toml
 """
-testpaths = ["tests", "docs/notebooks"]
+testpaths = ["tests"]
 
 # --- Ruff (Linter) ---
 [tool.ruff]
