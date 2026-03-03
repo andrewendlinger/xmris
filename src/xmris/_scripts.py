@@ -11,7 +11,7 @@ from tqdm import tqdm
 
 # IMPORT YOUR CONFIG CLASSES HERE
 from xmris.visualization import (
-    PlotHeatmapConfig,
+    CarpetConfig,
     PlotQCGridConfig,
     PlotTrajectoryConfig,
     WaterfallConfig,
@@ -31,9 +31,9 @@ CONFIG_MAP: dict[Any, dict[str, str]] = {
         "func_name": "plot_trajectory",
         "anchor": "xmris.visualization.plot.plot_trajectory",
     },
-    PlotHeatmapConfig: {
-        "func_name": "plot_heatmap",
-        "anchor": "xmris.visualization.plot.plot_heatmap",
+    CarpetConfig: {
+        "func_name": "plot_carpet",
+        "anchor": "xmris.visualization.plot.plot_carpet",
     },
 }
 

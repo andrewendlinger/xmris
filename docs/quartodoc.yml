@@ -14,7 +14,7 @@ quartodoc:
       desc: Publication-ready plotting and aesthetics.
       contents:
         - visualization.plot.plot_waterfall
-        - visualization.plot.plot_heatmap
+        - visualization.plot.plot_carpet
         - visualization.plot.plot_trajectory
         - visualization.plot.plot_qc_grid
 

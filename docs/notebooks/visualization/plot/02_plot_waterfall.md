@@ -24,7 +24,11 @@ Before plotting, your `xarray.DataArray` must meet the following criteria:
 
 ## 2. Generating Synthetic Data
 
-To demonstrate, we will use the `xmris.fitting.simulation` module to generate a realistic kinetic time-course of a hyperpolarized 13C experiment where Pyruvate decays and Lactate grows over 60 seconds.
+We will generate a realistic kinetic time-course of a hyperpolarized 13C experiment where Pyruvate decays and Lactate grows over 60 seconds.
+
+::: {dropdown}Time series data generation
+
+We will use the `xmris.fitting.simulation` module:
 
 ```{code-cell} ipython3
 import numpy as np
@@ -64,6 +68,8 @@ da_kinetic_fid.coords["kinetic_time"].attrs["units"] = "s"
 # Convert to frequency-domain spectrum (ppm) and extract the real part
 da_kinetic = da_kinetic_fid.xmr.to_spectrum().xmr.to_ppm().real
 ```
+
+:::
 
 ## 3. Basic Usage
 

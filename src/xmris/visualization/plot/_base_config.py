@@ -47,7 +47,7 @@ class BasePlotConfig:
             .rpc-type      { opacity: 0.7; font-style: italic; }
             .rpc-center    { text-align: center; }
         </style>
-    """)
+    """)  # noqa: E501
 
     # Inline fallback for renderers that strip <style> blocks (e.g. MyST).
     _GROUP_INLINE_STYLE = (

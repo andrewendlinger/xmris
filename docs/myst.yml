@@ -57,8 +57,8 @@ project:
               title: "1. Intro: Config Based Plotting"
             - file: notebooks/visualization/plot/02_plot_waterfall.md
               title: 2. [1D + Time] Waterfall Plot
-            - file: notebooks/visualization/plot/02_plotting_heatmap.md
-              title: 3. [1D + Time] Heatmap Plot
+            - file: notebooks/visualization/plot/03_plot_carpet.md
+              title: 3. [1D + Time] Carpet Plot
             - file: notebooks/visualization/plot/03_plotting_fit_1d.md
               title: 4. [1D + Time] pyAMARES Plot
         - title: Widgets
@@ -99,10 +99,10 @@ project:
             - file: api_reference/WaterfallConfig.md
               title: Waterfall Config
 
-            - file: api_reference/visualization.plot.plot_heatmap.md
-              title: Heatmap Plot
-            - file: api_reference/PlotHeatmapConfig.md
-              title: Heatmap Plot - Config
+            - file: api_reference/visualization.plot.plot_carpet.md
+              title: Carpet Plot
+            - file: api_reference/CarpetConfig.md
+              title: Carpet Config
 
             - file: api_reference/visualization.plot.plot_trajectory.md
               title: Trajectory Plot

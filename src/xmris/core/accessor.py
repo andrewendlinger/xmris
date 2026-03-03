@@ -29,7 +29,7 @@ from xmris.processing.phasing import autophase, phase
 from xmris.vendor.bruker import remove_digital_filter
 
 # Deferred plot configs
-from xmris.visualization.plot import PlotHeatmapConfig, WaterfallConfig
+from xmris.visualization.plot import CarpetConfig, WaterfallConfig
 
 
 class XmrisDatasetPlotAccessor:
@@ -81,17 +81,23 @@ class XmrisPlotAccessor:
             config=config,
         )
 
-    def heatmap(
+    def carpet(
         self,
         x_dim: str | None = None,
         stack_dim: str | None = None,
         ax: plt.Axes | None = None,
-        config: PlotHeatmapConfig | None = None,
-    ) -> plt.Axes:
-        """Generate a 2D heatmap plot of stacked 1D spectra."""
-        from xmris.visualization.plot.plot_heatmap import plot_heatmap as _plot_heatmap
+        config: "CarpetConfig | None" = None,
+    ):
+        """Generate a 2D carpet plot of stacked 1D spectra."""
+        from xmris.visualization.plot import plot_carpet as _plot_carpet
 
-        return _plot_heatmap(da=self._obj, x_dim=x_dim, stack_dim=stack_dim, ax=ax, config=config)
+        return _plot_carpet(
+            da=self._obj,
+            x_dim=x_dim,
+            stack_dim=stack_dim,
+            ax=ax,
+            config=config,
+        )
 
 
 class XmrisWidgetAccessor:

@@ -1,17 +1,17 @@
 from .plot import (
-    PlotHeatmapConfig,
+    CarpetConfig,
     PlotQCGridConfig,
     PlotTrajectoryConfig,
     WaterfallConfig,
-    plot_heatmap,
+    plot_carpet,
     plot_waterfall,
 )
 
 __all__ = [
     "plot_waterfall",
     "WaterfallConfig",
-    "plot_heatmap",
-    "PlotHeatmapConfig",
+    "plot_carpet",
+    "CarpetConfig",
     "PlotTrajectoryConfig",
     "PlotQCGridConfig",
 ]
