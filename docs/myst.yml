@@ -55,8 +55,10 @@ project:
           children:
             - file: notebooks/visualization/plot/01_plotting_basics.md
               title: 1. Intro with RidgePlot
+            - file: notebooks/visualization/plot/02_plot_waterfall.md
+              title: 1. 1D+Time, Waterfall Plot
             - file: notebooks/visualization/plot/02_plotting_heatmap.md
-              title: 2. 1D+Time, NMR time series
+              title: 2. 1D+Time, Heatmap Plot
             - file: notebooks/visualization/plot/03_plotting_fit_1d.md
               title: 3. 1D+Time, pyAMARES data
         - title: Widgets
@@ -92,10 +94,10 @@ project:
         # --- 2. Visualization Submenu ---
         - title: Visualization
           children:
-            - file: api_reference/visualization.plot.plot_ridge.md
-              title: Ridge Plot
-            - file: api_reference/PlotRidgeConfig.md
-              title: Ridge Plot - Config
+            - file: api_reference/visualization.plot.plot_waterfall.md
+              title: Waterfall Plot
+            - file: api_reference/WaterfallConfig.md
+              title: Waterfall Config
 
             - file: api_reference/visualization.plot.plot_heatmap.md
               title: Heatmap Plot
@@ -152,7 +154,7 @@ site:
   options:
     logo: assets/logo.svg
     logo_dark: assets/logo_dark.svg
-    favicon: assets/favicon.svg
+    favicon: assets/favicon.ico
 
   nav:
     - title: Home

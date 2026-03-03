@@ -1,15 +1,15 @@
 from .plot import (
     PlotHeatmapConfig,
     PlotQCGridConfig,
-    PlotRidgeConfig,
     PlotTrajectoryConfig,
+    WaterfallConfig,
     plot_heatmap,
-    plot_ridge,
+    plot_waterfall,
 )
 
 __all__ = [
-    "plot_ridge",
-    "PlotRidgeConfig",
+    "plot_waterfall",
+    "WaterfallConfig",
     "plot_heatmap",
     "PlotHeatmapConfig",
     "PlotTrajectoryConfig",

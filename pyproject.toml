@@ -105,12 +105,12 @@ testpaths = ["tests"]
 
 # --- Ruff (Linter) ---
 [tool.ruff]
-line-length = 90
+line-length = 100
 target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "NPY", "D", "UP"] # Errors, Failures, Isort, NumPy, Docstrings, Upgrade
-ignore = ["D100", "D104"]                  # Ignore missing docstring in public module/package
+ignore = ["D100", "D104", "D401"]                  # Ignore missing docstring in public module/package
 
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"

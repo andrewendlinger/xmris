@@ -13,15 +13,15 @@ from tqdm import tqdm
 from xmris.visualization import (
     PlotHeatmapConfig,
     PlotQCGridConfig,
-    PlotRidgeConfig,
     PlotTrajectoryConfig,
+    WaterfallConfig,
 )
 
 # Map configuration classes to their exact Quartodoc function anchors
 CONFIG_MAP: dict[Any, dict[str, str]] = {
-    PlotRidgeConfig: {
-        "func_name": "plot_ridge",
-        "anchor": "xmris.visualization.plot.plot_ridge",
+    WaterfallConfig: {
+        "func_name": "plot_waterfall",
+        "anchor": "xmris.visualization.plot.plot_waterfall",
     },
     PlotQCGridConfig: {
         "func_name": "plot_qc_grid",
@@ -77,9 +77,7 @@ def docs_config_classes(api_dir: Path) -> None:
     print("🎨 Generating custom grouped docs for Config Dataclasses...")
 
     for cls, meta in CONFIG_MAP.items():
-        docstring = (
-            inspect.cleandoc(cls.__doc__) if cls.__doc__ else "Configuration object."
-        )
+        docstring = inspect.cleandoc(cls.__doc__) if cls.__doc__ else "Configuration object."
         func_name = meta["func_name"]
         func_anchor = meta["anchor"]
 
@@ -136,9 +134,7 @@ def docs_config_classes(api_dir: Path) -> None:
                     default_str = "*Required*"
 
                 # 4. Add the formatted table row
-                lines.append(
-                    f"| **`{f.name}`** | *`{safe_type}`* | {default_str} | {desc} |"
-                )
+                lines.append(f"| **`{f.name}`** | *`{safe_type}`* | {default_str} | {desc} |")
 
             # Add a blank line after the table for standard Markdown spacing
             lines.append("")
@@ -202,7 +198,8 @@ def docs_api() -> None:
             flags=re.MULTILINE,
         )
 
-        # Strip any leftover pure CSS blocks that didn't have an ID (e.g., {.doc-signature})
+        # Strip any leftover pure CSS blocks that didn't have an ID
+        # (e.g., {.doc-signature})
         content = re.sub(r"\s*\{\.[^\}]+\}", "", content)
 
         # =====================================================================
@@ -223,11 +220,11 @@ def docs_api() -> None:
             else:
                 # IT IS DANGEROUS TO SILENTLY HIDE THIS. Print a warning to the developer!
                 print(
-                    f"   ⚠️  Target missing for `#{anchor}`. Downgrading link to plain text."
+                    f"   ⚠️  Target missing for `#{anchor}`. Downgrading link to plain text."  # noqa: E501
                 )
                 return f"`{text}`"  # Downgrade to code text.
 
-        # 3. Find all local markdown links [text](#anchor) and run them through the replacer
+        # 3. Find all local markdown links [text](#anchor) and replace them
         content = re.sub(r"\[([^\]]+)\]\(#([\w\.\-]+)\)", link_replacer, content)
         # =====================================================================
         # 4. Auto-link Xarray type hints using MyST cross-reference syntax
@@ -381,9 +378,7 @@ def run_tests() -> None:
     # 2. Run the test suite
     print("🚀 Running pytest...")
     try:
-        # We explicitly target the 'tests' directory. Because 'tests/auto_test_notebooks'
-        # is inside it, pytest and nbmake will automatically discover and run them alongside
-        # your standard unit tests.
+        # pytest will pick up the configuration form the pyproject.toml
         subprocess.run(["pytest"], check=True)
     except subprocess.CalledProcessError as e:
         # Pass the exact exit code from pytest back to the terminal/CI
