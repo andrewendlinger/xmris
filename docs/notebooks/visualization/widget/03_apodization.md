@@ -64,6 +64,7 @@ Pass a 1D time-domain `DataArray` to the `apodize` method. The widget computes t
 da_fid.xmr.widget.apodize(
     unit="hz",
     lb_range=(0, 20.0),
+    gb_range=(0, 30.0),
 )
 ```
 
@@ -77,7 +78,7 @@ export_widget_static(
     apodize_interactive,
     da_fid,
     unit="hz",
-    lb_range=(-20.0, 20.0),
+    lb_range=(0.0, 20.0),
     gb_range=(0.0, 30.0),
     width=740,
     height=550,
