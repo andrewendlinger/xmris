@@ -9,8 +9,6 @@ kernelspec:
   name: python3
 ---
 
-# Automated Phase Correction
-
 (autophase-intro)=
 # Automated Phase Correction
 
@@ -34,8 +32,6 @@ Because Magnetic Resonance Spectra vary wildly in density and Signal-to-Noise Ra
 1. **`acme`**: Minimizes spectral entropy. Excellent for dense, high-SNR spectra with multiple overlapping peaks.
 2. **`positivity`**: Maximizes positive real signal and heavily penalizes negative signal within a defined Region of Interest (ROI). Excellent for sparse, noisy spectra.
 3. **`peak_minima`**: Minimizes the difference between the minima on either side of a target peak. Good for isolated peaks on a rolling baseline.
-
-+++
 
 ::: {dropdown} Imports & plotting function to compare spectra
 
@@ -83,51 +79,7 @@ def plot_spectra(spectra_list, title, target_coord=None, peak_width=None, xlim=N
     plt.show()
 ```
 
-```{code-cell} ipython3
-:tags: [remove-cell]
-
-import numpy as np
-import matplotlib.pyplot as plt
-import xarray as xr
-
-# Import xmris simulation tools and ensure accessors are registered
-import xmris
-from xmris.fitting.simulation import simulate_fid
-
-def plot_spectra(spectra_list, title, target_coord=None, peak_width=None, xlim=None):
-    """Dynamically plots an arbitrary number of spectra for visual inspection."""
-    n_plots = len(spectra_list)
-    fig, axes = plt.subplots(n_plots, 1, figsize=(10, 2.2 * n_plots), sharex=True)
-    if n_plots == 1:
-        axes = [axes]
-
-    fig.suptitle(title, fontsize=14, fontweight="bold")
-
-    for ax, (da, label) in zip(axes, spectra_list):
-        if "Distorted" in label:
-            ax.plot(da.coords["chemical_shift"], np.real(da.values), color="gray", lw=2)
-        elif "Corrected" in label:
-            ax.plot(da.coords["chemical_shift"], np.real(da.values), color="blue", lw=2)
-        else:
-            ax.plot(da.coords["chemical_shift"], np.real(da.values), color="black", lw=1.2)
-
-        ax.set_ylabel("Amplitude")
-        ax.legend([label], loc="upper right")
-        ax.grid(True, alpha=0.3)
-        ax.axhline(0, color="red", linestyle="--", alpha=0.5)
-
-        if target_coord is not None and peak_width is not None:
-            roi_start = target_coord + (peak_width / 2.0)
-            roi_end = target_coord - (peak_width / 2.0)
-            ax.axvspan(roi_start, roi_end, color='green', alpha=0.1)
-
-        if xlim is not None:
-            ax.set_xlim(*xlim)
-    axes[-1].set_xlabel("Chemical Shift (ppm)")
-    axes[-1].invert_xaxis()
-    plt.tight_layout()
-    plt.show()
-```
+:::
 
 (test-1-acme)=
 
@@ -162,28 +114,7 @@ spec_corrected = spec_distorted.xmr.phase(
 )
 ```
 
-```{code-cell} ipython3
-:tags: [remove-cell]
-
-# 1. Simulate an ideal, perfectly phased FID and convert to spectrum
-fid_ideal = simulate_fid(
-    amplitudes=[100, 60, 40, 20], chemical_shifts=[2.0, 3.0, 3.2, 1.3],
-    reference_frequency=123.2, carrier_ppm=0.0, dampings=[30, 25, 25, 40],
-    dead_time=0.0, phases=0.0, target_snr=50, n_points=2048
-)
-spec_ideal = fid_ideal.xmr.to_spectrum().xmr.to_ppm()
-
-# 2. Distort it natively in the frequency domain
-p0_distort, p1_distort, pivot_val = 60.0, -800.0, 0.0
-spec_distorted = spec_ideal.xmr.phase(
-    dim="chemical_shift", p0=p0_distort, p1=p1_distort, pivot=pivot_val
-)
-
-# 3. Apply manual correction (double apply with inverted signs)
-spec_corrected = spec_distorted.xmr.phase(
-    dim="chemical_shift", p0=-p0_distort, p1=-p1_distort, pivot=pivot_val
-)
-```
+:::
 
 ```{code-cell} ipython3
 # Step 1-3.
@@ -265,29 +196,7 @@ spec_corrected_s = spec_distorted_s.xmr.phase(
 )
 ```
 
-```{code-cell} ipython3
-:tags: [remove-cell]
-
-# 1. Simulate an ideal, but NOISY FID
-fid_noisy = simulate_fid(
-    amplitudes=[100, 20], chemical_shifts=[171.0, 183.0],
-    reference_frequency=32.1, carrier_ppm=175.0, spectral_width=5000,
-    dampings=[15, 15], dead_time=0.0, phases=0.0, target_snr=4, n_points=1024
-)
-# Exponential apodization helps smooth the noise floor
-spec_noisy = fid_noisy.xmr.apodize_exp(lb=10.0).xmr.to_spectrum().xmr.to_ppm()
-
-# 2. Distort it
-p0_distort_s, p1_distort_s, pivot_s = -45.0, 500.0, 175.0
-spec_distorted_s = spec_noisy.xmr.phase(
-    dim="chemical_shift", p0=p0_distort_s, p1=p1_distort_s, pivot=pivot_s
-)
-
-# 3. Manual correction
-spec_corrected_s = spec_distorted_s.xmr.phase(
-    dim="chemical_shift", p0=-p0_distort_s, p1=-p1_distort_s, pivot=pivot_s
-)
-```
+:::
 
 ```{code-cell} ipython3
 # Step 1-3.
@@ -353,26 +262,7 @@ spec_corrected_u = spec_distorted_u.xmr.phase(
 )
 ```
 
-```{code-cell} ipython3
-:tags: [remove-cell]
-
-# 1. Simulate an ideal, ULTRA-NOISY FID
-fid_ultra = simulate_fid(
-    amplitudes=[100], chemical_shifts=[171.0],
-    reference_frequency=32.1, carrier_ppm=171.0, spectral_width=5000,
-    dampings=[15], dead_time=0.0, phases=0.0, target_snr=1, n_points=1024
-)
-spec_ultra = fid_ultra.xmr.apodize_exp(lb=10.0).xmr.to_spectrum().xmr.to_ppm()
-
-# 2. Distort it (Heavy p0 twist, no p1 roll for this test)
-p0_distort_u, p1_distort_u, pivot_u = 90.0, 0.0, 171.0
-spec_distorted_u = spec_ultra.xmr.phase(
-    dim="chemical_shift", p0=p0_distort_u, p1=p1_distort_u, pivot=pivot_u
-)
-spec_corrected_u = spec_distorted_u.xmr.phase(
-    dim="chemical_shift", p0=-p0_distort_u, p1=-p1_distort_u, pivot=pivot_u
-)
-```
+:::
 
 ```{code-cell} ipython3
 # Step 1-3.
