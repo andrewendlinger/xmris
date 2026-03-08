@@ -23,6 +23,7 @@ from .core.accessor import XmrisAccessor, XmrisDatasetAccessor
 # 4. Modeling & Fitting
 # =============================================================================
 from .fitting.amares import fit_amares
+from .fitting.simulation import simulate_fid
 
 # =============================================================================
 # 3. Core Signal Processing & Utilities
@@ -85,6 +86,7 @@ __all__ = [
     "phase",
     # --- 4. Fitting ---
     "fit_amares",
+    "simulate_fid",
     # --- 5. Vendor ---
     "remove_digital_filter",
     # --- 6. Visualization Configs ---

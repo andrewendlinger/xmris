@@ -21,7 +21,7 @@ plt.rcParams["figure.dpi"] = 150
 
 While automated phasing algorithms (like ACME) are incredibly powerful, heavily distorted baselines, massive solvent peaks, or extreme noise can sometimes trick the optimizer. In these cases, falling back to manual phase correction is necessary.
 
-As discussed in the [Phase Correction Pipeline](../../pipeline/phase.ipynb) documentation, applying a phase correction mathematically is straightforward. However, guessing the exact $p_0$ and $p_1$ angles blindly is nearly impossible.
+As discussed in the [Phase Correction Pipeline](../../pipeline/phase.md) documentation, applying a phase correction mathematically is straightforward. However, guessing the exact $p_0$ and $p_1$ angles blindly is nearly impossible.
 
 To solve this, `xmris` provides an interactive, browser-based AnyWidget that allows you to click and drag to fix the phase in real-time, and then generates the exact Python code needed to reproduce your manual adjustments.
 
