@@ -65,7 +65,8 @@ project:
               title: 1. Spectrum phasing
             - file: notebooks/visualization/widget/02_widget_scroller.md
               title: 2. Srcolling through spectra
-
+            - file: notebooks/visualization/widget/03_apodization.md
+              title: 3. Apodization
     # 5. GROUP: Vendor Specific
     - title: Vendor Specific
       children:

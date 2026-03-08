@@ -94,9 +94,6 @@ class XmrisPlotAccessor:
         )
 
 
-import xarray as xr
-
-
 class XmrisWidgetAccessor:
     """Sub-accessor for xmris interactive widget functionalities.
 
@@ -244,6 +241,75 @@ class XmrisWidgetAccessor:
             trace_count=trace_count,
             width=width,
             height=height,
+            **kwargs,
+        )
+
+    def apodize(
+        self,
+        dim: str | None = None,
+        unit: str = "ppm",
+        width: int = 800,
+        height: int = 600,
+        lb_range: tuple[float, float] = (0.0, 50.0),
+        gb_range: tuple[float, float] = (0.0, 50.0),
+        **kwargs,
+    ):
+        """Open an interactive widget for NMR/MRS spectrum apodization.
+
+        This method launches an AnyWidget-based user interface to interactively
+        apply and visualize line broadening (exponential) or resolution enhancement
+        (Lorentz-to-Gauss) filters. It displays the modified time-domain FID alongside
+        the resulting frequency-domain spectrum in real-time.
+
+        Parameters
+        ----------
+        dim : str, optional
+            The time dimension to apply the filter along. If None, it will be
+            auto-detected by the underlying function.
+        unit : {'ppm', 'hz'}, optional
+            The unit for the spectral x-axis display. Default is 'ppm'.
+        width : int, optional
+            Width of the widget in pixels. Default is 800.
+        height : int, optional
+            Height of the widget in pixels. Default is 600.
+        lb_range : tuple of float, optional
+            The (min, max) range for the Line Broadening slider. Default is (0.0, 50.0).
+        gb_range : tuple of float, optional
+            The (min, max) range for the Gaussian Broadening slider. Default is (0.0, 50.0).
+        **kwargs
+            Additional arguments passed to the underlying ApodizerWidget.
+
+        Returns
+        -------
+        ApodizerWidget
+            The interactive widget instance. Closing the widget UI generates a
+            copyable code snippet to apply the finalized filter parameters
+            programmatically.
+
+        Raises
+        ------
+        ValueError
+            If the underlying DataArray is not 1-dimensional.
+
+        Notes
+        -----
+        - **Exponential (exp)**: Multiplies the FID by an exponential decay,
+          improving Signal-to-Noise Ratio (SNR) at the cost of line broadening (lb).
+        - **Lorentz-Gauss (lg)**: Applies a combination of a rising exponential
+          and a decaying Gaussian. It cancels natural Lorentzian broadening (lb)
+          and imposes a Gaussian shape (gb) for resolution enhancement.
+        """  # noqa: E501
+        # Lazy import to avoid loading AnyWidget/frontend assets unless requested
+        from xmris.visualization.widget import apodize_interactive
+
+        return apodize_interactive(
+            da=self._obj,
+            dim=dim,
+            unit=unit,
+            width=width,
+            height=height,
+            lb_range=lb_range,
+            gb_range=gb_range,
             **kwargs,
         )
 

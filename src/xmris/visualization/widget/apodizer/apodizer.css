@@ -1,0 +1,165 @@
+/* =========================================
+   Container & Layout
+   ========================================= */
+.nmr-viewer {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-family: system-ui, -apple-system, sans-serif;
+    user-select: none;
+    margin: 10px 0;
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    overflow: hidden;
+}
+
+.nmr-canvas-container {
+    display: flex;
+    flex-direction: column;
+    background: #fafafa;
+    border-bottom: 1px solid #eee;
+}
+
+.nmr-canvas {
+    outline: none;
+    display: block;
+}
+
+/* =========================================
+   Control Bar
+   ========================================= */
+.nmr-bar {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 10px 14px;
+    background: #fff;
+    gap: 12px;
+}
+
+.nmr-bar-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+}
+
+.nmr-grp {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.nmr-lbl {
+    font-size: 13px;
+    color: #444;
+    font-weight: 600;
+}
+
+.nmr-select {
+    padding: 4px 6px;
+    font-size: 13px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background: #f9f9f9;
+    color: #111;
+    outline: none;
+    transition: border-color 0.2s;
+}
+.nmr-select:focus { border-color: #0055aa; background: #fff; }
+
+/* Sliders */
+.nmr-slider-grp {
+    display: flex;
+    align-items: center;
+    flex-grow: 1;
+    gap: 8px;
+    max-width: 48%;
+}
+
+.nmr-slider {
+    flex-grow: 1;
+    cursor: pointer;
+}
+
+.nmr-val {
+    font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+    font-size: 13px;
+    color: #0055aa;
+    font-weight: 600;
+    width: 35px;
+    text-align: right;
+}
+
+/* Buttons */
+.nmr-btn {
+    padding: 5px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s;
+    outline: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.nmr-btn-outline {
+    border: 1px solid #ccc;
+    background: #fff;
+    color: #333;
+}
+.nmr-btn-outline:hover { background: #f0f0f0; border-color: #bbb; }
+
+/* =========================================
+   Completion State
+   ========================================= */
+.nmr-success-banner {
+    padding: 16px;
+    border: 1px solid #cce0f5;
+    background: #f8fbff;
+    border-radius: 8px;
+    width: 100%;
+    box-sizing: border-box;
+    text-align: left;
+}
+
+.nmr-success-title { font-weight: 600; margin-bottom: 8px; font-size: 15px; color: #0055aa; }
+.nmr-success-subtitle { font-size: 13px; color: #555; margin-bottom: 12px; }
+
+.nmr-copy-container { display: flex; gap: 8px; align-items: stretch; }
+
+.nmr-code-block {
+    flex-grow: 1;
+    background: #fff;
+    border: 1px solid #d9d9d9;
+    padding: 10px 12px;
+    border-radius: 4px;
+    font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+}
+
+.nmr-code-hint { color: #999; user-select: none; }
+.nmr-code-target { color: #000; user-select: all; }
+
+.nmr-copy-btn {
+    padding: 0 16px;
+    border: 1px solid #004488;
+    background: #0055aa;
+    color: white;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 13px;
+    transition: all 0.2s ease;
+}
+
+.nmr-copy-btn:hover { background: #004488; }
+.nmr-copy-btn.copied { background: #28a745; border-color: #218838; }
