@@ -29,7 +29,7 @@ from xmris.processing.phasing import autophase, phase
 from xmris.vendor.bruker import remove_digital_filter
 
 # Deferred plot configs
-from xmris.visualization.plot import PlotHeatmapConfig, PlotRidgeConfig
+from xmris.visualization.plot import CarpetConfig, WaterfallConfig
 
 
 class XmrisDatasetPlotAccessor:
@@ -48,9 +48,7 @@ class XmrisDatasetPlotAccessor:
         """Plot kinetic trajectories with CRLB shading."""
         from xmris.visualization.plot.plot_trajectory import plot_trajectory
 
-        return plot_trajectory(
-            self._obj, dim=dim, metabolites=metabolites, ax=ax, config=config
-        )
+        return plot_trajectory(self._obj, dim=dim, metabolites=metabolites, ax=ax, config=config)
 
     def qc_grid(self, dim: str, config=None):
         """Plot a grid of spectra and fits to quickly visually inspect quality."""
@@ -65,36 +63,41 @@ class XmrisPlotAccessor:
     def __init__(self, obj: xr.DataArray):
         self._obj = obj
 
-    def ridge(
+    def waterfall(
         self,
         x_dim: str | None = None,
         stack_dim: str | None = None,
         ax: plt.Axes | None = None,
-        config: PlotRidgeConfig | None = None,
-    ) -> plt.Axes:
+        config: "WaterfallConfig | None" = None,
+    ):
         """Generate a ridge plot (2D waterfall) of stacked 1D spectra."""
-        from xmris.visualization.plot import plot_ridge as _plot_ridge
+        from xmris.visualization.plot import plot_waterfall as _plot_waterfall
 
-        return _plot_ridge(
-            da=self._obj, x_dim=x_dim, stack_dim=stack_dim, ax=ax, config=config
+        return _plot_waterfall(
+            da=self._obj,
+            x_dim=x_dim,
+            stack_dim=stack_dim,
+            ax=ax,
+            config=config,
         )
 
-    def heatmap(
+    def carpet(
         self,
         x_dim: str | None = None,
         stack_dim: str | None = None,
         ax: plt.Axes | None = None,
-        config: PlotHeatmapConfig | None = None,
-    ) -> plt.Axes:
-        """Generate a 2D heatmap plot of stacked 1D spectra."""
-        from xmris.visualization.plot.plot_heatmap import plot_heatmap as _plot_heatmap
+        config: "CarpetConfig | None" = None,
+    ):
+        """Generate a 2D carpet plot of stacked 1D spectra."""
+        from xmris.visualization.plot import plot_carpet as _plot_carpet
 
-        return _plot_heatmap(
-            da=self._obj, x_dim=x_dim, stack_dim=stack_dim, ax=ax, config=config
+        return _plot_carpet(
+            da=self._obj,
+            x_dim=x_dim,
+            stack_dim=stack_dim,
+            ax=ax,
+            config=config,
         )
-
-
-import xarray as xr
 
 
 class XmrisWidgetAccessor:
@@ -394,9 +397,7 @@ class XmrisProcessingMixin:
         """
         return apodize_exp(self._obj, dim=dim, lb=lb)
 
-    def apodize_lg(
-        self, dim: str = DIMS.time, lb: float = 1.0, gb: float = 1.0
-    ) -> xr.DataArray:
+    def apodize_lg(self, dim: str = DIMS.time, lb: float = 1.0, gb: float = 1.0) -> xr.DataArray:
         """
         Apply a Lorentzian-to-Gaussian transformation filter.
 
@@ -416,9 +417,7 @@ class XmrisProcessingMixin:
         """
         return apodize_lg(self._obj, dim=dim, lb=lb, gb=gb)
 
-    def to_spectrum(
-        self, dim: str = DIMS.time, out_dim: str = DIMS.frequency
-    ) -> xr.DataArray:
+    def to_spectrum(self, dim: str = DIMS.time, out_dim: str = DIMS.frequency) -> xr.DataArray:
         """
         Convert a time-domain FID to a frequency-domain spectrum.
 
@@ -478,9 +477,7 @@ class XmrisProcessingMixin:
         xr.DataArray
             A new DataArray padded with zeros to the target length.
         """
-        return zero_fill(
-            self._obj, dim=dim, target_points=target_points, position=position
-        )
+        return zero_fill(self._obj, dim=dim, target_points=target_points, position=position)
 
 
 class XmrisPhasingMixin:

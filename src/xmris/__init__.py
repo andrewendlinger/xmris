@@ -41,10 +41,10 @@ from .vendor.bruker import remove_digital_filter
 # 6. Visualization & Aesthetics
 # =============================================================================
 from .visualization.plot import (
-    PlotHeatmapConfig,
+    CarpetConfig,
     PlotQCGridConfig,
-    PlotRidgeConfig,
     PlotTrajectoryConfig,
+    WaterfallConfig,
 )
 
 # =============================================================================
@@ -88,8 +88,8 @@ __all__ = [
     # --- 5. Vendor ---
     "remove_digital_filter",
     # --- 6. Visualization Configs ---
-    "PlotRidgeConfig",
-    "PlotHeatmapConfig",
+    "WaterfallConfig",
+    "CarpetConfig",
     "PlotTrajectoryConfig",
     "PlotQCGridConfig",
 ]
