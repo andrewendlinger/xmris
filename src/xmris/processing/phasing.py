@@ -20,7 +20,8 @@ def phase(
     Parameters
     ----------
     da : xr.DataArray
-        The input frequency-domain spectrum. Must be complex-valued.
+        The input frequency-domain spectrum. Must be complex-valued. Can be
+        N-dimensional; phase will be broadcast across non-dim dimensions.
     dim : str, optional
         The coordinate dimension along which to apply phase correction,
         by default `DIMS.frequency`.
@@ -34,7 +35,7 @@ def phase(
     pivot : float, optional
         The coordinate value (e.g., ppm or Hz) around which `p1` is anchored.
         At this exact coordinate, the first-order phase contribution is 0.0.
-        If None, standard maximum-magnitude pivoting is used.
+        If None, standard maximum-magnitude pivoting is used safely across N-D.
 
     Returns
     -------
@@ -44,10 +45,12 @@ def phase(
     """
     _check_dims(da, dim, "phase")
 
-    # If pivot isn't explicitly provided, default to the max magnitude
-    # to perfectly match the initial behavior of the JS widget
+    # If pivot isn't explicitly provided, default to the max magnitude safely
     if pivot is None:
-        pivot = float(da.coords[dim].values[np.argmax(np.abs(da.values))])
+        flat_idx = int(np.argmax(np.abs(da.values)))
+        dim_axis = da.get_axis_num(dim)
+        target_idx = np.unravel_index(flat_idx, da.shape)[dim_axis]
+        pivot = float(da.coords[dim].values[target_idx])
 
     # Extract coordinates and determine the absolute range (matching JS: max - min)
     coords = da.coords[dim]
@@ -159,6 +162,7 @@ def autophase(
     da: xr.DataArray,
     dim: str = DIMS.frequency,
     method: str = "acme",
+    mode: str = "single",
     peak_width: float = 0.5,
     target_coord: float | None = None,
     p0_only: bool = False,
@@ -172,13 +176,20 @@ def autophase(
     Parameters
     ----------
     da : xr.DataArray
-        The input frequency-domain spectrum.
+        The input frequency-domain spectrum. Can be N-dimensional.
     dim : str, optional
         The coordinate dimension to operate on, by default `DIMS.frequency`.
     method : {"acme", "peak_minima", "positivity"}, optional
         The scoring algorithm to use. "acme" relies on entropy and is best for
         multi-peak high SNR spectra. "positivity" and "peak_minima" are optimized
         for sparse/noisy spectra. By default "acme".
+    mode : {"single", "all"}, optional
+        Determines how N-dimensional data is handled.
+        - "single": Calculates the phase parameters using only the 1D slice
+          with the global maximum signal, then applies those parameters across
+          the entire dataset.
+        - "all": Calculates and applies unique phase parameters for every
+          1D spectrum individually. By default "single".
     peak_width : float, optional
         Width of the ROI (in units of `dim`, e.g., Hz or ppm) for the local methods.
         Concentrates the solver on the region surrounding the target peak.
@@ -205,30 +216,45 @@ def autophase(
     _check_dims(da, dim, "autophase")
     kwargs.setdefault("disp", False)
 
+    if mode == "all":
+        raise NotImplementedError(
+            "Applying autophase to each spectrum individually ('all') is not yet implemented."
+        )
+    elif mode != "single":
+        raise ValueError("Mode must be 'single' or 'all'.")
+
     coords = da.coords[dim].values
 
-    # 1. Determine the target coordinate/index and pivot
+    # 1. Find the global maximum across all dimensions to locate our target 1D slice
+    flat_idx = int(np.argmax(np.abs(da.values)))
+    unraveled_indices = np.unravel_index(flat_idx, da.shape)
+    dim_axis = da.get_axis_num(dim)
+
     if target_coord is not None:
         target_idx = int(np.argmin(np.abs(coords - target_coord)))
         pivot = float(target_coord)
     else:
-        target_idx = int(np.argmax(np.abs(da.values)))
+        target_idx = unraveled_indices[dim_axis]
         pivot = float(coords[target_idx])
 
-    # 2. Convert physical peak_width to index points
+    # 2. Extract the 1D slice containing the maximum signal to use for optimization
+    slice_dict = {d: unraveled_indices[i] for i, d in enumerate(da.dims) if d != dim}
+    opt_da = da.isel(slice_dict)
+
+    # 3. Convert physical peak_width to index points
     step_size = np.abs(coords[1] - coords[0])
     index_width = int(round((peak_width / 2.0) / step_size))
     index_width = max(1, index_width)
 
-    # 3. Optional preprocessing
+    # 4. Optional preprocessing (applied ONLY to the 1D optimization slice)
     if lb > 0:
-        temp_fid = to_fid(da, dim=dim, out_dim=temp_time_dim)
+        temp_fid = to_fid(opt_da, dim=dim, out_dim=temp_time_dim)
         temp_apodized_fid = apodize_exp(temp_fid, dim=temp_time_dim, lb=lb)
         work_da = to_spectrum(temp_apodized_fid, dim=temp_time_dim, out_dim=dim)
     else:
-        work_da = da
+        work_da = opt_da
 
-    # 4. Routing
+    # 5. Routing
     if method == "acme":
         score_fn = _acme_score
         args = (work_da, dim, pivot)
@@ -241,7 +267,7 @@ def autophase(
     else:
         raise ValueError("Method must be 'acme', 'peak_minima', or 'positivity'")
 
-    # 5. Bounded Global Optimization
+    # 6. Bounded Global Optimization
     if p0_only:
         bounds = [(-180.0, 180.0)]
     else:
@@ -260,4 +286,5 @@ def autophase(
     p0_opt = opt.x[0]
     p1_opt = opt.x[1] if not p0_only else 0.0
 
+    # 7. Apply the optimized phase to the ENTIRE N-dimensional dataset
     return phase(da, dim=dim, p0=p0_opt, p1=p1_opt, pivot=pivot)
