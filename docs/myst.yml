@@ -8,7 +8,8 @@ project:
       url: https://docs.xarray.dev/en/stable/
   exclude:
     - "notebooks/**/*.ipynb"
-
+  bibliography:
+    - assets/references.bib
   toc:
     - file: index.md
 
@@ -34,9 +35,11 @@ project:
         - file: notebooks/pipeline/apodization.md
           title: 2. Apodization
         - file: notebooks/pipeline/phase.md
-          title: 3. Phase Correction
+          title: 3a. Phase Correction
         - file: notebooks/pipeline/autophasing.md
-          title: 4. Automated Phase Correction
+          title: 3b. Auto Phase Correction
+        - file: notebooks/pipeline/baseline.md
+          title: 4. Baseline Correction
 
     # 3. GROUP: Advanced Quantification
     - title: Spectral Fitting & Simulation

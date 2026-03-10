@@ -4,7 +4,7 @@ jupytext:
     extension: .md
     format_name: myst
 kernelspec:
-  display_name: Python 3 (ipykernel)
+  display_name: .venv
   language: python
   name: python3
 ---
@@ -314,4 +314,82 @@ np.testing.assert_allclose(
     rtol=1e-5, atol=1e-5,
     err_msg="Autophase altered the absolute magnitude of the spectrum."
 )
+```
+
+(test-4-multidim)=
+
+## 4. Multi-Dimensional Datasets (`mode`)
+
+When processing multi-dimensional data (such as kinetic series, dynamic nuclear polarization buildups, or repeated acquisitions), attempting to autophase every slice individually can be risky—especially for early time points where the signal is buried in noise.
+
+The `autophase` method handles N-dimensional data natively via the `mode` parameter:
+
+- **`mode="single"`** *(default)*: The algorithm searches the entire dataset to find the single 1D slice with the highest absolute magnitude. It runs the optimization strictly on that high-SNR slice, and then broadcasts the resulting $p_0$ and $p_1$ parameters across the entire dataset. This ensures perfectly consistent phase across your kinetic or repetition dimension.
+- **`mode="all"`**: *(Coming Soon)* Will independently calculate and apply unique phase parameters for every 1D slice.
+
++++
+
+::: {dropdown} Make a dummy 2D dataset (e.g., an amplitude buildup)
+
+```{code-cell} ipython3
+# 1. Simulate a 2D dataset (e.g., a buildup curve over 5 repetitions)
+fids_2d = []
+for amp in np.linspace(10, 100, 5):
+    fid = simulate_fid(
+        amplitudes=[amp, amp * 0.4], chemical_shifts=[171.0, 183.0],
+        reference_frequency=32.1, carrier_ppm=175.0, spectral_width=5000,
+        dampings=[15, 15], dead_time=0.0, phases=0.0, target_snr=15 / (100 - amp + 0.01) * 10, n_points=1024
+    )
+    fids_2d.append(fid)
+
+# Stack into a 2D DataArray: (repetitions, time)
+fid_2d = xr.concat(fids_2d, dim=xr.DataArray(np.arange(5), dims="repetitions", name="repetitions"))
+spec_2d = fid_2d.xmr.apodize_exp(lb=10.0).xmr.to_spectrum().xmr.to_ppm()
+
+# 2. Distort the entire dataset with a unified phase twist
+p0_distort_m, p1_distort_m, pivot_m = -110.0, 450.0, 175.0
+spec_distorted_2d = spec_2d.xmr.phase(
+    dim="chemical_shift", p0=p0_distort_m, p1=p1_distort_m, pivot=pivot_m
+)
+```
+
+:::
+
+```{code-cell} ipython3
+# Step 1-2.
+# --> Simulation of the 2D dataset is hidden in the collpased cell above.
+
+# 3. Autophase the 2D dataset using mode="single"
+# It will automatically find the slice with the highest signal (repetition 4)
+# optimize the phase on that slice, and apply it globally.
+spec_phased_2d = spec_distorted_2d.xmr.autophase(
+    dim="chemical_shift", method="positivity", peak_width=10.0, mode="single"
+)
+
+# 4. Plot the results across different slices to prove broadcasting worked
+plot_spectra([
+    (spec_distorted_2d.isel(repetitions=-1), "Distorted (Max Signal Slice)"),
+    (spec_phased_2d.isel(repetitions=-1), "Phased (Max Signal Slice)"),
+    (spec_phased_2d.isel(repetitions=0), "Phased (Low Signal Slice, Broadcasted)")
+], "TEST 4: Multi-Dimensional Data (mode='single')")
+```
+
+```{code-cell} ipython3
+:tags: [remove-cell]
+
+# STRICT TESTS: Multi-dim broadcasting and mode isolation
+assert spec_phased_2d.dims == spec_distorted_2d.dims, "Dimensions lost during 2D autophase."
+assert "phase_p0" in spec_phased_2d.attrs, "Phase lineage attributes missing from 2D output."
+
+# Ensure the phase was applied natively using xarray math (broadcasting)
+assert spec_phased_2d.attrs["phase_pivot_coord"] == "chemical_shift"
+
+# Verify that trying to use 'all' raises the correct NotImplementedError
+try:
+    spec_distorted_2d.xmr.autophase(dim="chemical_shift", mode="all")
+    raise AssertionError("mode='all' should raise NotImplementedError, but it didn't.")
+except NotImplementedError:
+    pass  # Expected behavior
+except Exception as e:
+    raise AssertionError(f"mode='all' raised the wrong exception: {type(e)}")
 ```
