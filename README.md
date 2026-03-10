@@ -92,7 +92,7 @@ uv sync
 
 3. Run tests via `pytest` (which includes notebook testing via `nbmake`):
 ```bash
-uv run pytest
+uv run test
 
 ```
 
