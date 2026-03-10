@@ -54,11 +54,7 @@ class BaseVocabulary:
 
     def _get_terms(self) -> dict:
         """Help extract all XmrisTerm attributes from the class."""
-        return {
-            key: val
-            for key, val in vars(self.__class__).items()
-            if isinstance(val, XmrisTerm)
-        }
+        return {key: val for key, val in vars(self.__class__).items() if isinstance(val, XmrisTerm)}
 
     def get_description(self, target_value: str) -> str:
         """
@@ -156,16 +152,13 @@ class XmrisAttributes(BaseVocabulary):
     )
 
     # --- mostly used for demo of attributes ---
-    b0_field = XmrisTerm(
-        "b0_field", description="Magnetic field strength B0", unit="Tesla"
-    )
+    b0_field = XmrisTerm("b0_field", description="Magnetic field strength B0", unit="Tesla")
 
     # --- Phase Parameters ---
     phase_p0 = XmrisTerm(
         "phase_p0",
         description=(
-            "Zero-order (frequency-independent) phase angle applied uniformly "
-            "across the spectrum."
+            "Zero-order (frequency-independent) phase angle applied uniformly across the spectrum."
         ),
         unit="degrees",
     )
@@ -181,8 +174,7 @@ class XmrisAttributes(BaseVocabulary):
     phase_pivot = XmrisTerm(
         "phase_pivot",
         description=(
-            "Coordinate value where the first-order phase contribution "
-            "evaluates to exactly 0.0."
+            "Coordinate value where the first-order phase contribution evaluates to exactly 0.0."
         ),
         unit="dimension-dependent",
     )
@@ -205,6 +197,29 @@ class XmrisAttributes(BaseVocabulary):
     )
     zero_fill_position = XmrisTerm(
         "zero_fill_position", description="Position of padding ('end' or 'symmetric')."
+    )
+    # --- Baseline Correction Parameters ---
+    baseline_method = XmrisTerm(
+        "baseline_method",
+        description="The algorithm used to estimate and remove the spectral baseline.",
+    )
+    baseline_lam = XmrisTerm(
+        "baseline_lam",
+        description=(
+            "The smoothness penalty (lambda) applied during Asymmetric Least Squares "
+            "(AsLS) baseline correction. Higher values yield stiffer baselines."
+        ),
+    )
+    baseline_p = XmrisTerm(
+        "baseline_p",
+        description=(
+            "The asymmetry parameter applied during AsLS baseline correction. "
+            "Controls how aggressively the solver ignores positive absorption peaks."
+        ),
+    )
+    baseline_iter = XmrisTerm(
+        "baseline_iter",
+        description="The number of sparse solver iterations used to calculate the baseline.",
     )
 
 
@@ -237,9 +252,7 @@ class XmrisDimensions(BaseVocabulary):
         "metabolite", description="Dimension representing quantified metabolites."
     )
 
-    component = XmrisTerm(
-        "component", description="Dimension separating real and imaginary parts."
-    )
+    component = XmrisTerm("component", description="Dimension separating real and imaginary parts.")
     # --- Standard Acquisition Dimensions ---
     average = XmrisTerm(
         "average", description="Dimension for multiple signal acquisitions/averages."
@@ -288,26 +301,20 @@ class XmrisDataVars(BaseVocabulary):
         "data", description="The original experimental data (FID or Spectrum)."
     )
 
-    fit = XmrisTerm(
-        "fit", description="The reconstructed time-domain or frequency-domain fit."
-    )
+    fit = XmrisTerm("fit", description="The reconstructed time-domain or frequency-domain fit.")
 
     residuals = XmrisTerm(
         "residuals", description="The difference between the original data and the fit."
     )
 
-    baseline = XmrisTerm(
-        "baseline", description="The calculated baseline of the spectrum."
-    )
+    baseline = XmrisTerm("baseline", description="The calculated baseline of the spectrum.")
 
     # --- Quantified Parameters ---
     amplitude = XmrisTerm("amplitude", description="Fitted peak amplitude.")
 
     chem_shift = XmrisTerm("chem_shift", description="Fitted chemical shift.", unit="ppm")
 
-    linewidth = XmrisTerm(
-        "linewidth", description="Fitted linewidth (damping factor).", unit="Hz"
-    )
+    linewidth = XmrisTerm("linewidth", description="Fitted linewidth (damping factor).", unit="Hz")
 
     phase = XmrisTerm("phase", description="Fitted phase.", unit="degrees")
 

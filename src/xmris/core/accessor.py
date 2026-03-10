@@ -17,6 +17,7 @@ import xarray as xr
 from xmris.core.config import ATTRS, COORDS, DIMS
 from xmris.core.utils import _check_dims, as_variable
 from xmris.core.validation import requires_attrs
+from xmris.processing.baseline import baseline_als
 
 # Processing imports
 from xmris.processing.fid import apodize_exp, apodize_lg, to_fid, to_spectrum, zero_fill
@@ -547,6 +548,49 @@ class XmrisProcessingMixin:
             A new DataArray padded with zeros to the target length.
         """
         return zero_fill(self._obj, dim=dim, target_points=target_points, position=position)
+
+    def baseline_als(
+        self,
+        dim: str = DIMS.frequency,
+        lam: float = 1e5,
+        p: float = 0.001,
+        n_iter: int = 10,
+    ) -> xr.DataArray:
+        r"""Apply Asymmetric Least Squares (AsLS) baseline correction to a spectrum.
+
+        This method automatically estimates and subtracts a smooth baseline without
+        requiring user-defined signal-free regions. It operates strictly on the
+        real (absorption) component of the data.
+
+        .. warning::
+            **Real-Valued Output Only:** This function discards the imaginary
+            (dispersion) component of the data. AsLS relies on the asymmetry of
+            absorption-mode peaks and cannot be applied to complex data without
+            breaking Kramers-Kronig relations. The resulting real-valued spectrum
+            cannot be inverse-Fourier transformed back to the time domain.
+
+        Parameters
+        ----------
+        dim : str, optional
+            The coordinate dimension along which to apply correction.
+            Defaults to `DIMS.frequency`.
+        lam : float, optional
+            The smoothness penalty ($\lambda$). Higher values result in a stiffer,
+            flatter baseline. Typical NMR ranges are 10,000 to 10,000,000.
+            Defaults to 100,000.
+        p : float, optional
+            The asymmetry parameter. Controls how aggressively positive peaks are
+            ignored during the fit. Typical ranges are 0.001 to 0.05.
+            Defaults to 0.001.
+        n_iter : int, optional
+            Maximum number of iterations for the sparse solver. Defaults to 10.
+
+        Returns
+        -------
+        xr.DataArray
+            The strictly real-valued, baseline-corrected spectrum.
+        """
+        return baseline_als(self._obj, dim=dim, lam=lam, p=p, n_iter=n_iter)
 
 
 class XmrisPhasingMixin:

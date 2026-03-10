@@ -24,6 +24,7 @@ from .core.accessor import XmrisAccessor, XmrisDatasetAccessor
 # =============================================================================
 from .fitting.amares import fit_amares
 from .fitting.simulation import simulate_fid
+from .processing.baseline import baseline_als
 
 # =============================================================================
 # 3. Core Signal Processing & Utilities
@@ -84,6 +85,7 @@ __all__ = [
     "ifftshift",
     "autophase",
     "phase",
+    "baseline_als",
     # --- 4. Fitting ---
     "fit_amares",
     "simulate_fid",
