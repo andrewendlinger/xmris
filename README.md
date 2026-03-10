@@ -34,8 +34,6 @@ Documentation, tutorials, and API reference can be found **[here](https://andrew
 
 ## 🚀 Installation
 
-*Note: `xmris` requires Python 3.11 or 3.12.*
-
 You can install the package directly from PyPI using standard package managers:
 
 ```bash
