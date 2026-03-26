@@ -779,14 +779,37 @@ wheels = [
 
 [[package]]
 name = "griffe"
-version = "0.39.1"
+version = "2.0.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "griffecli" },
+    { name = "griffelib" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/3f/50/6a3b9fdc20650777e77c6cca1aeea5067291ff056665b4fec528d823127f/griffe-2.0.1.tar.gz", hash = "sha256:87e2483145669334d4b595b459a7bd58ab92037c20c63c9d882ead0c0f7ca5b6", size = 293702, upload-time = "2026-03-23T21:05:27.05Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b3/05/2f817197fe8f63398df6e94e698794bddc50564434683fca4158a8d913a6/griffe-2.0.1-py3-none-any.whl", hash = "sha256:7ebbefa657cb20c035552176425f3a9acef1a3a73619a469fa4088a2fbf2a4c1", size = 5140, upload-time = "2026-03-23T21:04:02.257Z" },
+]
+
+[[package]]
+name = "griffecli"
+version = "2.0.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "colorama" },
+    { name = "griffelib" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a7/85/3fab78fb9d62b20f4da9f28d6633c3c556df4b6410cc3038b25b7bcc5121/griffe-0.39.1.tar.gz", hash = "sha256:ead8dfede6e6531cce6bf69090a4f3c6d36fdf923c43f8e85aa530552cef0c09", size = 876446, upload-time = "2024-01-18T18:31:46.634Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c3/e4/41882f30d4c5d842d32cc91c9a60d2c566309b6f1c773864fb1758d6a2f2/griffecli-2.0.1.tar.gz", hash = "sha256:a44f1482dfbeea72bd6686a4e7c99e0d30b0d2abd675b81e9ac1d97734ca7cf6", size = 56199, upload-time = "2026-03-23T21:05:24.591Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/78/a5/24cd31a93408838014a842c8b42817468be7265a7d1efbbd327b750524a6/griffe-0.39.1-py3-none-any.whl", hash = "sha256:6ce4ecffcf0d2f96362c5974b3f7df812da8f8d4cfcc5ebc8202ef72656fc087", size = 1050841, upload-time = "2024-01-18T18:31:42.489Z" },
+    { url = "https://files.pythonhosted.org/packages/47/e5/d3161a36107fd23c86385354a16f0e2d204f7b2c8db80d10fbd28447e5f5/griffecli-2.0.1-py3-none-any.whl", hash = "sha256:5c89012c292365c20538740cf491443625b3083449516964f4d3de3ca8c36090", size = 9342, upload-time = "2026-03-23T21:04:03.385Z" },
+]
+
+[[package]]
+name = "griffelib"
+version = "2.0.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/71/d7/2b805e89cdc609e5b304361d80586b272ef00f6287ee63de1e571b1f71ec/griffelib-2.0.1.tar.gz", hash = "sha256:59f39eabb4c777483a3823e39e8f9e03e69df271a7e49aee64e91a8cfa91bdf5", size = 166383, upload-time = "2026-03-23T21:05:25.882Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/4b/4c/cc8c68196db727cfc1432f2ad5de50aa6707e630d44b2e6361dc06d8f134/griffelib-2.0.1-py3-none-any.whl", hash = "sha256:b769eed581c0e857d362fc8fcd8e57ecd2330c124b6104ac8b4c1c86d76970aa", size = 142377, upload-time = "2026-03-23T21:04:01.116Z" },
 ]
 
 [[package]]
@@ -3365,7 +3388,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "griffe", specifier = "<0.40.0" },
+    { name = "griffe", specifier = "<2.1.0" },
     { name = "ipykernel", specifier = ">=6.31.0" },
     { name = "ipympl", specifier = ">=0.10.0" },
     { name = "jupyter-server", specifier = ">=2.17.0" },
