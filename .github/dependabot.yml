@@ -1,0 +1,49 @@
+version: 2
+updates:
+  # 1. UV Ecosystem (Python dependencies)
+  - package-ecosystem: "uv"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    labels:
+      - "dependencies"
+      - "python"
+
+    # Grouping prevents PR spam by bundling updates into a single PR
+    groups:
+      # Group 1: Bundle all development, testing, and docs tools together
+      dev-tools:
+        patterns:
+          - "pytest*"
+          - "ruff"
+          - "mypy"
+          - "quartodoc"
+          - "mystmd"
+          - "nbmake"
+          - "jupytext"
+          - "ipy*"
+          - "jupyter*"
+
+      # Group 2: Core dependencies (xarray, numpy, joblib, anywidget)
+      core-libs:
+        patterns:
+          - "xarray"
+          - "numpy"
+          - "joblib"
+          - "anywidget"
+          - "matplotlib"
+
+  # 2. GitHub Actions Ecosystem
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    labels:
+      - "dependencies"
+      - "ci"
+    groups:
+      actions:
+        patterns:
+          - "*" # Bundles all GitHub Actions updates into one PR
