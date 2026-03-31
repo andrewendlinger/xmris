@@ -105,6 +105,6 @@ More information can be found in the documentation [here](https://andrewendlinge
 
 ---
 
-## ⚖️ License & Commercial Use
+### License & Commercial Use
 
 `xmris` is licensed under the **GNU Affero General Public License v3.0 (AGPLv3)**.
