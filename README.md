@@ -15,13 +15,13 @@
 </div>
 
 
-## 📖 Documentation
+## 01. Documentation
 
 Documentation, tutorials, and API reference can be found **[here](https://andrewendlinger.github.io/xmris/)**.
 
 
 
-## ⚡ Overview
+## 02. Overview
 
 `xmris` bridges the gap between modern data structures and magnetic resonance research. By building on top of `xarray`, it provides a robust environment for handling multi-dimensional MRI and MRS data with labeled coordinates, powerful broadcasting, and seamless integration with the scientific Python ecosystem.
 
@@ -32,7 +32,7 @@ Documentation, tutorials, and API reference can be found **[here](https://andrew
 
 
 
-## 🚀 Installation
+## 03. Installation
 
 You can install the package directly from PyPI using standard package managers:
 
@@ -45,7 +45,7 @@ uv add xmris
 
 ```
 
-## 💻 Quick Start
+## 04. Quick Start
 
 ```python
 import numpy as np
@@ -75,7 +75,7 @@ results = (
 
 ---
 
-## 🛠️ Development
+## 05. Development
 
 We use `uv` for lightning-fast dependency management and `Ruff` for linting/formatting. To set up a local development environment:
 
