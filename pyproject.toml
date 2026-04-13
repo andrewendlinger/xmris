@@ -65,7 +65,7 @@ pyamares = { git = "https://github.com/andrewendlinger/pyAMARES", branch = "xmri
 dev = [
     # --- Testing ---
     "pytest>=8.4.0",
-    "pytest-cov>=5.0.0,<7.0.0", # Pin <7.0 to fix nbmake subprocess tracking
+    "pytest-cov>=5.0.0,<8.0.0", # Pin <7.0 to fix nbmake subprocess tracking
     "pytest-xdist>=3.8.0",
     "nbmake>=1.5.5",            # Treat notebooks as unit tests
     # --- Documentation ---
