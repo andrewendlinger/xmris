@@ -223,7 +223,7 @@ def fit_amares(
     deadtime: float | None = None,
     method: str = "leastsq",
     initialize_with_lm: bool = True,
-    num_workers: int = 4,
+    num_workers: int | None = None,
     init_fid: np.ndarray | None = None,
     verbose: bool = False,
 ) -> xr.Dataset:
@@ -341,6 +341,12 @@ def fit_amares(
     )
 
     # 5. Execute Fitting natively via xmris
+    if num_workers is None:
+        if n_spectra < 20:
+            num_workers = 1
+        else:
+            num_workers = 8
+
     if num_workers == 1:
         # BYPASS multiprocessing entirely for testing/single-core execution
         result_list = []
