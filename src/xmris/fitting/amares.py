@@ -210,6 +210,7 @@ def fit_amares(
     dim: str = "time",
     mhz: float | None = None,
     sw: float | None = None,
+    ppm_offset: float | None = None,
     deadtime: float | None = None,
     method: str = "leastsq",
     initialize_with_lm: bool = True,
@@ -240,6 +241,8 @@ def fit_amares(
         Spectrometer frequency in MHz. If None, attempts to read from da.attrs['MHz'].
     sw : float, optional
         Spectral width in Hz. If None, attempts to calculate from `dim` coordinates.
+    ppm_offset : float, optional
+        Chemical shift reference offset in ppm. Defaults to 0.
     deadtime : float, optional
         Time delay before the first point in seconds. If None, defaults to 0.0.
     method : {"leastsq", "least_squares"}, optional
@@ -280,6 +283,10 @@ def fit_amares(
     if deadtime is None:
         deadtime = float(da.coords[dim].values[0])
 
+    if ppm_offset is None:
+        # Use carrier_ppm attribute if available, otherwise default to 0.0
+        ppm_offset = -1 * da.attrs.get("carrier_ppm", 0.0)
+
     # 2. Flatten N-dimensional DataArray to 2D NumPy array (N_spectra x Time)
     other_dims = [d for d in da.dims if d != dim]
 
@@ -319,6 +326,7 @@ def fit_amares(
         MHz=mhz,
         sw=sw,
         deadtime=deadtime,
+        ppm_offset=ppm_offset,
         normalize_fid=False,
         preview=False,
     )
@@ -373,7 +381,7 @@ def fit_amares(
             continue
 
         amplitudes[i, :] = df["amplitude"].values
-        chem_shifts[i, :] = df["chem shift(ppm)"].values
+        chem_shifts[i, :] = df["chem shift(ppm)"].values - ppm_offset
         linewidths[i, :] = df["LW(Hz)"].values
         phases[i, :] = df["phase(deg)"].values
         crlbs[i, :] = df["CRLB(%)"].values
