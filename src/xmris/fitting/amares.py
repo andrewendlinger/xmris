@@ -417,6 +417,7 @@ def fit_amares(
                 fid_arrs,
                 dims=["spectrum", dim],
                 coords={"spectrum": stacked_coords, dim: da.coords[dim]},
+                attrs=da.attrs.copy(),
             )
             .unstack("spectrum")
             .transpose(*da.dims)
