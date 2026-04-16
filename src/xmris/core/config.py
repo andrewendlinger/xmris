@@ -151,6 +151,16 @@ class XmrisAttributes(BaseVocabulary):
         unit="ppm",
     )
 
+    spectral_width = XmrisTerm(
+        "spectral_width",
+        description=(
+            "The total frequency range covered by the acquisition. Otherwise "
+            "refered to as 'sweep width' or 'bandwidth'. It is calculated as the sampling rate "
+            "of the time-domain FID. DICOM tag 'Spectral Width' (0018,9052)."
+        ),
+        unit="Hz",
+    )
+
     # --- mostly used for demo of attributes ---
     b0_field = XmrisTerm("b0_field", description="Magnetic field strength B0", unit="Tesla")
 
