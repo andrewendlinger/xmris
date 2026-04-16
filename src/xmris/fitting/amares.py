@@ -487,15 +487,9 @@ def fit_amares(
         )
 
         param_coords = {"Metabolite": metabolites}
-        ds["amplitude"] = xr.DataArray(
-            amplitudes[0], dims=["Metabolite"], coords=param_coords
-        )
-        ds["chem_shift"] = xr.DataArray(
-            chem_shifts[0], dims=["Metabolite"], coords=param_coords
-        )
-        ds["linewidth"] = xr.DataArray(
-            linewidths[0], dims=["Metabolite"], coords=param_coords
-        )
+        ds["amplitude"] = xr.DataArray(amplitudes[0], dims=["Metabolite"], coords=param_coords)
+        ds["chem_shift"] = xr.DataArray(chem_shifts[0], dims=["Metabolite"], coords=param_coords)
+        ds["linewidth"] = xr.DataArray(linewidths[0], dims=["Metabolite"], coords=param_coords)
         ds["phase"] = xr.DataArray(phases[0], dims=["Metabolite"], coords=param_coords)
         ds["crlb"] = xr.DataArray(crlbs[0], dims=["Metabolite"], coords=param_coords)
         ds["snr"] = xr.DataArray(snrs[0], dims=["Metabolite"], coords=param_coords)
