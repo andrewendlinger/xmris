@@ -19,6 +19,34 @@ from pyAMARES.kernel.lmfit import fitAMARES as pyamares_fitAMARES
 from pyAMARES.libs.logger import set_log_level
 from tqdm.auto import tqdm
 
+from xmris.core.config import DIMS
+
+
+def _dummy_dataframe_with_nans(FIDobj_current):
+    if hasattr(FIDobj_current, "peaklist"):
+        cols = [
+            "amplitude",
+            "sd",
+            "CRLB(%)",
+            "chem shift(ppm)",
+            "sd(ppm)",
+            "CRLB(cs%) ",
+            "LW(Hz)",
+            "sd(Hz)",
+            "CRLB(LW%)",
+            "phase(deg)",
+            "sd(deg)",
+            "CRLB(phase%)",
+            "g",
+            "g_sd",
+            "g (%)",
+            "SNR",
+        ]
+        dummy_df = pd.DataFrame(np.nan, index=FIDobj_current.peaklist, columns=cols)
+        dummy_df.index.name = "name"
+        return dummy_df
+    return None
+
 
 def _fit_dataset_safe(
     fid_current,
@@ -71,6 +99,10 @@ def _fit_dataset_safe(
         FIDobj_current = deepcopy(FIDobj_shared)
         FIDobj_current.fid = fid_current
 
+        # If any element in the current FID is NaN, skip fitting and return NaNs directly
+        if np.isnan(fid_current).any():
+            return _dummy_dataframe_with_nans(FIDobj_shared)
+
         out = pyamares_fitAMARES(
             fid_parameters=FIDobj_current,
             fitting_parameters=initial_params,
@@ -90,29 +122,7 @@ def _fit_dataset_safe(
 
     except Exception as e:
         print(f"Warning: AMARES fit failed on a voxel. Returning NaNs. Error: {e}")
-        if hasattr(FIDobj_shared, "peaklist"):
-            cols = [
-                "amplitude",
-                "sd",
-                "CRLB(%)",
-                "chem shift(ppm)",
-                "sd(ppm)",
-                "CRLB(cs%) ",
-                "LW(Hz)",
-                "sd(Hz)",
-                "CRLB(LW%)",
-                "phase(deg)",
-                "sd(deg)",
-                "CRLB(phase%)",
-                "g",
-                "g_sd",
-                "g (%)",
-                "SNR",
-            ]
-            dummy_df = pd.DataFrame(np.nan, index=FIDobj_shared.peaklist, columns=cols)
-            dummy_df.index.name = "name"
-            return dummy_df
-        return None
+        return _dummy_dataframe_with_nans(FIDobj_shared)
 
 
 def _run_parallel_fitting_optimal(
