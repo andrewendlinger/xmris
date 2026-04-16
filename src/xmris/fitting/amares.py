@@ -368,7 +368,7 @@ def fit_amares(
     snrs = np.zeros((n_spectra, n_metab))
 
     # Allocate time-domain array
-    fit_data = np.zeros((n_spectra, n_time), dtype=complex)
+    fit_data = np.zeros((n_spectra, n_metab, n_time), dtype=complex)
 
     # Calculate the time axis exactly as pyAMARES does it internally
     dwelltime = 1.0 / sw
@@ -390,7 +390,7 @@ def fit_amares(
 
         # Reconstruct the time-domain model from the resulting DataFrame
         params = result_pd_to_params(df, MHz=mhz)
-        fit_data[i, :] = uninterleave(multieq6(params, timeaxis))
+        fit_data[i, :] = multieq6(params, timeaxis, return_mat=True)
 
     # 7. Construct the xarray Dataset
     ds = xr.Dataset()
@@ -410,11 +410,16 @@ def fit_amares(
         ds["fit_data"] = (
             xr.DataArray(
                 fit_data,
-                dims=["spectrum", dim],
-                coords={"spectrum": stacked_coords, dim: da.coords[dim]},
+                dims=["spectrum", "Metabolite", dim],
+                coords={
+                    "spectrum": stacked_coords,
+                    "Metabolite": metabolites,
+                    dim: da.coords[dim],
+                },
+                attrs=da.attrs.copy(),
             )
             .unstack("spectrum")
-            .transpose(*da.dims)
+            .transpose(*(tuple(da.dims) + ("Metabolite",)))
         )
 
         # B) Assemble the Parameter Variables
@@ -459,7 +464,10 @@ def fit_amares(
         # Handle the 1D case directly without unstacking
         ds["raw_data"] = da
         ds["fit_data"] = xr.DataArray(
-            fit_data[0], dims=[dim], coords={dim: da.coords[dim]}
+            fit_data[0],
+            dims=["Metabolite", dim],
+            coords={"Metabolite": metabolites, dim: da.coords[dim]},
+            attrs=da.attrs.copy(),
         )
 
         param_coords = {"Metabolite": metabolites}
@@ -477,7 +485,7 @@ def fit_amares(
         ds["snr"] = xr.DataArray(snrs[0], dims=["Metabolite"], coords=param_coords)
 
     # 8. Calculate Residuals
-    ds["residuals"] = ds["raw_data"] - ds["fit_data"]
+    ds["residuals"] = ds["raw_data"] - ds["fit_data"].sum("Metabolite")
 
     # 9. Preserve Lineage & Add Fit Metadata
     ds.attrs = da.attrs.copy()
