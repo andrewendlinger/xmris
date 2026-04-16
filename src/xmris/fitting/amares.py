@@ -13,7 +13,6 @@ from pyAMARES import (
     initialize_FID,
     multieq6,
     result_pd_to_params,
-    uninterleave,
 )
 from pyAMARES.kernel.lmfit import fitAMARES as pyamares_fitAMARES
 from pyAMARES.libs.logger import set_log_level
@@ -217,7 +216,7 @@ def _run_parallel_fitting_optimal(
 def fit_amares(
     da: xr.DataArray,
     prior_knowledge_file: str | Path,
-    dim: str = "time",
+    dim: str = DIMS.time,
     mhz: float | None = None,
     sw: float | None = None,
     ppm_offset: float | None = None,
