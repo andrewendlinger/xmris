@@ -4,7 +4,7 @@ jupytext:
     extension: .md
     format_name: myst
 kernelspec:
-  display_name: Python 3 (ipykernel)
+  display_name: .venv
   language: python
   name: python3
 ---
@@ -133,12 +133,8 @@ for v in range(n_voxels):
     amp_atp = 5.0
 
     # Generate pure FIDs
-    fid_pcr = (
-        amp_pcr * np.exp(-decay_pcr * time) * np.exp(1j * 2 * np.pi * pcr_freq * time)
-    )
-    fid_atp = (
-        amp_atp * np.exp(-decay_atp * time) * np.exp(1j * 2 * np.pi * atp_freq * time)
-    )
+    fid_pcr = amp_pcr * np.exp(-decay_pcr * time) * np.exp(1j * 2 * np.pi * pcr_freq * time)
+    fid_atp = amp_atp * np.exp(-decay_atp * time) * np.exp(1j * 2 * np.pi * atp_freq * time)
 
     # Combine and add noise
     signal = fid_pcr + fid_atp
@@ -150,7 +146,7 @@ da_mrsi = xr.DataArray(
     data,
     dims=["voxel", "time"],
     coords={"voxel": np.arange(n_voxels), "time": time},
-    attrs={"MHz": mhz, "sw": sw},
+    attrs={"reference_frequency": mhz, "spectral_width": sw},
 )
 
 # Plot the generated spectra
@@ -169,21 +165,21 @@ We pass the `DataArray` to `.xmr.fit_amares()`.
 Under the hood, `xmris` evaluates the Signal-to-Noise Ratio (SNR) of all voxels, picks the one with the highest SNR to safely initialize the `pyAMARES` template, and then parallelizes the fitting across your CPU cores.
 
 ```{code-cell} ipython3
+da_mrsi
+```
+
+```{code-cell} ipython3
 :tags: [skip-execution]
 
 # We use num_workers=4 to parallelize the fitting across our spatial dimensions!
-ds_fit = da_mrsi.xmr.fit_amares(
-    prior_knowledge_file=pk_path, method="least_squares", num_workers=4
-)
+ds_fit = da_mrsi.xmr.fit_amares(prior_knowledge_file=pk_path, method="least_squares", num_workers=4)
 ```
 
 ```{code-cell} ipython3
 :tags: [remove-cell]
 
 # Hidden cell for pytest-cov tracking, has to be a single thread with one worker only!
-ds_fit = da_mrsi.xmr.fit_amares(
-    prior_knowledge_file=pk_path, method="least_squares", num_workers=1
-)
+ds_fit = da_mrsi.xmr.fit_amares(prior_knowledge_file=pk_path, method="least_squares", num_workers=1)
 ```
 
 :::{dropdown} Understanding the PyAMARES Warning
@@ -223,12 +219,8 @@ Because it maps the results to the newly created `Metabolite` dimension, you can
 fig, ax = plt.subplots(figsize=(6, 4))
 
 # Because everything is aligned, plotting parameter maps is trivial
-ds_fit.amplitude.sel(Metabolite="PCr").plot(
-    ax=ax, marker="o", linestyle="none", label="Fitted PCr"
-)
-ds_fit.amplitude.sel(Metabolite="ATP").plot(
-    ax=ax, marker="s", linestyle="none", label="Fitted ATP"
-)
+ds_fit.amplitude.sel(Metabolite="PCr").plot(ax=ax, marker="o", linestyle="none", label="Fitted PCr")
+ds_fit.amplitude.sel(Metabolite="ATP").plot(ax=ax, marker="s", linestyle="none", label="Fitted ATP")
 
 # Plot the ground truth for comparison
 ax.plot(
@@ -322,13 +314,37 @@ ax.plot(
     alpha=0.4,
     label="Raw Data",
 )
-ax.plot(
-    spec_fit.coords["frequency"],
-    spec_fit.real,
-    color="tab:red",
-    linewidth=1.5,
-    label="AMARES Fit",
-)
+
+# Plot individual metabolite fits and annotate chemical shifts
+for idx, (metabolite, met_spec) in enumerate(spec_fit.groupby("Metabolite")):
+    color = ["orange", "purple"][idx]
+    ax.plot(
+        met_spec.coords["frequency"],
+        met_spec.squeeze().real,
+        color=color,
+        linewidth=1.5,
+        label=f"{metabolite} Fit",
+    )
+    # Plot a vertical line at the chemical shift of the metabolite from the fit
+    chem_shift_value = last_voxel_ds.chem_shift.sel(Metabolite=metabolite).values.squeeze()
+    frequency_value = chem_shift_value * (last_voxel_ds.attrs["reference_frequency"])  # Convert ppm to Hz
+    ax.axvline(
+        x=frequency_value,
+        color=color,
+        linestyle="dashed",
+        alpha=0.3,
+    )
+    # Annotate the metabolite name at the top of the plot
+    ax.text(
+        frequency_value - 20,
+        ax.get_ylim()[1] * 0.5,
+        f"{metabolite}\n({chem_shift_value:.2f} ppm)",
+        color=color,
+        fontsize=9,
+        ha="left",
+    )
+
+
 ax.plot(
     spec_res.coords["frequency"],
     spec_res.real - 25,  # Offset the residuals downward for clarity
@@ -337,7 +353,7 @@ ax.plot(
     label="Residuals (offset)",
 )
 
-ax.set_xlim(200, -1200)  # Zoom into the region of interest
+ax.set_xlim(200, -1400)  # Zoom into the region of interest
 ax.set_title(f"Voxel {ds_fit.voxel.values[-1]}: Spectral Fit Quality")
 ax.set_xlabel("Frequency (Hz)")
 ax.set_ylabel("Intensity (a.u.)")
@@ -366,15 +382,11 @@ for v in expected_vars:
     assert v in ds_fit.data_vars, f"Variable {v} missing from Dataset"
 
 # 2. Check Dimensional Alignment
-assert ds_fit.amplitude.dims == ("voxel", "Metabolite"), (
-    "Amplitude map dimensions are incorrect"
-)
-assert ds_fit.fit_data.dims == ("voxel", "time"), (
+assert ds_fit.amplitude.dims == ("voxel", "Metabolite"), "Amplitude map dimensions are incorrect"
+assert ds_fit.fit_data.dims == ("voxel", "time", "Metabolite"), (
     "Reconstructed fit dimensions are incorrect"
 )
-assert len(ds_fit.coords["Metabolite"]) == 2, (
-    "Should have found exactly 2 metabolites (PCr, ATP)"
-)
+assert len(ds_fit.coords["Metabolite"]) == 2, "Should have found exactly 2 metabolites (PCr, ATP)"
 
 # 3. Check Fit Accuracy (Quantitative)
 fitted_pcr_amps = ds_fit.amplitude.sel(Metabolite="PCr").values
@@ -402,31 +414,23 @@ assert np.all((ds_fit.linewidth.values >= 5.0) & (ds_fit.linewidth.values <= 40.
 )
 
 # SNR should be highest for the voxel with the largest amplitude (Voxel 4)
-assert ds_fit.snr.sel(Metabolite="PCr").isel(voxel=4) > ds_fit.snr.sel(
-    Metabolite="PCr"
-).isel(voxel=0), "SNR mapping is incorrect"
+assert ds_fit.snr.sel(Metabolite="PCr").isel(voxel=4) > ds_fit.snr.sel(Metabolite="PCr").isel(
+    voxel=0
+), "SNR mapping is incorrect"
 
 # CRLB should be valid and acceptable for this high SNR synthetic data
 assert not np.isnan(ds_fit.crlb.values).any(), (
     "CRLB contains NaNs, indicating an ill-conditioned fit matrix"
 )
-assert np.all(ds_fit.crlb.values <= 20.0), (
-    "CRLB values exceeded 20% on clean synthetic data"
-)
+assert np.all(ds_fit.crlb.values <= 20.0), "CRLB values exceeded 20% on clean synthetic data"
 
 # 5. Check that residuals are mathematically correct and behave like noise
-recalculated_residuals = ds_fit.raw_data - ds_fit.fit_data
+recalculated_residuals = ds_fit.raw_data - ds_fit.fit_data.sum("Metabolite")
 xr.testing.assert_allclose(ds_fit.residuals, recalculated_residuals)
 
 voxel_residual = ds_fit.residuals.isel(voxel=-1).values
-assert abs(np.mean(voxel_residual)) < 1.0, (
-    "Residuals are suspiciously high, indicating a bad fit"
-)
+assert abs(np.mean(voxel_residual)) < 1.0, "Residuals are suspiciously high, indicating a bad fit"
 
 # 6. Cleanup dummy PK file
 pk_path.unlink(missing_ok=True)
-```
-
-```{code-cell} ipython3
-
 ```
