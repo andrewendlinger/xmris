@@ -18,7 +18,9 @@ from pyAMARES.kernel.lmfit import fitAMARES as pyamares_fitAMARES
 from pyAMARES.libs.logger import set_log_level
 from tqdm.auto import tqdm
 
-from xmris.core.config import DIMS
+from xmris.core.config import ATTRS, DIMS
+from xmris.core.utils import _check_dims
+from xmris.core.validation import requires_attrs
 
 
 def _dummy_dataframe_with_nans(FIDobj_current):
@@ -213,12 +215,11 @@ def _run_parallel_fitting_optimal(
     return result_array
 
 
+@requires_attrs(ATTRS.reference_frequency, ATTRS.spectral_width)
 def fit_amares(
     da: xr.DataArray,
     prior_knowledge_file: str | Path,
     dim: str = DIMS.time,
-    mhz: float | None = None,
-    sw: float | None = None,
     ppm_offset: float | None = None,
     deadtime: float | None = None,
     method: str = "leastsq",
@@ -246,10 +247,6 @@ def fit_amares(
         Path to the CSV or XLSX file containing the prior knowledge constraints.
     dim : str, optional
         The time dimension along which to fit, by default "time".
-    mhz : float, optional
-        Spectrometer frequency in MHz. If None, attempts to read from da.attrs['MHz'].
-    sw : float, optional
-        Spectral width in Hz. If None, attempts to calculate from `dim` coordinates.
     ppm_offset : float, optional
         Chemical shift reference offset in ppm. Defaults to 0.
     deadtime : float, optional
@@ -273,22 +270,10 @@ def fit_amares(
         and quantified parameters (amplitude, chem_shift, linewidth, phase, CRLB, SNR)
         mapped across the original dimensions and the new 'Metabolite' dimension.
     """
+    _check_dims(da, dim, "fit_amares")
     set_log_level("info" if verbose else "error", verbose=False)
 
-    if dim not in da.dims:
-        raise ValueError(f"Dimension '{dim}' missing in DataArray.")
-
     # 1. Extract/Infer Physical Parameters
-    if mhz is None:
-        mhz = da.attrs.get("MHz")
-        if mhz is None:
-            raise ValueError("mhz must be provided or present in da.attrs['MHz']")
-
-    if sw is None:
-        # Assuming the coordinate is in seconds
-        dt = float(da.coords[dim].values[1] - da.coords[dim].values[0])
-        sw = 1.0 / dt
-
     if deadtime is None:
         deadtime = float(da.coords[dim].values[0])
 
@@ -332,8 +317,8 @@ def fit_amares(
     shared_obj = initialize_FID(
         fid=template_fid,
         priorknowledgefile=str(prior_knowledge_file),
-        MHz=mhz,
-        sw=sw,
+        MHz=da.attrs[ATTRS.reference_frequency],
+        sw=da.attrs[ATTRS.spectral_width],
         deadtime=deadtime,
         ppm_offset=ppm_offset,
         normalize_fid=False,
@@ -386,7 +371,7 @@ def fit_amares(
     fit_data = np.zeros((n_spectra, n_metab, n_time), dtype=complex)
 
     # Calculate the time axis exactly as pyAMARES does it internally
-    dwelltime = 1.0 / sw
+    dwelltime = 1.0 / da.attrs[ATTRS.spectral_width]
     timeaxis = np.arange(0, dwelltime * n_time, dwelltime) + deadtime
 
     for i, df in enumerate(result_list):
@@ -404,7 +389,7 @@ def fit_amares(
             snrs[i, :] = df["SNR"].values
 
         # Reconstruct the time-domain model from the resulting DataFrame
-        params = result_pd_to_params(df, MHz=mhz)
+        params = result_pd_to_params(df, MHz=da.attrs[ATTRS.reference_frequency])
         fit_data[i, :] = multieq6(params, timeaxis, return_mat=True)
 
     # 7. Construct the xarray Dataset
