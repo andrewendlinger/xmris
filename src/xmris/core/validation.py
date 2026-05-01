@@ -4,6 +4,8 @@ import functools
 from collections.abc import Callable
 from typing import Any
 
+import xarray as xr
+
 from .config import ATTRS
 
 
@@ -45,7 +47,17 @@ def requires_attrs(*keys: str) -> Callable:
         # 2. Wrap the runtime execution
         @functools.wraps(func)
         def wrapper(self, *args, **kwargs):
-            missing = [k for k in keys if k not in self._obj.attrs]
+            if isinstance(self, xr.DataArray):
+                obj_attrs = self.attrs
+            elif hasattr(self, "_obj") and isinstance(self._obj, xr.DataArray):
+                obj_attrs = self._obj.attrs
+            else:
+                raise TypeError(
+                    "The @requires_attrs decorator can only be applied to methods of xarray.DataArray "
+                    "or classes that have a '_obj' attribute which is an xarray.DataArray."
+                )
+
+            missing = [k for k in keys if k not in obj_attrs]
             if missing:
                 raise ValueError(
                     f"Method '{func.__name__}' requires the following missing attributes "
