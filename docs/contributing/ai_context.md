@@ -47,7 +47,7 @@ Whenever you generate a new function for `xmris`, you MUST follow these rules:
 
 ### 5. Testing & Documentation Strategy
 
-We do not use traditional hidden `test_*.py` files for mathematical processing. Our tests *are* our documentation. We use **Jupyter Notebooks** in the `notebooks/` directory, managed via Jupytext (`md:myst` format). (Note: Architecture is tested in standard pytest files).
+We do not use traditional hidden `test_*.py` files for mathematical processing. Our tests *are* our documentation. We use **Jupyter Notebooks** in the `docs/notebooks/` directory, managed via Jupytext (`md:myst` format). (Note: Architecture is tested in standard pytest files).
 
 When asked to write notebook tests for a new function, generate a Jupytext script structure that includes:
 1. Markdown cells explaining the math/physics.
