@@ -332,3 +332,16 @@ ATTRS = XmrisAttributes()
 DIMS = XmrisDimensions()
 COORDS = XmrisCoordinates()
 VARS = XmrisDataVars()
+
+
+# =============================================================================
+# Domain Groupings
+# =============================================================================
+# Semantic groupings of *existing* dimension terms (not new vocabulary) used by
+# the ``ensures_domain`` and ``resolves_spectral_dim`` decorators in
+# ``validation.py``. They bundle the already-defined ``DIMS`` into the two
+# physical domains xmris operates in: time-domain FIDs vs. frequency-domain
+# spectra, where the spectral axis may be labelled in Hz (``frequency``) or
+# ppm (``chemical_shift``).
+TIME_DIMS = frozenset({DIMS.time})
+SPECTRAL_DIMS = frozenset({DIMS.frequency, DIMS.chemical_shift})

@@ -629,7 +629,7 @@ class XmrisPhasingMixin:
 
     def autophase(
         self,
-        dim: str = DIMS.frequency,
+        dim: str | None = None,
         method: str = "acme",
         peak_width: int = 100,
         lb: float = 0.0,
@@ -643,8 +643,10 @@ class XmrisPhasingMixin:
         ----------
         da : xr.DataArray
             The input frequency-domain spectrum.
-        dim : str, optional
-            The coordinate dimension to operate on, by default `DIMS.frequency`.
+        dim : str or None, optional
+            The spectral dimension to operate on. If ``None`` (default) it is
+            resolved automatically to the spectral dim present (Hz or ppm);
+            time-domain input is transformed to a spectrum first.
         method : {"acme", "peak_minima", "positivity"}, optional
             The scoring algorithm to use. "acme" relies on entropy and is best for
             multi-peak high SNR spectra. "positivity" and "peak_minima" are optimized
