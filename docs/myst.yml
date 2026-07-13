@@ -38,6 +38,8 @@ project:
           title: 3a. Phase Correction
         - file: notebooks/pipeline/autophasing.md
           title: 3b. Auto Phase Correction
+        - file: notebooks/pipeline/domain_agnostic_autophase.md
+          title: 3c. Domain-Agnostic Autophase
         - file: notebooks/pipeline/baseline.md
           title: 4. Baseline Correction
 
