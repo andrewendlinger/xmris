@@ -93,7 +93,7 @@ plt.show()
 ## 2. Manual Phase Correction
 
 :::{tip} Interactive manual phase correction
-Use the [Interactive Phasing Widget](../visualization/widget/01_widget_phase.ipynb) to interactivley adjust $p_0$ and $p_1$.
+Use the [Interactive Phasing Widget](../visualization/widget/01_widget_phase.md) to interactively adjust $p_0$ and $p_1$.
 :::
 
 We can manually apply zero- and first-order phase correction (in degrees) using the `.xmr.phase()` method.
@@ -169,5 +169,5 @@ Finding the perfect phase angles manually is tedious. We can use algorithms such
 algorithm (ACME) to find the global phase minimum automatically.
 
 :::{tip} Automated phase correction
-The dedicated documentation is here: [Automated Phase Correction](./autophasing.ipynb).
+The dedicated documentation is here: [Automated Phase Correction](./autophasing.md).
 :::

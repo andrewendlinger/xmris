@@ -49,9 +49,7 @@ project:
         - file: notebooks/fitting/simufid.md
           title: FID Simulation
         - file: notebooks/fitting/pyamares.md
-          title: pyAMARES - Part I
-        - file: notebooks/fitting/pyamares_advanced.md
-          title: pyAMARES - Part II
+          title: pyAMARES
 
     # 4. GROUP: Visualization / plotting
     - title: Visualization
@@ -64,14 +62,14 @@ project:
               title: 2. [1D + Time] Waterfall Plot
             - file: notebooks/visualization/plot/03_plot_carpet.md
               title: 3. [1D + Time] Carpet Plot
-            - file: notebooks/visualization/plot/03_plotting_fit_1d.md
+            - file: notebooks/visualization/plot/03_plotting_1dfid.md
               title: 4. [1D + Time] pyAMARES Plot
         - title: Widgets
           children:
             - file: notebooks/visualization/widget/01_widget_phase.md
               title: 1. Spectrum phasing
             - file: notebooks/visualization/widget/02_widget_scroller.md
-              title: 2. Srcolling through spectra
+              title: 2. Scrolling through spectra
             - file: notebooks/visualization/widget/03_apodization.md
               title: 3. Apodization
     # 5. GROUP: Vendor Specific

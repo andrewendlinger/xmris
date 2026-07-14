@@ -24,7 +24,7 @@ matplotlib_inline.backend_inline.set_matplotlib_formats("retina")
 plt.rcParams["figure.dpi"] = 150
 ```
 
-Following the quantification of spectra using time-domain fitting (as covered in the [Time-Domain Fitting with AMARES](./amares_fitting.md) tutorial), the next critical step is interpreting the results.
+Following the quantification of spectra using time-domain fitting (as covered in the [Time-Domain Fitting with AMARES](../../fitting/pyamares.md) tutorial), the next critical step is interpreting the results.
 
 When analyzing a 1D array of spectra—such as a dynamic time-series (fMRS), an echo-time series (relaxation mapping), or a 1D spatial CSI slice—researchers generally need to quickly answer two questions:
 1. **The Kinetics:** How do the metabolite concentrations change across the dimension?
