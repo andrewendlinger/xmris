@@ -122,6 +122,7 @@ class XmrisWidgetAccessor:
 
     def phase_spectrum(
         self,
+        dim: str | None = None,
         width: int = 740,
         height: int = 400,
         show_grid: bool = True,
@@ -137,6 +138,10 @@ class XmrisWidgetAccessor:
 
         Parameters
         ----------
+        dim : str, optional
+            Spectral dimension to plot along. If None (default), the canonical
+            spectral dimension (frequency or chemical_shift) is auto-detected;
+            pass it explicitly for non-standard axis names.
         width : int, optional
             Width of the widget in pixels. Default is 740.
         height : int, optional
@@ -171,9 +176,10 @@ class XmrisWidgetAccessor:
         # Lazy import to avoid loading AnyWidget/frontend assets unless requested
         from xmris.visualization.widget import phase_spectrum
 
-        # The underlying function handles the 1-D and complex-type validation
+        # The underlying function handles the 1-D, complex-type, and dim validation
         return phase_spectrum(
             self._obj,
+            dim=dim,
             width=width,
             height=height,
             show_grid=show_grid,
@@ -255,8 +261,8 @@ class XmrisWidgetAccessor:
         self,
         dim: str | None = None,
         unit: str = "ppm",
-        width: int = 800,
-        height: int = 600,
+        width: int = 740,
+        height: int = 550,
         lb_range: tuple[float, float] = (0.0, 50.0),
         gb_range: tuple[float, float] = (0.0, 50.0),
         **kwargs,
@@ -276,9 +282,9 @@ class XmrisWidgetAccessor:
         unit : {'ppm', 'hz'}, optional
             The unit for the spectral x-axis display. Default is 'ppm'.
         width : int, optional
-            Width of the widget in pixels. Default is 800.
+            Width of the widget in pixels. Default is 740.
         height : int, optional
-            Height of the widget in pixels. Default is 600.
+            Height of the widget in pixels. Default is 550.
         lb_range : tuple of float, optional
             The (min, max) range for the Line Broadening slider. Default is (0.0, 50.0).
         gb_range : tuple of float, optional
