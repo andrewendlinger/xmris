@@ -1,11 +1,20 @@
+import warnings
+
 import numpy as np
+import scipy.optimize
 import xarray as xr
 
 from xmris.core.config import ATTRS, DIMS, VARS
+from xmris.core.utils import _check_dims
+from xmris.processing.fid import to_spectrum
+from xmris.processing.phasing import _acme_score
 
 
 def remove_digital_filter(
-    da: xr.DataArray, group_delay: float, dim: str = "time", keep_length: bool = True
+    da: xr.DataArray,
+    group_delay: float | str = "header",
+    dim: str = DIMS.time,
+    keep_length: bool = True,
 ) -> xr.DataArray:
     """
     Remove the hardware digital filter group delay from Bruker FID data.
@@ -29,15 +38,20 @@ def remove_digital_filter(
     ----------
     da : xr.DataArray
         Input free induction decay (FID) data in the time domain.
-    group_delay : float
-        The exact delay value to remove. This should be read directly from the
-        Bruker `ACQ_RxFilterInfo` parameter array (index 0: 'groupDelay')].
-        Typical values:
+    group_delay : float or {"header", "measure"}, optional
+        The delay value (in samples) to remove. By default ``"header"``, which
+        reads the vendor-reported value from ``da.attrs`` (the ``group_delay``
+        attribute written by :func:`build_fid`, mapping Bruker
+        ``ACQ_RxFilterInfo``[0].groupDelay). Pass an explicit float to force a
+        value, or ``"measure"`` to estimate it from the data via
+        :func:`estimate_group_delay` — robust when the header under-counts the
+        true digital-filter delay. Typical header values:
           - ~76.0 for standard high-resolution Spectroscopy.
           - ~0.0 to 16.0 for Fast Imaging or ZTE (where hardware pre-compensation
             or short filters are used).
     dim : str, optional
-        The time dimension along which to apply the correction, by default "time".
+        The time dimension along which to apply the correction, by default
+        ``DIMS.time``.
     keep_length : bool, optional
         If True, appends pure zeros to the end of the FID to replace the truncated
         startup points. This ensures the returned DataArray maintains the exact same
@@ -52,6 +66,10 @@ def remove_digital_filter(
     """
     if dim not in da.dims:
         raise ValueError(f"Dimension '{dim}' missing in DataArray.")
+
+    # Resolve string sentinels ("header"/"measure") to a numeric delay before any
+    # arithmetic — the guards below assume a float.
+    group_delay = _resolve_group_delay(da, group_delay, dim)
 
     if group_delay <= 0:
         return da.copy()
@@ -118,7 +136,246 @@ def remove_digital_filter(
     return da_new.assign_attrs(new_attrs)
 
 
-import xarray as xr
+def _resolve_group_delay(da: xr.DataArray, group_delay: float | str, dim: str) -> float:
+    """Resolve a ``group_delay`` argument (float or ``"header"``/``"measure"``) to samples."""
+    if not isinstance(group_delay, str):
+        return float(group_delay)
+
+    if group_delay == "header":
+        header = da.attrs.get(ATTRS.group_delay)
+        if header is None:
+            raise ValueError(
+                f"remove_digital_filter(group_delay='header') needs the "
+                f"'{ATTRS.group_delay}' attribute (written by build_fid), which is "
+                f"absent. Pass an explicit float, or use group_delay='measure'."
+            )
+        return float(header)
+
+    if group_delay == "measure":
+        measured = estimate_group_delay(da, dim=dim)
+        assert not isinstance(measured, tuple)  # return_profile defaults False
+        return measured
+
+    raise ValueError(f"group_delay string must be 'header' or 'measure', got {group_delay!r}.")
+
+
+_PHI0_GRID = np.linspace(-180.0, 180.0, 73)
+
+
+def estimate_group_delay(
+    da: xr.DataArray,
+    dim: str = DIMS.time,
+    *,
+    search_range: tuple[float, float] | None = None,
+    header_hint: float | None = None,
+    window: float = 16.0,
+    metric: str = "acme",
+    refine: bool = True,
+    return_profile: bool = False,
+) -> float | tuple[float, xr.DataArray]:
+    """
+    Measure the true digital-filter group delay by minimizing residual phase.
+
+    The vendor header value (Bruker ``ACQ_RxFilterInfo``/``GRPDLY``) can *under-count*
+    the real receiver digital-filter group delay for some ParaVision/probe
+    combinations, leaving a residual first-order (frequency-dependent) phase error
+    after :func:`remove_digital_filter` — negligible near the carrier but large for
+    peaks far from it. This estimator finds the delay that removes that residual.
+
+    An incorrect delay is mathematically a residual *linear phase* across the spectrum,
+    so the correct delay is the one that, after removal, makes the spectrum maximally
+    absorptive under a *single* global zero-order phase (``φ0``). The discriminating
+    power comes from forbidding first-order phase (``φ1``): delay and ``φ1`` are the
+    same linear-phase degree of freedom, so any ``φ1`` freedom would make every delay
+    look equally good. This is the peak-agnostic generalization of a tied-phase model
+    residual. ``argmax(|FID|)`` is deliberately **not** used — it lands on the filter's
+    ringing, not the true delay.
+
+    Parameters
+    ----------
+    da : xr.DataArray
+        Input free induction decay (FID) in the time domain. May be N-dimensional;
+        the single highest-energy 1-D slice is used for estimation.
+    dim : str, optional
+        The time dimension, by default ``DIMS.time``.
+    search_range : tuple of float, optional
+        Explicit ``(low, high)`` delay bounds (samples) to search. If ``None``
+        (default), the window is anchored on the header: ``header ± window``.
+    header_hint : float, optional
+        Vendor-reported delay to anchor the search on. If ``None``, falls back to
+        ``da.attrs[group_delay]`` and then to a broad default range.
+    window : float, optional
+        Half-width (samples) of the header-anchored search window, by default 16.0.
+    metric : {"acme", "coherence"}, optional
+        Residual-phase cost. ``"acme"`` (default) minimizes the ACME entropy over a
+        ``φ0`` grid (whole-spectrum, robust to linear-phase aliasing). ``"coherence"``
+        is a cheaper ``φ0``-invariant phase-coherence proxy.
+    refine : bool, optional
+        If True (default), refine the best integer delay to sub-sample precision.
+    return_profile : bool, optional
+        If True, also return the cost-vs-delay profile (an ``xr.DataArray`` over a
+        ``trial_delay`` axis) for diagnosing multimodality/aliasing. By default False.
+
+    Returns
+    -------
+    float or tuple[float, xr.DataArray]
+        The measured group delay in samples, or ``(delay, profile)`` when
+        ``return_profile=True``.
+
+    Warns
+    -----
+    UserWarning
+        When the measured delay deviates strongly from the header (a likely
+        under-counting header), or when the cost profile is ambiguous (several
+        delays give a near-minimal residual — linear-phase aliasing).
+    """
+    _check_dims(da, dim, "estimate_group_delay")
+    if metric not in ("acme", "coherence"):
+        raise ValueError(f"metric must be 'acme' or 'coherence', got {metric!r}.")
+
+    fid = _pick_representative_slice(da, dim)
+
+    # Resolve the header anchor (explicit hint wins, else the stored attr).
+    header = header_hint
+    if header is None and ATTRS.group_delay in da.attrs:
+        header = float(da.attrs[ATTRS.group_delay])
+
+    # Resolve the search window.
+    if search_range is not None:
+        lo, hi = float(search_range[0]), float(search_range[1])
+    elif header is not None:
+        lo, hi = header - window, header + window
+    else:
+        lo, hi = 0.0, 96.0
+    lo = max(0.0, lo)
+    if hi <= lo:
+        raise ValueError(f"Invalid search range ({lo}, {hi}).")
+
+    freq_dim = str(DIMS.frequency)
+
+    def cost(delay: float) -> float:
+        cleaned = remove_digital_filter(fid, group_delay=float(delay), dim=dim, keep_length=True)
+        spec = to_spectrum(cleaned, dim=dim)
+        return _residual_phase_cost(spec, freq_dim, metric, _PHI0_GRID)
+
+    # 1. Coarse integer grid search.
+    candidates = np.arange(int(np.floor(lo)), int(np.ceil(hi)) + 1, dtype=float)
+    costs = np.array([cost(d) for d in candidates])
+    best_i = int(np.argmin(costs))
+
+    # 2. Disambiguate near-equal minima (linear-phase aliasing) with an un-aliased
+    #    phase-slope seed: prefer the near-minimal candidate closest to the seed.
+    gmin, gmax = float(costs[best_i]), float(costs.max())
+    depth = gmax - gmin
+    near = np.where(costs <= gmin + 0.12 * depth)[0] if depth > 0 else np.array([best_i])
+    if len(near) > 1:
+        seed = _seed_absolute_delay(fid, dim, freq_dim, header, float(candidates[best_i]))
+        if seed is not None and lo <= seed <= hi:
+            best_i = int(near[np.argmin(np.abs(candidates[near] - seed))])
+    best = float(candidates[best_i])
+
+    # 3. Sub-sample fractional refinement around the chosen integer.
+    if refine:
+        res = scipy.optimize.minimize_scalar(
+            cost,
+            bounds=(best - 1.0, best + 1.0),
+            method="bounded",
+            options={"xatol": 1e-2},
+        )
+        if res.success and res.fun <= costs[best_i]:
+            best = max(0.0, float(res.x))
+
+    # 4. Advisory warnings.
+    if header is not None and abs(best - header) > 2.0:
+        warnings.warn(
+            f"Measured group delay ({best:.3f}) deviates from the header value "
+            f"({header:.3f}) by {best - header:+.3f} samples; the header may "
+            f"under-count the true digital-filter delay for this acquisition.",
+            stacklevel=2,
+        )
+    if len(near) > 1 and np.any(np.abs(candidates[near] - best) > 2.0):
+        warnings.warn(
+            "Group-delay estimate is ambiguous: several candidate delays give a "
+            "near-minimal residual (linear-phase aliasing). Inspect the profile via "
+            "return_profile=True and consider constraining search_range.",
+            stacklevel=2,
+        )
+
+    if return_profile:
+        profile = xr.DataArray(
+            costs,
+            dims=["trial_delay"],
+            coords={"trial_delay": candidates},
+            name="residual_phase_cost",
+            attrs={"long_name": "Residual first-order phase cost", "metric": metric},
+        )
+        return best, profile
+    return best
+
+
+def _pick_representative_slice(da: xr.DataArray, dim: str) -> xr.DataArray:
+    """Reduce an N-D FID to the single 1-D slice carrying the most signal energy.
+
+    Group-delay estimation needs one high-SNR FID; the max-energy slice (summed over
+    the time axis) is a robust choice for multi-repetition / multi-coil inputs.
+    """
+    if da.ndim == 1:
+        return da
+    energy = (da * da.conj()).real.sum(dim=dim)
+    unraveled = np.unravel_index(int(np.argmax(energy.values)), energy.shape)
+    sel = {d: int(unraveled[i]) for i, d in enumerate(energy.dims)}
+    return da.isel(sel)
+
+
+def _residual_phase_cost(spec: xr.DataArray, dim: str, metric: str, p0_grid: np.ndarray) -> float:
+    """Score residual first-order phase in a spectrum, invariant to zero-order phase."""
+    if metric == "acme":
+        # Minimize the ACME entropy over a coarse φ0 grid (deterministic). `_acme_score`
+        # divides by max(Re); when a φ0 phases the whole spectrum negative that max flips
+        # sign and the score turns spuriously negative, so keep only the physical
+        # (positive) absorptive candidates.
+        vals = [_acme_score([p0], spec, dim, 0.0) for p0 in p0_grid]
+        vals = [v for v in vals if np.isfinite(v) and v > 0.0]
+        return min(vals) if vals else np.inf
+    # "coherence": φ0-invariant phase coherence, 0 when all points share one phase.
+    s = spec.values
+    denom = float(np.sum(np.abs(s)))
+    if denom == 0.0:
+        return 0.0
+    return 1.0 - float(np.abs(np.sum(s))) / denom
+
+
+def _seed_absolute_delay(
+    fid: xr.DataArray, dim: str, freq_dim: str, header: float | None, fallback: float
+) -> float | None:
+    """Un-aliased absolute-delay seed from the magnitude-weighted phase slope.
+
+    Removes an anchor delay, then reads the residual delay from the slope of unwrapped
+    phase vs frequency: a residual Δd imprints ``φ(f) = -2π·Δd·f/f_s``. Returns
+    ``anchor + Δd``, used only to break near-equal ACME minima.
+    """
+    anchor = header if header is not None else fallback
+    try:
+        cleaned = remove_digital_filter(fid, group_delay=float(anchor), dim=dim, keep_length=True)
+        spec = to_spectrum(cleaned, dim=dim)
+        s = spec.values
+        f = spec.coords[freq_dim].values.astype(float)
+        mag = np.abs(s)
+        if mag.max() == 0.0 or f.size < 2:
+            return None
+        w = mag**2
+        ang = np.unwrap(np.angle(s))
+        wsum = w.sum()
+        fbar = (w * f).sum() / wsum
+        var = (w * (f - fbar) ** 2).sum()
+        if var == 0.0:
+            return None
+        slope = (w * (f - fbar) * (ang - (w * ang).sum() / wsum)).sum() / var  # rad/Hz
+        fs = spec.sizes[freq_dim] * abs(f[1] - f[0])  # spectral width [Hz]
+        residual = -slope * fs / (2.0 * np.pi)
+        return float(anchor + residual)
+    except Exception:
+        return None
 
 
 def _get_val(pv_params: dict, key: str, default=None):
@@ -129,9 +386,7 @@ def _get_val(pv_params: dict, key: str, default=None):
     return val
 
 
-def reshape_bruker_raw(
-    raw_data_1d: np.ndarray, pv_params: dict
-) -> tuple[np.ndarray, list[str]]:
+def reshape_bruker_raw(raw_data_1d: np.ndarray, pv_params: dict) -> tuple[np.ndarray, list[str]]:
     """
     Reshape a flat Bruker rawdata.job0 array into a squeezed N-dimensional numpy array.
 
@@ -293,7 +548,7 @@ def build_fid(
         {
             ATTRS.reference_frequency: f0_mhz,
             ATTRS.carrier_ppm: carrier_ppm,
-            "bruker_group_delay": groupDelay,
+            ATTRS.group_delay: groupDelay,
             "units": "a.u.",
         }
     )

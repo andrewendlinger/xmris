@@ -529,6 +529,7 @@ class TestAccessorDefaults:
             ("to_fid", "out_dim", DIMS.time),
             ("zero_fill", "dim", DIMS.time),
             ("remove_digital_filter", "dim", DIMS.time),
+            ("estimate_group_delay", "dim", DIMS.time),
             ("to_ppm", "dim", DIMS.frequency),
             ("to_hz", "dim", DIMS.chemical_shift),
             ("to_real_imag", "dim", DIMS.component),
@@ -1186,7 +1187,7 @@ class TestDomainRollout:
         from xmris.processing.fourier import fft, ifft
         from xmris.processing.phasing import phase
         from xmris.processing.referencing import to_hz, to_ppm
-        from xmris.vendor.bruker import remove_digital_filter
+        from xmris.vendor.bruker import estimate_group_delay, remove_digital_filter
 
         undecorated = (
             to_spectrum,
@@ -1198,6 +1199,7 @@ class TestDomainRollout:
             phase,
             fit_amares,
             remove_digital_filter,
+            estimate_group_delay,
         )
         for func in undecorated:
             assert not hasattr(func, "__xmris_domain__"), func.__name__

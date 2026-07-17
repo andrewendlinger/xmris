@@ -27,7 +27,7 @@ from xmris.processing.referencing import to_hz, to_ppm
 # =============================================================================
 # Sub-Accessors (Terminal / Visualization tools)
 # =============================================================================
-from xmris.vendor.bruker import remove_digital_filter
+from xmris.vendor.bruker import estimate_group_delay, remove_digital_filter
 
 # Deferred plot configs
 from xmris.visualization.plot import CarpetConfig, WaterfallConfig
@@ -813,7 +813,10 @@ class XmrisAccessor(
     # --- Vendor Specific ---
 
     def remove_digital_filter(
-        self, group_delay: float, dim: str = "time", keep_length: bool = True
+        self,
+        group_delay: float | str = "header",
+        dim: str = DIMS.time,
+        keep_length: bool = True,
     ) -> xr.DataArray:
         """
         Remove the hardware digital filter group delay from Bruker FID data.
@@ -826,11 +829,15 @@ class XmrisAccessor(
 
         Parameters
         ----------
-        group_delay : float
-            The exact delay value to remove. This should be read directly from the
-            Bruker `ACQ_RxFilterInfo` parameter array.
+        group_delay : float or {"header", "measure"}, optional
+            The delay (in samples) to remove. By default ``"header"``, which reads the
+            vendor-reported value from ``.attrs`` (written by the Bruker loader). Pass
+            a float to force a value, or ``"measure"`` to estimate it from the data via
+            :meth:`estimate_group_delay` — robust when the header under-counts the true
+            delay.
         dim : str, optional
-            The time dimension along which to apply the correction, by default "time".
+            The time dimension along which to apply the correction, by default
+            ``DIMS.time``.
         keep_length : bool, optional
             If True, appends pure zeros to the end of the FID to replace the truncated
             startup points, maintaining the original length. By default True.
@@ -842,6 +849,64 @@ class XmrisAccessor(
         """
         return remove_digital_filter(
             self._obj, group_delay=group_delay, dim=dim, keep_length=keep_length
+        )
+
+    def estimate_group_delay(
+        self,
+        dim: str = DIMS.time,
+        *,
+        search_range: tuple[float, float] | None = None,
+        header_hint: float | None = None,
+        window: float = 16.0,
+        metric: str = "acme",
+        refine: bool = True,
+        return_profile: bool = False,
+    ) -> float | tuple[float, xr.DataArray]:
+        """
+        Measure the true digital-filter group delay by minimizing residual phase.
+
+        The vendor header value (Bruker ``ACQ_RxFilterInfo``/``GRPDLY``) can under-count
+        the real receiver digital-filter group delay for some ParaVision/probe
+        combinations, leaving a residual first-order phase error after
+        :meth:`remove_digital_filter`. This finds the delay that removes that residual
+        by locating the value that makes the spectrum maximally absorptive under a single
+        global zero-order phase (``argmax(|FID|)`` is deliberately not used — it lands on
+        the filter's ringing).
+
+        Parameters
+        ----------
+        dim : str, optional
+            The time dimension, by default ``DIMS.time``.
+        search_range : tuple of float, optional
+            Explicit ``(low, high)`` delay bounds (samples). If ``None`` (default), the
+            window is anchored on the header: ``header ± window``.
+        header_hint : float, optional
+            Vendor-reported delay to anchor the search on. If ``None``, falls back to the
+            stored ``group_delay`` attribute, then to a broad default range.
+        window : float, optional
+            Half-width (samples) of the header-anchored search window, by default 16.0.
+        metric : {"acme", "coherence"}, optional
+            Residual-phase cost, by default ``"acme"`` (whole-spectrum, alias-robust).
+        refine : bool, optional
+            If True (default), refine the best integer delay to sub-sample precision.
+        return_profile : bool, optional
+            If True, also return the cost-vs-delay profile for diagnosing multimodality.
+
+        Returns
+        -------
+        float or tuple[float, xr.DataArray]
+            The measured group delay in samples, or ``(delay, profile)`` when
+            ``return_profile=True``.
+        """
+        return estimate_group_delay(
+            self._obj,
+            dim=dim,
+            search_range=search_range,
+            header_hint=header_hint,
+            window=window,
+            metric=metric,
+            refine=refine,
+            return_profile=return_profile,
         )
 
     # --- Utility / Formatting ---

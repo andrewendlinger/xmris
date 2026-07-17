@@ -238,3 +238,189 @@ assert abs(peak_val.imag) < (peak_val.real * 0.15), (
     "Clean spectrum has residual phase error at the peak."
 )
 ```
+
+(measuring-the-group-delay)=
+## 4. When the Header Lies: Measuring the Group Delay
+
+Everything above assumed we *know* the group delay. In practice we read it from the
+Bruker header (`ACQ_RxFilterInfo`[0], the `groupDelay`). But for some ParaVision
+version / probe combinations that header value **under-counts** the true digital-filter
+delay — the console reports fewer transient points than it actually inserted.
+
+Removing only the header's delay therefore leaves a few samples of *unremoved* filter
+transient at the start of the FID. Because a leftover time shift $\Delta d$ (in samples)
+is a **linear phase** in the frequency domain,
+
+$$\varphi(f) \;=\; \varphi_0 \;+\; 2\pi\,\Delta d\,\frac{f}{f_س}\,,$$
+
+the error is ~0 at the carrier ($f=0$) but grows with offset. Near-carrier peaks look
+fine; peaks far away are silently phase-twisted — which biases peak areas and tied-phase
+fits.
+
+The fix is to **measure** the delay from the data instead of trusting the header. The
+correct delay is the one that, after removal, makes the whole spectrum absorptive under a
+*single* zero-order phase — `.xmr.estimate_group_delay()` searches for exactly that.
+
+:::{important}
+Do **not** estimate the delay from `argmax(|FID|)`. The filter transient *rings*, so the
+FID magnitude has several local maxima clustered around (not on) the true delay — the peak
+of `|FID|` lands on a ringing lobe.
+:::
+
+### A dataset with a wrong header
+
+We build a **three-peak** FID with a known true delay of **84** samples, but label it with
+the wrong header value **76.125** — a realistic ~8-sample under-count.
+
+```{code-cell} ipython3
+:tags: [hide-input]
+
+n_gd = 2048
+sw_hz = 5000.0
+dt_gd = 1.0 / sw_hz
+t_gd = np.arange(n_gd) * dt_gd
+
+# Three peaks at incommensurate offsets (like a 13C urea/alanine/lactate slab)
+peaks_hz = [20.0, 436.0, 651.0]
+amps = [1.0, 0.6, 0.8]
+ideal = sum(
+    a * np.exp(-t_gd * 30.0) * np.exp(1j * 2 * np.pi * f0 * t_gd)
+    for f0, a in zip(peaks_hz, amps)
+)
+
+# Insert a TRUE group delay of 84 samples via a symmetric windowed-sinc FIR filter
+TRUE_DELAY = 84
+L = 2 * TRUE_DELAY + 1
+k = np.arange(L)
+win = 0.54 - 0.46 * np.cos(2 * np.pi * k / (L - 1))
+fir = np.sinc(0.5 * (k - TRUE_DELAY)) * win
+fir /= fir.sum()
+raw = np.convolve(ideal, fir, mode="full")[:n_gd]
+
+WRONG_HEADER = 76.125  # what the console reports — an ~8-sample under-count
+da_gd = xr.DataArray(
+    raw,
+    dims=["time"],
+    coords={"time": t_gd},
+    # `bruker_group_delay` is the attribute the Bruker loader writes into .attrs
+    attrs={"units": "a.u.", "bruker_group_delay": WRONG_HEADER},
+)
+```
+
+### Measure it
+
+```{code-cell} ipython3
+# Reads the header from .attrs as its search anchor, then measures the true delay.
+# It warns because the measured value contradicts the header — the whole point here.
+measured_delay, profile = da_gd.xmr.estimate_group_delay(return_profile=True)
+
+print(f"header  (reported): {WRONG_HEADER}")
+print(f"measured (true)   : {measured_delay:.2f} samples")
+```
+
+The cost profile shows a single sharp minimum at the true delay. The header sits ~8 samples
+short of it, and `argmax(|FID|)` lands on a ringing lobe — not the minimum.
+
+```{code-cell} ipython3
+argmax_fid = int(np.argmax(np.abs(da_gd.values)))
+
+fig, ax = plt.subplots(figsize=(8, 4))
+profile.plot(ax=ax, marker=".", color="tab:blue", label="residual-phase cost")
+ax.axvline(measured_delay, color="tab:green", lw=2, label=f"measured ({measured_delay:.1f})")
+ax.axvline(WRONG_HEADER, color="tab:red", ls="--", label=f"header ({WRONG_HEADER})")
+ax.axvline(argmax_fid, color="0.5", ls=":", label=f"argmax|FID| ({argmax_fid})")
+ax.set_xlabel("trial group delay (samples)")
+ax.set_ylabel("residual first-order phase cost")
+ax.set_title("Group-delay estimation: cost vs. trial delay")
+ax.legend()
+plt.show()
+```
+
+### Header vs. measured, and the aliasing trap
+
+We remove each delay, transform, and apply **only** a zero-order phase (`p0_only=True`).
+Any residual *first-order* phase then remains visible. With the header value the far peaks
+are twisted; with the measured value the whole spectrum is cleanly absorptive.
+
+```{code-cell} ipython3
+spec_header = (
+    da_gd.xmr.remove_digital_filter(group_delay=WRONG_HEADER)
+    .xmr.to_spectrum()
+    .xmr.autophase(p0_only=True)
+)
+spec_measured = (
+    da_gd.xmr.remove_digital_filter(group_delay="measure")  # <- estimate + remove in one call
+    .xmr.to_spectrum()
+    .xmr.autophase(p0_only=True)
+)
+
+fig, (axh, axm) = plt.subplots(1, 2, figsize=(12, 4), sharey=True)
+spec_header.real.plot(ax=axh, color="tab:red")
+axh.set_title("Header delay (76.125)\nresidual twist on far peaks")
+spec_measured.real.plot(ax=axm, color="tab:blue")
+axm.set_title("Measured delay (~84)\npure absorption everywhere")
+for ax in (axh, axm):
+    for f0 in peaks_hz:
+        ax.axvline(f0, color="0.7", lw=0.8, zorder=0)
+plt.tight_layout()
+plt.show()
+```
+
+:::{note}
+Look closely at the header panel: the **436 Hz** peak is badly twisted, yet the **651 Hz**
+peak looks almost fine. That is *aliasing* — at 651 Hz the residual linear phase happens to
+wrap by nearly a full turn ($2\pi$), so a naive two-peak check on the wrong pair would
+conclude the delay is correct. `estimate_group_delay` avoids this by scoring the **whole**
+spectrum (all peaks and the baseline at once), not a single peak pair.
+:::
+
+```{code-cell} ipython3
+:tags: [remove-cell]
+
+# CRITICAL ASSERTIONS FOR NBMAKE CI
+from xmris.vendor.bruker import _PHI0_GRID, _residual_phase_cost
+
+
+def _resid(d):
+    """Whole-spectrum residual first-order phase cost after removing delay `d`."""
+    spec = da_gd.xmr.remove_digital_filter(group_delay=d).xmr.to_spectrum()
+    return _residual_phase_cost(spec, "frequency", "acme", _PHI0_GRID)
+
+
+def _peak_phase_deg(d, f0, half=40.0):
+    spec = da_gd.xmr.remove_digital_filter(group_delay=d).xmr.to_spectrum()
+    seg = spec.sel(frequency=slice(f0 - half, f0 + half))
+    return np.degrees(np.angle(seg.values[int(np.abs(seg).values.argmax())]))
+
+
+def _wrap(x):
+    return (x + 180.0) % 360.0 - 180.0
+
+
+# 1. Recovery: the estimator finds the true delay to sub-sample precision.
+assert abs(measured_delay - TRUE_DELAY) < 0.5, f"expected ~{TRUE_DELAY}, got {measured_delay}"
+assert float(profile.trial_delay[int(profile.argmin())]) == TRUE_DELAY, "profile min off truth"
+
+# 2. Measured beats the header on residual first-order phase (whole-spectrum).
+assert _resid(measured_delay) < 0.3 * _resid(WRONG_HEADER), "did not beat the header"
+
+# 3. argmax(|FID|) is unreliable: its delay leaves far more residual phase.
+argmax_fid = int(np.argmax(np.abs(da_gd.values)))
+assert argmax_fid != TRUE_DELAY, "argmax coincidentally hit the true delay"
+assert _resid(float(argmax_fid)) > 10.0 * _resid(measured_delay), "argmax not clearly worse"
+
+# 4. The aliasing trap: with the WRONG header the mid peak exposes the error while the
+#    far peak is aliased (~2pi wrap) and looks fine — motivating whole-spectrum scoring.
+spread_mid = _wrap(_peak_phase_deg(WRONG_HEADER, 436.0) - _peak_phase_deg(WRONG_HEADER, 20.0))
+spread_far = _wrap(_peak_phase_deg(WRONG_HEADER, 651.0) - _peak_phase_deg(WRONG_HEADER, 20.0))
+assert abs(spread_mid) > 50.0, f"mid peak should expose the header error, got {spread_mid:.1f}"
+assert abs(spread_far) < 30.0, f"far peak should be aliased/benign, got {spread_far:.1f}"
+
+# 5. With the measured delay, all peaks share one phase (no first-order residual).
+spread_mid_ok = _wrap(_peak_phase_deg(measured_delay, 436.0) - _peak_phase_deg(measured_delay, 20.0))
+assert abs(spread_mid_ok) < 40.0, f"measured delay left first-order residual: {spread_mid_ok:.1f}"
+
+# 6. Lineage: the "measure" sentinel records the measured (not header) delay.
+_meas_attr = da_gd.xmr.remove_digital_filter(group_delay="measure").attrs["group_delay_removed"]
+assert abs(_meas_attr - TRUE_DELAY) < 0.5, "measure sentinel did not remove the measured delay"
+```
