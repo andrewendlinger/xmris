@@ -80,7 +80,7 @@ project:
     - title: Vendor Specific
       children:
         - file: notebooks/vendor/bruker_filter_removal.md
-          title: Bruker - Digital Filter
+          title: Bruker - Group Delay
         - file: notebooks/vendor/bruker_fid_loader.md
           title: Bruker - FID Loading
 
