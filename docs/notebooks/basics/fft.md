@@ -4,7 +4,7 @@ jupytext:
     extension: .md
     format_name: myst
 kernelspec:
-  display_name: Python 3 (ipykernel)
+  display_name: Python 3 (xmris)
   language: python
   name: python3
 ---
@@ -56,7 +56,7 @@ As a user, you can pass simple strings like `"time"` and `"frequency"` to `xmris
 
 This architecture allows `xmris` to intercept your request and automatically inject physical metadata (like setting the new coordinate units to `Hz` or `s`) without you ever having to ask for it!
 
-For more info see [xmris Architecture: Why We Built It This Way](./architecture.ipynb)
+For more info see [xmris Architecture: Why We Built It This Way](./architecture.md)
 :::
 
 ```{code-cell} ipython3

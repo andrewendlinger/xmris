@@ -4,7 +4,7 @@ jupytext:
     extension: .md
     format_name: myst
 kernelspec:
-  display_name: .venv
+  display_name: Python 3 (xmris)
   language: python
   name: python3
 ---
@@ -89,7 +89,7 @@ export_widget_static(
 
 | Control | Description |
 |---|---|
-| **Method** | Switch between **Exponential** (SNR enhancement) and **Lorentz-Gauss** (resolution enhancement). See the [Apodization](../../processing/apodization.md) guide for details on each filter. |
+| **Method** | Switch between **Exponential** (SNR enhancement) and **Lorentz-Gauss** (resolution enhancement). See the [Apodization](../../pipeline/apodization.md) guide for details on each filter. |
 | **Display Mode** | Show the **Real**, **Imaginary**, or **Magnitude** spectrum. |
 | **Show Original** | Overlay the un-apodized data as a gray trace for comparison. |
 | **LB / GB Sliders** | Adjust apodization parameters. The orange dashed line on the FID canvas shows the weighting envelope being applied. |

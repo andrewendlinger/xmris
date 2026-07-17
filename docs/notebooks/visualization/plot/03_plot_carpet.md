@@ -4,14 +4,14 @@ jupytext:
     extension: .md
     format_name: myst
 kernelspec:
-  display_name: Python 3 (ipykernel)
+  display_name: Python 3 (xmris)
   language: python
   name: python3
 ---
 
 # Carpet Plots
 
-As a quantitative alternative to the 2D waterfall plot (see [2. Waterfall Plots](./02_waterfall_plots.md)), carpet plots provide a top-down, 2D image representation of stacked spectra . They are 2D rasterized visualizations of 1D time-series data, effectively "rolling out" the time-domain flat on the floor. This approach eliminates visual occlusion, allowing for direct observation of signal intensities and frequency shifts across the stacking dimension (e.g., time or repetitions).
+As a quantitative alternative to the 2D waterfall plot (see [2. Waterfall Plots](./02_plot_waterfall.md)), carpet plots provide a top-down, 2D image representation of stacked spectra . They are 2D rasterized visualizations of 1D time-series data, effectively "rolling out" the time-domain flat on the floor. This approach eliminates visual occlusion, allowing for direct observation of signal intensities and frequency shifts across the stacking dimension (e.g., time or repetitions).
 
 In `xmris`, this visualization is built around the `CarpetConfig` object, which includes specialized logic for truncating colormaps so your data never gets lost in absolute white or absolute black on printed paper.
 
