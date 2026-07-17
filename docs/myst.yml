@@ -139,6 +139,8 @@ project:
               title: Xarray Accessors
             - file: api_reference/core.config.md
               title: Global Config
+            - file: api_reference/core.options.md
+              title: Runtime Options
             - file: api_reference/core.utils.md
               title: Utilities
             - file: api_reference/core.validation.md

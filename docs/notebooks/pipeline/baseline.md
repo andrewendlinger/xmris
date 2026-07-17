@@ -81,7 +81,8 @@ fid_macro = simulate_fid(
     reference_frequency=REF_FREQ,
     spectral_width=SW,
     n_points=N,
-    target_snr=40 # Realistic noise
+    target_snr=40, # Realistic noise
+    seed=42,       # Reproducible noise: the strict asserts below depend on it
 )
 
 # Combine for final simulated signal

@@ -35,5 +35,6 @@ quartodoc:
       contents:
         - core.accessor
         - core.config
+        - core.options
         - core.utils
         - core.validation

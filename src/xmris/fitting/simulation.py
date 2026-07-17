@@ -110,6 +110,7 @@ def simulate_fid(
     lineshape_g: float | ArrayLike = 0.0,
     dead_time: float = 0.0,
     target_snr: float | None = None,
+    seed: int | None = None,
 ) -> xr.DataArray:
     """Simulate a complex Free Induction Decay (FID) signal.
 
@@ -154,6 +155,10 @@ def simulate_fid(
         The target Signal-to-Noise Ratio. If provided, complex Gaussian white
         noise is added to the FID. Signal power is calculated from the first
         10 points of the FID. Default is None (returns ideal, noiseless FID).
+    seed : int | None, optional
+        Seed for the noise generator. Pass an integer for reproducible noise —
+        required whenever downstream assertions depend on the noisy data (e.g.
+        the notebook test suite). Default is None (fresh entropy every call).
 
     Returns
     -------
@@ -189,7 +194,7 @@ def simulate_fid(
         # Split variance for complex noise: scale std by 1/sqrt(2)
         noise_std_channel = noise_std_total / np.sqrt(2)
         # use the new Generator API instead of legacy np.random functions
-        rng = np.random.default_rng()
+        rng = np.random.default_rng(seed)
         noise_real = rng.normal(0, noise_std_channel, fid_data.shape)
         noise_imag = rng.normal(0, noise_std_channel, fid_data.shape)
 
