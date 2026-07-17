@@ -34,6 +34,16 @@ updates:
           - "anywidget"
           - "matplotlib"
 
+    # Deliberate pins (see pyproject.toml / CLAUDE.md) — do not auto-bump past them.
+    # Revisit by removing the pin AND this ignore together, not via an auto-bump.
+    ignore:
+      - dependency-name: "griffe" # held <0.40 to fix a quartodoc parsing bug
+      - dependency-name: "pytest-cov"
+        versions: [">=7.0"] # held <7 for nbmake subprocess coverage tracking
+
+    # Cap future pile-ups if the repo goes idle again.
+    open-pull-requests-limit: 5
+
   # 2. GitHub Actions Ecosystem
   - package-ecosystem: "github-actions"
     directory: "/"
