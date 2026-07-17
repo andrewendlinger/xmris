@@ -534,7 +534,7 @@ class XmrisProcessingMixin:
 
     def baseline_als(
         self,
-        dim: str = DIMS.frequency,
+        dim: str | None = None,
         lam: float = 1e5,
         p: float = 0.001,
         n_iter: int = 10,
@@ -554,9 +554,10 @@ class XmrisProcessingMixin:
 
         Parameters
         ----------
-        dim : str, optional
-            The coordinate dimension along which to apply correction.
-            Defaults to `DIMS.frequency`.
+        dim : str or None, optional
+            The spectral dimension along which to apply correction. If ``None``
+            (default) it is resolved automatically to the spectral dim present
+            (Hz or ppm); time-domain input is transformed to a spectrum first.
         lam : float, optional
             The smoothness penalty ($\lambda$). Higher values result in a stiffer,
             flatter baseline. Typical NMR ranges are 10,000 to 10,000,000.

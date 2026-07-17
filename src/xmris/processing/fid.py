@@ -1,8 +1,9 @@
 import numpy as np
 import xarray as xr
 
-from xmris.core.config import ATTRS, COORDS, DIMS
+from xmris.core.config import ATTRS, COORDS, DIMS, TIME_DIMS
 from xmris.core.utils import _check_dims, as_variable
+from xmris.core.validation import computes_in
 from xmris.processing.fourier import fft, fftshift, ifft, ifftshift
 
 
@@ -42,9 +43,7 @@ def to_spectrum(
     return da_spectrum
 
 
-def to_fid(
-    da: xr.DataArray, dim: str = DIMS.frequency, out_dim: str = DIMS.time
-) -> xr.DataArray:
+def to_fid(da: xr.DataArray, dim: str = DIMS.frequency, out_dim: str = DIMS.time) -> xr.DataArray:
     """
     Convert a frequency-domain spectrum back to a time-domain FID.
 
@@ -102,6 +101,7 @@ def to_fid(
     return da_fid
 
 
+@computes_in(TIME_DIMS)
 def apodize_exp(da: xr.DataArray, dim: str = DIMS.time, lb: float = 1.0) -> xr.DataArray:
     """
     Apply an exponential weighting filter function for line broadening.
@@ -144,6 +144,7 @@ def apodize_exp(da: xr.DataArray, dim: str = DIMS.time, lb: float = 1.0) -> xr.D
     return da_apodized
 
 
+@computes_in(TIME_DIMS)
 def apodize_lg(
     da: xr.DataArray, dim: str = DIMS.time, lb: float = 1.0, gb: float = 1.0
 ) -> xr.DataArray:
@@ -198,6 +199,7 @@ def apodize_lg(
     return da_apodized
 
 
+@computes_in(TIME_DIMS)
 def zero_fill(
     da: xr.DataArray,
     dim: str = DIMS.time,

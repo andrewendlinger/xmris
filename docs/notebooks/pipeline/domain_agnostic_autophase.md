@@ -9,6 +9,9 @@ kernelspec:
   name: python3
 ---
 
+(domain-agnostic-autophase)=
+# Domain-Agnostic Autophase
+
 ```{code-cell} ipython3
 :tags: [remove-cell]
 
@@ -19,9 +22,6 @@ import matplotlib_inline.backend_inline
 matplotlib_inline.backend_inline.set_matplotlib_formats("retina")
 plt.rcParams["figure.dpi"] = 100
 ```
-
-(domain-agnostic-autophase)=
-# Domain-Agnostic Autophase
 
 Phase correction is a *frequency-domain* operation, but the data you have in hand
 is often a *time-domain* FID. Classically that forces you to remember the ritual:
@@ -37,28 +37,32 @@ into the frequency domain for you, then phases:
 spectrum = fid.xmr.autophase()   # auto-FFT happens under the hood
 ```
 
-This is powered by the **`requires` → `resolves` → `ensures`** decorator taxonomy,
-a ladder of increasing *agency* that each processing function stacks to declare —
-and satisfy — its preconditions.
+This is powered by the **domain-contract taxonomy**: a gate decorator plus two
+domain decorators sharing one engine, each declaring a function's contract at
+the definition site.
 
-| Tier | Decorator | What it does | Cost |
-|------|-----------|--------------|------|
+| Tier | Decorator | Contract | Cost |
+|------|-----------|----------|------|
 | gate | `@requires_attrs(...)` | raises if metadata is missing | $O(1)$ |
-| infer | `@resolves_spectral_dim` | fills a missing `dim` by introspection | $O(1)$ |
-| transform | `@ensures_domain(...)` | auto-FFTs into the required domain | $O(N \log N)$ |
+| domain — funnel | `@ensures_domain(...)` | transforms into the home domain, result **stays** there | $O(N \log N)$ |
+| domain — preserving | `@computes_in(...)` | round-trips through the home domain, representation **restored** | $O(N \log N)$ |
 
-`autophase` wears the two upper tiers:
+Both domain decorators also *resolve* the working axis: a `dim=None` argument is
+filled with the spectral dimension actually present (`frequency` [Hz] or
+`chemical_shift` [ppm]) — an explicit `dim` is never overridden.
+
+`autophase` is a **funnel** operation — you phase in order to inspect the
+spectrum, so the result lands there:
 
 ```mermaid
 flowchart TD
     A["fid.xmr.autophase()"] --> B{"@ensures_domain(SPECTRAL_DIMS)"}
     B -- "time-domain FID" --> C["auto-FFT → spectrum"]
     B -- "already spectral" --> D["pass through (no FFT)"]
-    C --> E{"@resolves_spectral_dim"}
+    C --> E["resolve dim: frequency / chemical_shift"]
     D --> E
-    E -- "dim is None" --> F["detect frequency / chemical_shift"]
-    F --> G["phase correction"]
-    G --> H["phased spectrum"]
+    E --> F["phase correction"]
+    F --> G["phased spectrum"]
 ```
 
 A FID $s(t)$ and its spectrum $S(\nu)$ are a Fourier pair, $S(\nu) = \mathcal{F}\{s(t)\}$,
@@ -71,10 +75,15 @@ $$
 `@ensures_domain` supplies the $\mathcal{F}$ so you can start from either side.
 
 ::: {note}
-The result is **left in the operating domain**: a FID in gives a *spectrum* out.
-The conversion is honest and self-documenting — it shows up in `.dims` — and no
-redundant round-trip FFTs are inserted. If you want the FID back, call
-`.xmr.to_fid()` explicitly.
+The result is **left in the operating domain**: a FID in gives a *spectrum* out —
+that is the funnel contract. The conversion is honest and self-documenting — it
+shows up in `.dims` — and no redundant round-trip FFTs are inserted. If you want
+the FID back, call `.xmr.to_fid()` explicitly.
+
+Domain-preserving operations (`apodize_exp`, `zero_fill`, …) make the opposite
+promise: your representation comes back. See
+[The Two Domains](../../explanation/domains.md) for the design rationale and
+[Domain Contracts in Action](#domain-contracts) for the executable proof.
 :::
 
 ::: {dropdown} Imports & a small plotting helper
