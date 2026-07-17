@@ -2,8 +2,9 @@ import numpy as np
 import scipy.optimize
 import xarray as xr
 
-from xmris.core.config import ATTRS, DIMS
+from xmris.core.config import ATTRS, DIMS, SPECTRAL_DIMS
 from xmris.core.utils import _check_dims
+from xmris.core.validation import ensures_domain, resolves_spectral_dim
 from xmris.processing.fid import apodize_exp, to_fid, to_spectrum
 
 
@@ -158,9 +159,11 @@ def _roi_positivity_score(ph, da, dim, pivot, target_idx, index_width):
 
 
 # --- Public API ---
+@ensures_domain(SPECTRAL_DIMS)
+@resolves_spectral_dim
 def autophase(
     da: xr.DataArray,
-    dim: str = DIMS.frequency,
+    dim: str | None = None,
     method: str = "acme",
     mode: str = "single",
     peak_width: float = 0.5,
@@ -177,8 +180,11 @@ def autophase(
     ----------
     da : xr.DataArray
         The input frequency-domain spectrum. Can be N-dimensional.
-    dim : str, optional
-        The coordinate dimension to operate on, by default `DIMS.frequency`.
+    dim : str or None, optional
+        The spectral dimension to operate on. If ``None`` (default) it is
+        resolved automatically to the spectral dim present (``frequency`` [Hz]
+        or ``chemical_shift`` [ppm]); time-domain input is transformed to a
+        spectrum first.
     method : {"acme", "peak_minima", "positivity"}, optional
         The scoring algorithm to use. "acme" relies on entropy and is best for
         multi-peak high SNR spectra. "positivity" and "peak_minima" are optimized
@@ -213,6 +219,9 @@ def autophase(
     xr.DataArray
         The phased spectrum.
     """
+    # `dim` is guaranteed non-None here by @resolves_spectral_dim; validate that
+    # an explicitly-passed dim actually exists (the resolver only fills None).
+    assert dim is not None
     _check_dims(da, dim, "autophase")
     kwargs.setdefault("disp", False)
 

@@ -2,7 +2,7 @@
 import numpy as np
 import xarray as xr
 
-from xmris.core.config import XmrisTerm
+from xmris.core.config import SPECTRAL_DIMS, XmrisTerm
 
 
 def _check_dims(da: xr.DataArray, dims: str | list[str], method_name: str) -> None:
@@ -19,6 +19,50 @@ def _check_dims(da: xr.DataArray, dims: str | list[str], method_name: str) -> No
             f" or rename your data's axes using xarray:\n"
             f"    >>> obj = obj.rename({{{repr(missing[0])}: 'correct_name'}})"
         )
+
+
+def _resolve_spectral_dim(da: xr.DataArray) -> str:
+    """Identify the single spectral dimension present on ``da``.
+
+    Scans ``da.dims`` for a dimension belonging to the spectral domain
+    (``SPECTRAL_DIMS`` — ``frequency`` [Hz] or ``chemical_shift`` [ppm]). Used
+    by the ``@resolves_spectral_dim`` decorator to fill a ``dim=None`` argument.
+
+    Parameters
+    ----------
+    da : xr.DataArray
+        The data to inspect.
+
+    Returns
+    -------
+    str
+        The name of the unique spectral dimension found.
+
+    Raises
+    ------
+    ValueError
+        If no spectral dimension is present, or if more than one is present
+        (ambiguous — the caller must pass ``dim`` explicitly).
+    """
+    found = [d for d in da.dims if d in SPECTRAL_DIMS]
+
+    if not found:
+        raise ValueError(
+            f"Could not resolve a spectral dimension: none of "
+            f"{sorted(SPECTRAL_DIMS)} are present in {list(da.dims)}.\n\n"
+            f"If this is time-domain data, transform it first:\n"
+            f"    >>> obj = obj.xmr.to_spectrum()\n"
+            f"Otherwise pass the dimension explicitly, e.g. `dim='frequency'`."
+        )
+
+    if len(found) > 1:
+        raise ValueError(
+            f"Ambiguous spectral dimension: multiple spectral dims {found} are "
+            f"present in {list(da.dims)}.\n\n"
+            f"Pass the target dimension explicitly, e.g. `dim={found[0]!r}`."
+        )
+
+    return str(found[0])
 
 
 def as_variable(term: XmrisTerm, dims: str | tuple, data: np.ndarray) -> xr.Variable:

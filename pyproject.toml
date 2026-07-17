@@ -136,6 +136,14 @@ notebook_metadata_filter = "-all, kernelspec.name, kernelspec.language, kernelsp
 # We keep 'tags' (for MyST directives) and 'name' (for cross-referencing).
 cell_metadata_filter = "-all, tags, name"
 
+# --- Mypy (Type Checker) ---
+# Not enforced in CI; run locally with `uv run mypy`. Kept lenient because
+# xarray / pyamares / anywidget ship incomplete type information.
+[tool.mypy]
+python_version = "3.11"
+files = ["src/xmris"]
+ignore_missing_imports = true
+
 # ==============================================================================
 # 5. COVERAGE CONFIGURATION
 # ==============================================================================

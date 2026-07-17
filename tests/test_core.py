@@ -51,9 +51,11 @@ from xmris.core.config import (
     ATTRS,
     COORDS,
     DIMS,
+    SPECTRAL_DIMS,
+    TIME_DIMS,
     VARS,
 )
-from xmris.core.validation import requires_attrs
+from xmris.core.validation import ensures_domain, requires_attrs, resolves_spectral_dim
 
 # =============================================================================
 # Fixtures
@@ -159,8 +161,7 @@ def multi_dim_da():
     dwell = 0.0005
     rng = np.random.default_rng()
     return xr.DataArray(
-        rng.standard_normal((n_voxels, n_time))
-        + 1j * rng.standard_normal((n_voxels, n_time)),
+        rng.standard_normal((n_voxels, n_time)) + 1j * rng.standard_normal((n_voxels, n_time)),
         dims=["voxel", DIMS.time],
         coords={
             "voxel": np.arange(n_voxels),
@@ -218,9 +219,7 @@ class TestConfigNamingConventions:
     @pytest.mark.parametrize("prop_name, term_val", list(COORDS._get_terms().items()))
     def test_coords_are_lowercase(self, prop_name, term_val):
         """Every COORDS field value must be a lowercase string."""
-        assert term_val == term_val.lower(), (
-            f"COORDS.{prop_name} = {term_val!r} is not lowercase."
-        )
+        assert term_val == term_val.lower(), f"COORDS.{prop_name} = {term_val!r} is not lowercase."
 
     @pytest.mark.parametrize("prop_name, term_val", list(ATTRS._get_terms().items()))
     def test_attrs_are_lowercase(self, prop_name, term_val):
@@ -520,7 +519,6 @@ class TestAccessorDefaults:
             ("to_fid", "dim", DIMS.frequency),
             ("to_fid", "out_dim", DIMS.time),
             ("zero_fill", "dim", DIMS.time),
-            ("autophase", "dim", DIMS.frequency),
             ("remove_digital_filter", "dim", DIMS.time),
             ("to_ppm", "dim", DIMS.frequency),
             ("to_hz", "dim", DIMS.chemical_shift),
@@ -550,6 +548,20 @@ class TestAccessorDefaults:
             f"does not match the config value {expected_default!r}. "
             f"Use the config constant (e.g., DIMS.time) as the default."
         )
+
+    def test_autophase_dim_is_none_by_design(self):
+        """`autophase` intentionally defaults `dim=None` for the resolver.
+
+        It is resolver-managed: ``@resolves_spectral_dim`` fills ``dim`` at call
+        time by detecting ``frequency`` vs ``chemical_shift``, so it deliberately
+        diverges from the config-constant-default convention above.
+        """  # noqa: D205
+        import inspect
+
+        from xmris.core.accessor import XmrisAccessor
+
+        sig = inspect.signature(XmrisAccessor.autophase)
+        assert sig.parameters["dim"].default is None
 
 
 # =============================================================================
@@ -586,9 +598,7 @@ class TestAttrsPreservation:
             If any attr is missing or has a different value.
         """
         for key, value in original.attrs.items():
-            assert key in result.attrs, (
-                f"Attribute {key!r} was silently dropped during processing."
-            )
+            assert key in result.attrs, f"Attribute {key!r} was silently dropped during processing."
             assert result.attrs[key] == value, (
                 f"Attribute {key!r} was modified: {value!r} → {result.attrs[key]!r}"
             )
@@ -712,3 +722,148 @@ class TestToPpm:
         result = spectrum.xmr.to_ppm()
         assert COORDS.chemical_shift in result.coords
         assert "voxel" in result.dims
+
+
+# =============================================================================
+# 10. Domain Decorators: @resolves_spectral_dim
+# =============================================================================
+
+
+@resolves_spectral_dim
+def _resolver_probe(da, dim=None):
+    """Test probe for ``@resolves_spectral_dim``: return the dim it settled on."""
+    return dim
+
+
+class TestResolvesSpectralDim:
+    """Verify ``@resolves_spectral_dim`` fills ``dim=None`` by introspection.
+
+    The *resolve* tier must inject the unique spectral dimension when the caller
+    omits ``dim``, never override an explicit ``dim``, and raise actionable
+    errors when resolution is impossible or ambiguous.
+    """
+
+    def test_fills_none_with_frequency(self, valid_spectrum_da):
+        """A spectrum in Hz must resolve to ``DIMS.frequency``."""
+        assert _resolver_probe(valid_spectrum_da) == DIMS.frequency
+
+    def test_fills_none_with_chemical_shift(self, valid_spectrum_da):
+        """A spectrum in ppm must resolve to ``DIMS.chemical_shift``."""
+        ppm = valid_spectrum_da.xmr.to_ppm()
+        assert _resolver_probe(ppm) == DIMS.chemical_shift
+
+    def test_respects_explicit_dim(self, valid_spectrum_da):
+        """An explicitly-passed ``dim`` must never be overridden."""
+        assert _resolver_probe(valid_spectrum_da, dim="custom") == "custom"
+
+    def test_raises_when_no_spectral_dim(self, valid_fid_da):
+        """Time-domain input (no spectral dim) must raise with guidance."""
+        with pytest.raises(ValueError, match="spectral dimension"):
+            _resolver_probe(valid_fid_da)
+
+    def test_raises_when_ambiguous(self):
+        """Multiple spectral dims present must raise and ask for an explicit dim."""
+        da = xr.DataArray(
+            np.zeros((4, 4)),
+            dims=[DIMS.frequency, DIMS.chemical_shift],
+            coords={DIMS.frequency: np.arange(4), DIMS.chemical_shift: np.arange(4)},
+        )
+        with pytest.raises(ValueError, match="[Aa]mbiguous"):
+            _resolver_probe(da)
+
+
+# =============================================================================
+# 11. Domain Decorators: @ensures_domain
+# =============================================================================
+
+
+@ensures_domain(SPECTRAL_DIMS)
+def _ensure_spectral_probe(da):
+    """Test probe for ``@ensures_domain(SPECTRAL_DIMS)``: return the coerced da."""
+    return da
+
+
+@ensures_domain(TIME_DIMS)
+def _ensure_time_probe(da):
+    """Test probe for ``@ensures_domain(TIME_DIMS)``: return the coerced da."""
+    return da
+
+
+class TestEnsuresDomain:
+    """Verify ``@ensures_domain`` auto-transforms input into the target domain.
+
+    The *ensures* tier must pass already-in-domain data through untouched
+    (identity, no FFT), Fourier-transform mismatched data into the target
+    domain, leave the result in that domain (no restore), and preserve
+    ``.attrs`` across the transform (the issue #21 coupling).
+    """
+
+    def test_noop_when_already_spectral(self, valid_spectrum_da):
+        """A spectrum passed to a spectral-domain function is returned untouched."""
+        result = _ensure_spectral_probe(valid_spectrum_da)
+        assert result is valid_spectrum_da  # identity: no transform performed
+
+    def test_transforms_fid_to_spectrum(self, valid_fid_da):
+        """A FID is auto-FFT'd into the frequency domain and left there."""
+        result = _ensure_spectral_probe(valid_fid_da)
+        assert DIMS.frequency in result.dims
+        assert DIMS.time not in result.dims
+
+    def test_builds_coords_through_conversion(self, valid_fid_da):
+        """The auto-FFT rebuilds physical coordinates on the new frequency dim."""
+        result = _ensure_spectral_probe(valid_fid_da)
+        assert DIMS.frequency in result.coords
+        assert result.coords[DIMS.frequency].size == valid_fid_da.sizes[DIMS.time]
+
+    def test_preserves_attrs_across_transform(self, valid_fid_da):
+        """Auto-FFT must not silently drop ``.attrs`` (issue #21 guarantee)."""
+        result = _ensure_spectral_probe(valid_fid_da)
+        for key, value in valid_fid_da.attrs.items():
+            assert result.attrs.get(key) == value
+
+    def test_noop_when_already_time(self, valid_fid_da):
+        """A FID passed to a time-domain function is returned untouched."""
+        result = _ensure_time_probe(valid_fid_da)
+        assert result is valid_fid_da
+
+    def test_transforms_spectrum_to_fid(self, valid_spectrum_da):
+        """A Hz spectrum is auto-IFFT'd into the time domain and left there."""
+        result = _ensure_time_probe(valid_spectrum_da)
+        assert DIMS.time in result.dims
+        assert DIMS.frequency not in result.dims
+
+
+# =============================================================================
+# 12. Integration: autophase domain-agnostic pilot
+# =============================================================================
+
+
+class TestAutophasePilot:
+    """End-to-end: ``autophase`` wired to ``@ensures_domain`` + ``@resolves_spectral_dim``.
+
+    Proves the taxonomy works through the real accessor: a FID is auto-FFT'd,
+    phased, and returned as a spectrum with metadata intact; a spectrum is
+    phased in place; an explicit ``dim`` is honored.
+    """
+
+    def test_autophase_on_fid_returns_spectrum(self, valid_fid_da):
+        """Calling ``autophase`` on a FID returns a phased spectrum (auto-FFT)."""
+        result = valid_fid_da.xmr.autophase()
+        assert DIMS.frequency in result.dims
+        assert DIMS.time not in result.dims
+
+    def test_autophase_on_fid_preserves_attrs(self, valid_fid_da):
+        """The auto-FFT + phase chain preserves the original attrs."""
+        result = valid_fid_da.xmr.autophase()
+        for key, value in valid_fid_da.attrs.items():
+            assert result.attrs.get(key) == value
+
+    def test_autophase_on_spectrum_stays_spectral(self, valid_spectrum_da):
+        """A spectrum input needs no conversion and stays in the frequency domain."""
+        result = valid_spectrum_da.xmr.autophase()
+        assert DIMS.frequency in result.dims
+
+    def test_autophase_respects_explicit_dim(self, valid_spectrum_da):
+        """An explicit ``dim`` is honored (resolver does not override it)."""
+        result = valid_spectrum_da.xmr.autophase(dim=DIMS.frequency)
+        assert DIMS.frequency in result.dims
