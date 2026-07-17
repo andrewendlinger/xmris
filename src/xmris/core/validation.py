@@ -23,6 +23,7 @@ import numpy as np
 import xarray as xr
 
 from .config import ATTRS, DIMS, SPECTRAL_DIMS, TIME_DIMS
+from .options import OPTIONS
 from .utils import _domain_label, _resolve_dim
 
 
@@ -243,6 +244,16 @@ def _domain_decorator(domain: frozenset[str], *, restore: bool) -> Callable:
                 # axis (e.g. zero_fill(dim="kx")) by not converting at all.
                 foreign_request = restore and requested is not None and requested not in domain
                 if not foreign_request:
+                    if not OPTIONS["auto_convert"]:
+                        converter = "to_spectrum" if domain == SPECTRAL_DIMS else "to_fid"
+                        raise ValueError(
+                            f"'{func.__name__}' requires a {label} dimension, but "
+                            f"none of {sorted(domain)} are present in "
+                            f"{list(da.dims)}, and automatic conversion is "
+                            f"disabled (xmris.set_options(auto_convert=False)).\n\n"
+                            f"Convert explicitly first:\n"
+                            f"    >>> obj = obj.xmr.{converter}()"
+                        )
                     da, state = _coerce_to_domain(da, domain)
                     bound.arguments[first_param] = da
 

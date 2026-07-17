@@ -18,6 +18,7 @@ from .core import (
 # 2. Xarray Accessors (Importing these automatically registers the .xmr namespace)
 # =============================================================================
 from .core.accessor import XmrisAccessor, XmrisDatasetAccessor
+from .core.options import set_options
 
 # =============================================================================
 # 4. Modeling & Fitting
@@ -70,6 +71,7 @@ __all__ = [
     # --- 2. Accessors ---
     "XmrisAccessor",
     "XmrisDatasetAccessor",
+    "set_options",
     # --- 3. Core Processing & Utilities ---
     "to_complex",
     "to_real_imag",

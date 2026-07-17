@@ -42,8 +42,8 @@ Rules that are easy to get wrong here:
   button must emit a reproducible `.xmr.<method>(...)` snippet. If that method
   doesn't exist yet, add it first (use the `new-processing-method` skill).
 - **No name sniffing / no magic strings** — resolve the axis with
-  `if dim is None: dim = _resolve_spectral_dim(da)` then `_check_dims(da, dim, "<factory>")`;
-  import `DIMS`/`ATTRS`/`COORDS` from `xmris.core.config` when you need vocabulary.
+  `if dim is None: dim = _resolve_dim(da, SPECTRAL_DIMS)` then `_check_dims(da, dim, "<factory>")`;
+  import `DIMS`/`ATTRS`/`COORDS`/`SPECTRAL_DIMS` from `xmris.core.config` when you need vocabulary.
 - **Labels from lineage** — build axis labels from `da.coords[dim].attrs`
   (`long_name`/`units`), never a hardcoded string.
 - **Functional purity** — never mutate the input; read from it only.

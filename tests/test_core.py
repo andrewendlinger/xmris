@@ -1232,3 +1232,86 @@ class TestDomainRollout:
         result = kspace.xmr.zero_fill(dim="kx", target_points=16, position="symmetric")
         assert result.sizes["kx"] == 16
         assert list(result.dims) == ["kx", "ky"]
+
+
+# =============================================================================
+# 16. Runtime Options: strict mode (auto_convert=False)
+# =============================================================================
+
+
+class TestSetOptions:
+    """Verify ``xmris.set_options(auto_convert=False)`` turns coercion into errors.
+
+    Strict mode never changes numbers — it only converts the automatic domain
+    transforms into loud, actionable errors, so every Fourier transform in a
+    quantitative pipeline is written explicitly. In-domain calls and explicit
+    foreign-dim passthrough are unaffected.
+    """
+
+    def test_default_is_auto_convert(self):
+        """Automatic conversion is on by default."""
+        from xmris.core.options import OPTIONS
+
+        assert OPTIONS["auto_convert"] is True
+
+    def test_strict_funnel_raises_actionable(self, valid_fid_da):
+        """A funnel coercion under strict mode raises with the explicit fix."""
+        import xmris
+
+        with xmris.set_options(auto_convert=False):
+            with pytest.raises(ValueError, match="to_spectrum"):
+                _ensure_spectral_probe(valid_fid_da)
+
+    def test_strict_restore_raises_actionable(self, valid_spectrum_da):
+        """A domain-preserving coercion under strict mode raises with the fix."""
+        import xmris
+
+        with xmris.set_options(auto_convert=False):
+            with pytest.raises(ValueError, match="to_fid"):
+                _time_scale_probe(valid_spectrum_da)
+
+    def test_strict_error_names_the_switch(self, valid_fid_da):
+        """The error must name ``auto_convert`` so users can find the switch."""
+        import xmris
+
+        with xmris.set_options(auto_convert=False):
+            with pytest.raises(ValueError, match="auto_convert"):
+                _ensure_spectral_probe(valid_fid_da)
+
+    def test_strict_in_domain_unaffected(self, valid_spectrum_da):
+        """In-domain calls need no conversion and work identically under strict."""
+        import xmris
+
+        with xmris.set_options(auto_convert=False):
+            result = _ensure_spectral_probe(valid_spectrum_da)
+        assert result is valid_spectrum_da
+
+    def test_strict_foreign_dim_passthrough_unaffected(self):
+        """Explicit foreign-dim passthrough involves no conversion — still works."""
+        import xmris
+
+        rng = np.random.default_rng()
+        kspace = xr.DataArray(
+            rng.standard_normal(16) + 1j * rng.standard_normal(16),
+            dims=["kx"],
+            coords={"kx": np.arange(16)},
+        )
+        with xmris.set_options(auto_convert=False):
+            result = _time_scale_probe(kspace, dim="kx")
+        np.testing.assert_allclose(result.values, kspace.values * 2.0)
+
+    def test_context_manager_restores(self, valid_fid_da):
+        """Leaving the context restores automatic conversion."""
+        import xmris
+
+        with xmris.set_options(auto_convert=False):
+            pass
+        result = _ensure_spectral_probe(valid_fid_da)  # converts again
+        assert DIMS.frequency in result.dims
+
+    def test_unknown_option_raises(self):
+        """Misspelled options must fail loudly, listing the valid ones."""
+        import xmris
+
+        with pytest.raises(ValueError, match="Unknown xmris option"):
+            xmris.set_options(auto_conver=False)
