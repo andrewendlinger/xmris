@@ -18,6 +18,8 @@ project:
       children:
         - file: notebooks/basics/architecture.md
           title: The xmris Architecture
+        - file: explanation/domains.md
+          title: The Two Domains
         - file: notebooks/basics/complex_numbers.md
           title: 01. Complex Numbers
         - file: notebooks/basics/fft.md
