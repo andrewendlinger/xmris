@@ -32,11 +32,24 @@ plus two small wiring edits. The `phase/` widget is the reference implementation
 src/xmris/visualization/widget/
 ├── __init__.py              # re-exports each factory (edit 1)
 ├── _static_exporter.py      # export_widget_static — shared, don't touch
+├── _shared/                 # shared frontend layer — don't fork per widget
+│   ├── __init__.py          # load_esm() / load_css() — concatenate shared + widget
+│   ├── canvas.js            # ticks, nfmt, setupCanvas, themeColors, showSnippetBanner…
+│   └── theme.css            # `--nmr-*` design tokens (light + dark) + common chrome
 └── <name>/
     ├── <name>.py            # AnyWidget subclass + factory function
     ├── <name>.js            # render({ model, el }) — canvas frontend
-    └── <name>.css           # nmr-* styles
+    └── <name>.css           # widget-specific `nmr-*` styles only
 ```
+
+**The shared layer.** There is no JS bundler, so code sharing happens in Python:
+`load_esm`/`load_css` (in `_shared/__init__.py`) read the common `canvas.js` /
+`theme.css` and concatenate them **ahead** of a widget's own file, returning a
+single source string. `canvas.js` is deliberately `import`/`export`-free so it
+sits in the same module scope as the widget's one `export function render`.
+`_static_exporter.py` already accepts `_esm`/`_css` as strings, so this works in
+both live AnyWidget and the static docs. Don't reintroduce per-widget copies of
+`ticks`/`nfmt`/the close-banner — call the shared helpers.
 
 **Python (`<name>.py`)** — an `anywidget.AnyWidget` subclass declaring the
 synchronized state, plus a module-level **factory** that prepares the data and
@@ -50,7 +63,9 @@ import numpy as np
 import traitlets
 import xarray as xr
 
-from xmris.core.utils import _check_dims, _resolve_spectral_dim
+from xmris.core.utils import _check_dims, _resolve_spectral_dim, _spectral_axis_label
+
+from .._shared import load_css, load_esm
 
 _HERE = pathlib.Path(__file__).parent
 
@@ -67,8 +82,10 @@ class MyWidget(anywidget.AnyWidget):
     ...
     """
 
-    _esm = _HERE / "my_widget.js"
-    _css = _HERE / "my_widget.css"
+    # load_esm/load_css concatenate the shared _shared/{canvas.js,theme.css}
+    # ahead of this widget's own files.
+    _esm = load_esm(_HERE / "my_widget.js")
+    _css = load_css(_HERE / "my_widget.css")
 
     width = traitlets.Int(740).tag(sync=True)
     height = traitlets.Int(400).tag(sync=True)
@@ -81,13 +98,21 @@ def my_widget(da: xr.DataArray, dim: str | None = None, width: int = 740) -> MyW
 ```
 
 **Frontend (`<name>.js`)** — a single `export function render({ model, el })`.
-It builds the DOM, draws to a `<canvas>`, and redraws on trait changes:
+It builds the DOM, draws to a `<canvas>`, and redraws on trait changes. Use the
+shared helpers from `_shared/canvas.js` (already in scope — no import): `ticks`,
+`nfmt`, `setupCanvas`/`resizeCanvas`, `showSnippetBanner`, `watchTheme`, and
+`themeColors(el)` for canvas colors so the drawing follows light/dark:
 
 ```javascript
 export function render({ model, el }) {
-    // build DOM, get canvas 2d context
-    function draw() { /* read model.get(...), paint the canvas */ }
+    const root = document.createElement("div"); // ... build DOM
+    const ctx = setupCanvas(canvas, W, H, window.devicePixelRatio || 1);
+    function draw() {
+        const C = themeColors(root);            // palette from the --nmr-* CSS vars
+        // read model.get(...), paint with C.grid / C.real / C.imag …
+    }
     model.on("change:p0 change:p1", () => requestAnimationFrame(draw));
+    watchTheme(() => requestAnimationFrame(draw)); // redraw on OS theme flip
     draw();
 }
 ```
@@ -173,6 +198,14 @@ Need to hide extra elements? Pass `hide_selectors=["#save-tooltip", ".menu"]` to
 
 - **CSS namespace:** style everything with the `nmr-*` prefix (`nmr-viewer`,
   `nmr-btn`, `nmr-bar`, …) to avoid clashing with notebook/host styles.
+- **Theming:** never hardcode colors. In CSS use the `--nmr-*` design tokens
+  from `_shared/theme.css` (`var(--nmr-accent)`, `var(--nmr-real)`, …); the
+  shared `nmr-*` chrome already lives there, so a widget's own `.css` holds only
+  its widget-specific/layout classes. In JS read the same palette via
+  `themeColors(el)`. Both light and dark are defined via
+  `@media (prefers-color-scheme: dark)` — a widget gets dark mode for free by
+  using the tokens, and `watchTheme(redraw)` keeps the canvas in sync when the
+  OS preference flips.
 - **Accessor mirrors the factory:** the `.xmr.widget.*` method must expose the
   same parameters and the **same default values** as the factory — they are one
   contract in two places. Keep them in lock-step when either changes.

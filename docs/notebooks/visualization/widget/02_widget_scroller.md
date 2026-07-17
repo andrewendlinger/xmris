@@ -65,12 +65,20 @@ data_2d = clean_data + noise
 # Inject an artifact at index 25
 data_2d[25, :] += 5.0 * np.sin(2 * np.pi * 5 * ppm)
 
-# Build the xarray DataArray
+# Build the xarray DataArray on a canonical spectral axis (`chemical_shift`), so
+# the widget auto-resolves the spectral dimension from the project vocabulary.
 da_series = xr.DataArray(
     data_2d,
-    dims=["repetitions", "ppm"],
-    coords={"repetitions": repetitions, "ppm": ppm},
-    attrs={"xmris_synthetic": True}
+    dims=["repetitions", "chemical_shift"],
+    coords={
+        "repetitions": repetitions,
+        "chemical_shift": (
+            "chemical_shift",
+            ppm,
+            {"long_name": "Chemical Shift", "units": "ppm"},
+        ),
+    },
+    attrs={"xmris_synthetic": True},
 )
 ```
 
@@ -78,7 +86,7 @@ da_series = xr.DataArray(
 
 You can launch the interactive viewer directly from the `.xmr.widget` accessor. Pass your 2D `DataArray` to the `scroll_spectra` function.
 
-The widget will automatically detect your spectral dimension (e.g., `ppm`) and assign the remaining dimension (e.g., `repetitions`) to the scroll wheel.
+The widget will automatically detect your spectral dimension (e.g., `chemical_shift`) and assign the remaining dimension (e.g., `repetitions`) to the scroll wheel.
 
 ```{code-cell} ipython3
 :tags: [remove-output]
@@ -142,7 +150,7 @@ Because the widget generates standard `xarray.isel()` commands, your extracted `
 
 # STRICT TESTS: Widget Output Integration
 assert slice_da.ndim == 1, "Extracted slice should be 1-dimensional."
-assert "ppm" in slice_da.dims, "Spectral dimension was lost during extraction."
+assert "chemical_shift" in slice_da.dims, "Spectral dimension was lost during extraction."
 assert "xmris_synthetic" in slice_da.attrs, "Lineage attributes were lost."
 
 # Mathematically prove the data matches the injected artifact at index 25

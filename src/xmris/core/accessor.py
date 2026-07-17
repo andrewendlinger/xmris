@@ -190,6 +190,7 @@ class XmrisWidgetAccessor:
     def scroll_spectra(
         self,
         scroll_axis: str | None = None,
+        dim: str | None = None,
         part: str = "real",
         xlim: tuple[float, float] | None = None,
         ylim: tuple[float, float] | None = None,
@@ -210,9 +211,12 @@ class XmrisWidgetAccessor:
         Parameters
         ----------
         scroll_axis : str, optional
-            The specific dimension to scroll through. If None, it attempts to
-            auto-detect 'repetitions' or 'averages', or falls back to the
-            non-spectral dimension.
+            The dimension to scroll through. If None, it is derived as the
+            non-spectral dimension of the 2-D array.
+        dim : str, optional
+            The spectral (display) dimension. If None, the canonical spectral
+            dimension (frequency or chemical_shift) is auto-detected; pass it
+            explicitly for non-standard axis names.
         part : {'real', 'imag', 'abs'}, optional
             Which mathematical component of complex data to display. Default is 'real'.
         xlim : tuple of float, optional
@@ -247,6 +251,7 @@ class XmrisWidgetAccessor:
         return scroll_spectra(
             self._obj,
             scroll_axis=scroll_axis,
+            dim=dim,
             part=part,
             xlim=xlim,
             ylim=ylim,
@@ -313,9 +318,9 @@ class XmrisWidgetAccessor:
           and imposes a Gaussian shape (gb) for resolution enhancement.
         """  # noqa: E501
         # Lazy import to avoid loading AnyWidget/frontend assets unless requested
-        from xmris.visualization.widget import apodize_interactive
+        from xmris.visualization.widget import apodize
 
-        return apodize_interactive(
+        return apodize(
             da=self._obj,
             dim=dim,
             unit=unit,
@@ -347,8 +352,10 @@ class XmrisSpectrumCoordsMixin:
         # 1. Calculate the math
         ppm_coords = carrier_ppm + (hz_coords / mhz)
 
-        # 2. Build the fully-formed xarray Variable (data + metadata)
-        shift_var = as_variable(DIMS.chemical_shift, dim, ppm_coords)
+        # 2. Build the fully-formed xarray Variable (data + metadata). Use the
+        #    COORDS term (carries unit="ppm") so the coordinate's lineage is
+        #    complete — mirrors `to_hz` using COORDS.frequency (unit="Hz").
+        shift_var = as_variable(COORDS.chemical_shift, dim, ppm_coords)
 
         # 3. Assign and swap in one clean sweep
         obj = self._obj.assign_coords({DIMS.chemical_shift: shift_var})

@@ -1,5 +1,10 @@
 /**
  * Main rendering function for the AnyWidget phase viewer.
+ *
+ * Shared helpers (`ticks`, `nfmt`, `setupCanvas`, `resizeCanvas`, `themeColors`,
+ * `watchTheme`, `showSnippetBanner`) come from `_shared/canvas.js`, which the
+ * Python asset loader concatenates ahead of this module.
+ *
  * @param {Object} context - The AnyWidget context containing the model and DOM element.
  */
 export function render({ model, el }) {
@@ -20,10 +25,6 @@ export function render({ model, el }) {
     canvasContainer.style.height = H + "px";
 
     const canvas = document.createElement("canvas");
-    canvas.width = W * dpr;
-    canvas.height = H * dpr;
-    canvas.style.width  = W + "px";
-    canvas.style.height = H + "px";
     canvas.className = "nmr-canvas";
     canvas.tabIndex = 0;
 
@@ -71,46 +72,18 @@ export function render({ model, el }) {
     closeBtn.textContent = "Close";
     closeBtn.title = "Finalize Phase Parameters";
 
-    // Handle widget teardown and generation of the final code snippet
+    // Handle widget teardown and generation of the reproducible code snippet
     closeBtn.onclick = () => {
         const p0 = model.get("p0").toFixed(2);
         const p1 = model.get("p1").toFixed(2);
         const pivot = model.get("pivot_val").toFixed(3);
 
-        const hintStr = `phased_da = da`;
-        const targetStr = `.xmr.phase(p0=${p0}, p1=${p1}, pivot=${pivot})`;
-
-        // Replace the widget UI with a professional completion banner
-        root.innerHTML = `
-            <div class="nmr-success-banner">
-                <div class="nmr-success-title">Phase Correction Parameters Extracted</div>
-                <div class="nmr-success-subtitle">Copy the generated code snippet below to apply these parameters to your dataset:</div>
-                <div class="nmr-copy-container">
-                    <div class="nmr-code-block">
-                        <span class="nmr-code-hint">${hintStr}</span><span class="nmr-code-target">${targetStr}</span>
-                    </div>
-                    <button id="nmr-copy-btn" class="nmr-copy-btn">Copy Code</button>
-                </div>
-            </div>
-        `;
-
-        // Configure the clipboard copy button behavior
-        const copyBtn = root.querySelector("#nmr-copy-btn");
-        copyBtn.onclick = () => {
-            navigator.clipboard.writeText(targetStr).then(() => {
-                copyBtn.textContent = "Copied ✓";
-                copyBtn.classList.add("copied");
-
-                setTimeout(() => {
-                    copyBtn.textContent = "Copy Code";
-                    copyBtn.classList.remove("copied");
-                }, 2000);
-            }).catch(err => {
-                console.error("Failed to copy text: ", err);
-                copyBtn.textContent = "Failed";
-                copyBtn.classList.add("failed");
-            });
-        };
+        showSnippetBanner(root, {
+            title: "Phase Correction Parameters Extracted",
+            subtitle: "Copy the generated code snippet below to apply these parameters to your dataset:",
+            hint: "phased_da = da",
+            target: `.xmr.phase(p0=${p0}, p1=${p1}, pivot=${pivot})`,
+        });
     };
 
     grpR.append(hints, closeBtn);
@@ -118,15 +91,14 @@ export function render({ model, el }) {
     root.append(canvasContainer, bar);
     el.appendChild(root);
 
-    const ctx = canvas.getContext("2d");
-    ctx.scale(dpr, dpr);
+    const ctx = setupCanvas(canvas, W, H, dpr);
 
     /* =========================================================================
        Canvas Drawing & Math
        ========================================================================= */
     let gYMin = -1, gYMax = 1;
 
-/**
+    /**
      * Calculates the Y-axis boundaries. Instead of forcing symmetry,
      * it finds the actual data bounds and adds a 15% margin for visibility.
      */
@@ -168,6 +140,8 @@ export function render({ model, el }) {
         const Im = model.get("imags");
         if (!P?.length || !Re?.length) return;
 
+        const C = themeColors(root);
+
         const p0_deg = model.get("p0");
         const p1_deg = model.get("p1");
         const pivot = model.get("pivot_val");
@@ -193,7 +167,7 @@ export function render({ model, el }) {
         /* 1. Draw Background Grid (if enabled) */
         const showGrid = model.get("show_grid") === false ? false : true;
         if (showGrid) {
-            ctx.strokeStyle = "#e0e0e0";
+            ctx.strokeStyle = C.grid;
             ctx.lineWidth = 1.0;
             ctx.beginPath();
             for (const v of xt) { const x = toX(v); ctx.moveTo(x, mg.t); ctx.lineTo(x, mg.t+ph); }
@@ -202,14 +176,14 @@ export function render({ model, el }) {
         }
 
         /* 2. Draw Solid Axes bounding box */
-        ctx.strokeStyle = "#333";
+        ctx.strokeStyle = C.axis;
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.moveTo(mg.l, mg.t); ctx.lineTo(mg.l, mg.t+ph); ctx.lineTo(mg.l+pw, mg.t+ph);
         ctx.stroke();
 
         /* 3. Draw Ticks & Labels */
-        ctx.fillStyle = "#666"; ctx.font = "11px sans-serif";
+        ctx.fillStyle = C.muted; ctx.font = "11px sans-serif";
         ctx.beginPath();
         ctx.textAlign = "center"; ctx.textBaseline = "top";
         for (const v of xt) {
@@ -229,7 +203,7 @@ export function render({ model, el }) {
         ctx.stroke();
 
         /* 4. Draw X-Axis Title */
-        ctx.fillStyle = "#444"; ctx.font = "12px sans-serif";
+        ctx.fillStyle = C.label; ctx.font = "12px sans-serif";
         ctx.textAlign = "center"; ctx.textBaseline = "top";
         ctx.fillText(model.get("x_label"), mg.l + pw/2, mg.t + ph + 28);
 
@@ -239,7 +213,7 @@ export function render({ model, el }) {
 
         // Draw Zero Baseline only if it's currently in view
         if (0 >= gYMin && 0 <= gYMax) {
-            ctx.strokeStyle = "#ccc"; ctx.lineWidth = 1;
+            ctx.strokeStyle = C.zeroLine; ctx.lineWidth = 1;
             const zeroY = toY(0);
             ctx.beginPath(); ctx.moveTo(mg.l, zeroY); ctx.lineTo(mg.l+pw, zeroY); ctx.stroke();
         }
@@ -270,17 +244,17 @@ export function render({ model, el }) {
             imPoints.push({x, y: toY(phasedIm)});
         }
 
-        // Render Imaginary Component (Red)
+        // Render Imaginary Component
         ctx.beginPath();
-        ctx.strokeStyle = "#e63946"; ctx.lineWidth = 1.0; ctx.globalAlpha = 0.8;
+        ctx.strokeStyle = C.imag; ctx.lineWidth = 1.0; ctx.globalAlpha = 0.8;
         for (let i=0; i<imPoints.length; i++) {
             i === 0 ? ctx.moveTo(imPoints[i].x, imPoints[i].y) : ctx.lineTo(imPoints[i].x, imPoints[i].y);
         }
         ctx.stroke();
 
-        // Render Real Component (Blue)
+        // Render Real Component
         ctx.beginPath();
-        ctx.strokeStyle = "#0055aa"; ctx.lineWidth = 1.8; ctx.globalAlpha = 1.0;
+        ctx.strokeStyle = C.real; ctx.lineWidth = 1.8; ctx.globalAlpha = 1.0;
         for (let i=0; i<rePoints.length; i++) {
             i === 0 ? ctx.moveTo(rePoints[i].x, rePoints[i].y) : ctx.lineTo(rePoints[i].x, rePoints[i].y);
         }
@@ -297,7 +271,7 @@ export function render({ model, el }) {
                 ctx.save();
                 ctx.beginPath();
                 ctx.setLineDash([4, 4]);
-                ctx.strokeStyle = "rgba(100, 100, 100, 0.5)";
+                ctx.strokeStyle = C.pivot;
                 ctx.lineWidth = 1.5;
                 ctx.moveTo(pivX, mg.t);
                 ctx.lineTo(pivX, mg.t + ph);
@@ -305,29 +279,8 @@ export function render({ model, el }) {
                 ctx.restore();
             }
         }
-    }
 
-    /**
-     * Computes visually pleasing "nice" tick intervals for the axes.
-     */
-    function ticks(lo, hi, n) {
-        const r = hi - lo; if (r <= 0) return [lo];
-        const raw = r / n, mag = Math.pow(10, Math.floor(Math.log10(raw)));
-        const q = raw / mag;
-        const step = q < 1.5 ? mag : q < 3.5 ? 2*mag : q < 7.5 ? 5*mag : 10*mag;
-        const out = []; let v = Math.ceil(lo / step) * step;
-        while (v <= hi + step*1e-9) { out.push(parseFloat(v.toPrecision(12))); v += step; }
-        return out;
-    }
-
-    /**
-     * Formats tick labels to prevent overly long decimals or awkward scientific notation.
-     */
-    function nfmt(n) {
-        const a = Math.abs(n);
-        if (n === 0) return "0";
-        if (a >= 1e4 || (a > 0 && a < .01)) return n.toExponential(1);
-        return a >= 100 ? n.toFixed(0) : a >= 1 ? n.toFixed(1) : n.toFixed(2);
+        ctx.restore();
     }
 
     /* =========================================================================
@@ -376,10 +329,7 @@ export function render({ model, el }) {
         root.style.width = W + "px";
         canvasContainer.style.width = W + "px";
         canvasContainer.style.height = H + "px";
-        canvas.width = W * dpr; canvas.height = H * dpr;
-        canvas.style.width = W + "px"; canvas.style.height = H + "px";
-        ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset scale matrix
-        ctx.scale(dpr, dpr);
+        resizeCanvas(canvas, ctx, W, H, dpr);
         scheduleDraw();
     });
 
@@ -389,6 +339,9 @@ export function render({ model, el }) {
 
     // Reset button zeroes out the phase
     resetBtn.addEventListener("click", () => { model.set("p0", 0); model.set("p1", 0); model.save_changes(); });
+
+    // Redraw when the OS light/dark preference flips
+    watchTheme(scheduleDraw);
 
     recomputeY();
     scheduleDraw();

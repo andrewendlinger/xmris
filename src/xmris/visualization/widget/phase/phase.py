@@ -5,7 +5,9 @@ import numpy as np
 import traitlets
 import xarray as xr
 
-from xmris.core.utils import _check_dims, _resolve_spectral_dim
+from xmris.core.utils import _check_dims, _resolve_spectral_dim, _spectral_axis_label
+
+from .._shared import load_css, load_esm
 
 _HERE = pathlib.Path(__file__).parent
 
@@ -44,8 +46,8 @@ class PhaseWidget(anywidget.AnyWidget):
         The frequency/coordinate where the $p_1$ phase shift is zero.
     """
 
-    _esm = _HERE / "phase.js"
-    _css = _HERE / "phase.css"
+    _esm = load_esm(_HERE / "phase.js")
+    _css = load_css(_HERE / "phase.css")
 
     width = traitlets.Int(740).tag(sync=True)
     height = traitlets.Int(400).tag(sync=True)
@@ -59,34 +61,6 @@ class PhaseWidget(anywidget.AnyWidget):
     p0 = traitlets.Float(0.0).tag(sync=True)
     p1 = traitlets.Float(0.0).tag(sync=True)
     pivot_val = traitlets.Float(0.0).tag(sync=True)
-
-
-def _spectral_axis_label(dim: str, coord: xr.DataArray) -> str:
-    """Build an axis label from a coordinate's lineage metadata.
-
-    Prefers the coordinate's ``long_name``/``units`` attrs (set by xmris when it
-    builds spectral coordinates) over any hardcoded string, falling back to the
-    bare dimension name when that metadata is absent.
-
-    Parameters
-    ----------
-    dim : str
-        Name of the spectral dimension (used as the fallback label).
-    coord : xr.DataArray
-        The coordinate carrying the axis values and its ``.attrs`` metadata.
-
-    Returns
-    -------
-    str
-        A display label such as ``"Chemical Shift [ppm]"``.
-    """
-    long_name = coord.attrs.get("long_name")
-    units = coord.attrs.get("units")
-    if long_name and units:
-        return f"{long_name} [{units}]"
-    if long_name:
-        return str(long_name)
-    return str(dim)
 
 
 def phase_spectrum(

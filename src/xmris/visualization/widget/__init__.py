@@ -1,5 +1,5 @@
-from .apodizer.apodizer import apodize_interactive
+from .apodizer.apodizer import apodize
 from .phase.phase import phase_spectrum
 from .scroller.scroller import scroll_spectra
 
-__all__ = ["phase_spectrum", "scroll_spectra", "apodize_interactive"]
+__all__ = ["phase_spectrum", "scroll_spectra", "apodize"]

@@ -22,15 +22,18 @@ implementation to copy is `src/xmris/visualization/widget/phase/`.
 A widget is a folder `src/xmris/visualization/widget/<name>/` holding
 `<name>.py` + `<name>.js` + `<name>.css`. **Copy the `phase/` widget** and rename
 — don't hand-write the AnyWidget/canvas plumbing. Keep the `_HERE = pathlib.Path(__file__).parent`
-+ `_esm`/`_css` wiring intact.
+wiring and the `_esm = load_esm(_HERE / "<name>.js")` / `_css = load_css(...)`
+calls intact — these concatenate the shared `_shared/{canvas.js,theme.css}`
+layer ahead of your files (see `docs/contributing/static_widgets.md`).
 
 ## 2. Python: widget class + factory
 
 In `<name>.py` define:
-- `class <Name>Widget(anywidget.AnyWidget)` — `_esm`/`_css` point at the sibling
-  JS/CSS; every value the frontend reads is a `traitlets.*(...).tag(sync=True)`
-  trait (always `width`/`height`). Full NumPy docstring with an `Attributes`
-  section for the synced traits.
+- `class <Name>Widget(anywidget.AnyWidget)` — `_esm`/`_css` wrap the sibling
+  JS/CSS with `load_esm`/`load_css` (imported `from .._shared import ...`); every
+  value the frontend reads is a `traitlets.*(...).tag(sync=True)` trait (always
+  `width`/`height`). Full NumPy docstring with an `Attributes` section for the
+  synced traits.
 - A factory `<verb>_<noun>(da, dim=None, ...) -> <Name>Widget` that validates,
   extracts numpy arrays, and returns the instance.
 
@@ -49,10 +52,14 @@ Rules that are easy to get wrong here:
 
 - One `export function render({ model, el })`: build the DOM, draw to a
   `<canvas>`, and redraw via `model.on("change:…", () => requestAnimationFrame(draw))`.
+- **Reuse the shared helpers** (in scope from `_shared/canvas.js`, no import):
+  `ticks`/`nfmt`, `setupCanvas`/`resizeCanvas`, `watchTheme`, and `themeColors(el)`
+  for canvas colors — don't re-inline them.
 - **Close button** carries the class `remove-me-close-btn` (keep the
-  `// CONVENTION:` comment) and generates the copyable `.xmr.<method>(...)`
-  snippet on click.
-- Style with the `nmr-*` CSS namespace.
+  `// CONVENTION:` comment) and calls `showSnippetBanner(root, {title, subtitle,
+  hint, target})` with the copyable `.xmr.<method>(...)` snippet on click.
+- Style with the `nmr-*` CSS namespace and the `--nmr-*` theme tokens (never
+  hardcode colors); a widget's `.css` holds only its widget-specific classes.
 
 ## 4. Wire it in (2 edits)
 

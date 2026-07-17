@@ -5,6 +5,10 @@ import numpy as np
 import traitlets
 import xarray as xr
 
+from xmris.core.utils import _check_dims, _resolve_spectral_dim, _spectral_axis_label
+
+from .._shared import load_css, load_esm
+
 _HERE = pathlib.Path(__file__).parent
 
 
@@ -22,7 +26,7 @@ class ScrollWidget(anywidget.AnyWidget):
     x_label : str
         The label displayed on the X-axis.
     spectra : list of list of float
-        The 2D matrix of spectra to scroll through (e.g., [repetitions, points]).
+        The 2D matrix of spectra to scroll through (e.g., [scroll, points]).
     scroll_dim : str
         The name of the dimension being scrolled through.
     current_index : int
@@ -37,8 +41,8 @@ class ScrollWidget(anywidget.AnyWidget):
         Optional static bounds for the Y-axis.
     """
 
-    _esm = _HERE / "scroller.js"
-    _css = _HERE / "scroller.css"
+    _esm = load_esm(_HERE / "scroller.js")
+    _css = load_css(_HERE / "scroller.css")
 
     width = traitlets.Int(740).tag(sync=True)
     height = traitlets.Int(400).tag(sync=True)
@@ -56,6 +60,7 @@ class ScrollWidget(anywidget.AnyWidget):
 def scroll_spectra(
     da: xr.DataArray,
     scroll_axis: str | None = None,
+    dim: str | None = None,
     part: str = "real",
     xlim: tuple[float, float] | None = None,
     ylim: tuple[float, float] | None = None,
@@ -68,9 +73,9 @@ def scroll_spectra(
     Instantiate an interactive viewer for a 2-D xarray of spectra.
 
     This generates a UI allowing the user to scroll through repetitions,
-    averages, or any specified dimension. The widget includes an close
-    button that closes the main widget and generate the exact `.isel()` snippet
-    needed to isolate a specific trace, preserving pipeline lineage.
+    averages, or any specified dimension. The widget includes an "Extract Slice"
+    button that closes the widget and emits the exact ``.isel({dim: idx})``
+    snippet needed to isolate a specific trace, preserving pipeline lineage.
 
     Parameters
     ----------
@@ -78,9 +83,12 @@ def scroll_spectra(
         A 2-dimensional DataArray. Must contain one spectral dimension and one
         scrolling dimension.
     scroll_axis : str, optional
-        The specific dimension to scroll through. If None, it defaults to
-        looking for 'repetitions', then 'averages', or falls back to the
-        non-spectral dimension.
+        The dimension to scroll through. If None (default), it is derived as the
+        non-spectral dimension of the 2-D array.
+    dim : str, optional
+        The spectral (display) dimension. If None (default), the canonical
+        spectral dimension (``frequency`` or ``chemical_shift``) is resolved
+        automatically; pass it explicitly for non-standard axis names.
     part : {'real', 'imag', 'abs'}, optional
         Which component of the complex data to display. Defaults to 'real'.
     xlim : tuple of float, optional
@@ -104,47 +112,31 @@ def scroll_spectra(
     Raises
     ------
     ValueError
-        If the input `da` is not exactly 2-dimensional, or if the requested
-        `part` is invalid.
+        If the input `da` is not exactly 2-dimensional, if no spectral dimension
+        can be resolved (pass `dim` explicitly in that case), if `scroll_axis`
+        coincides with the spectral dimension, or if the requested `part` is
+        invalid.
     """
     if da.ndim != 2:
         raise ValueError(f"Input must be exactly 2-D, but has shape {da.shape}.")
 
-    # 1. Identify spectral vs scroll dimensions
-    spec_dim = None
-    x_label = "Frequency"
-
-    for d in da.dims:
-        d_str = str(d).lower()
-        if any(k in d_str for k in ("ppm", "chem", "shift")):
-            spec_dim = d
-            x_label = "Chemical Shift [ppm]"
-            break
-        elif any(k in d_str for k in ("hz", "freq")):
-            spec_dim = d
-            x_label = "Frequency [Hz]"
-            break
-
-    if spec_dim is None:
-        # Fallback: assume the last dimension is the spectral axis
-        spec_dim = da.dims[-1]
-        x_label = str(spec_dim)
-
-    # 2. Determine the scroll dimension
-    if scroll_axis is not None:
-        if scroll_axis not in da.dims:
-            raise ValueError(
-                f"Requested scroll_axis '{scroll_axis}' not found in dimensions: {da.dims}"  # noqa: E501
-            )
-        scroll_dim = scroll_axis
+    # 1. Resolve the spectral (display) axis from the vocabulary — an explicit
+    #    `dim` wins; otherwise auto-detect the canonical spectral dimension.
+    if dim is None:
+        spec_dim = _resolve_spectral_dim(da)
     else:
-        # Auto-detect common scroll dimensions if not explicitly provided
-        available_dims = [d for d in da.dims if d != spec_dim]
-        scroll_dim = available_dims[0]  # Default to whatever is left
-        for candidate in ("repetitions", "averages", "time"):
-            if candidate in available_dims:
-                scroll_dim = candidate
-                break
+        spec_dim = dim
+    _check_dims(da, spec_dim, "scroll_spectra")
+
+    # 2. Derive the scroll axis as the other (non-spectral) dimension, unless the
+    #    caller pins it explicitly.
+    others = [str(d) for d in da.dims if d != spec_dim]
+    scroll_dim = scroll_axis if scroll_axis is not None else others[0]
+    _check_dims(da, scroll_dim, "scroll_spectra")
+    if scroll_dim == spec_dim:
+        raise ValueError(
+            f"scroll_axis '{scroll_dim}' must differ from the spectral dimension '{spec_dim}'."
+        )
 
     # 3. Extract the targeted mathematical component
     vals = da.values
@@ -165,7 +157,14 @@ def scroll_spectra(
     if da.dims.index(scroll_dim) > da.dims.index(spec_dim):
         vals = vals.T
 
-    x_vals = da.coords[spec_dim].values.astype(float)
+    # 5. Build the display axis from the coordinate and its lineage metadata.
+    if spec_dim in da.coords:
+        coord = da.coords[spec_dim]
+        x_vals = coord.values.astype(float)
+        x_label = _spectral_axis_label(str(spec_dim), coord)
+    else:
+        x_vals = np.arange(da.sizes[spec_dim], dtype=float)
+        x_label = str(spec_dim)
 
     return ScrollWidget(
         width=width,
