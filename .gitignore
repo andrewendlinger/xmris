@@ -102,6 +102,9 @@ docs/**/**/**/*.ipynb
 *.swo
 *~
 
+# Local scratch notes
+TODO.md
+
 # macOS
 .DS_Store
 .AppleDouble
