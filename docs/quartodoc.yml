@@ -9,6 +9,7 @@ quartodoc:
         - processing.fourier
         - processing.fid
         - processing.phasing
+        - processing.referencing
 
     - title: Visualization
       desc: Publication-ready plotting and aesthetics.

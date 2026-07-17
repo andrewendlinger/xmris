@@ -4,7 +4,7 @@ import xarray as xr
 
 from xmris.core.config import ATTRS, DIMS, SPECTRAL_DIMS
 from xmris.core.utils import _check_dims
-from xmris.core.validation import ensures_domain, resolves_spectral_dim
+from xmris.core.validation import ensures_domain
 from xmris.processing.fid import apodize_exp, to_fid, to_spectrum
 
 
@@ -160,7 +160,6 @@ def _roi_positivity_score(ph, da, dim, pivot, target_idx, index_width):
 
 # --- Public API ---
 @ensures_domain(SPECTRAL_DIMS)
-@resolves_spectral_dim
 def autophase(
     da: xr.DataArray,
     dim: str | None = None,
@@ -219,8 +218,8 @@ def autophase(
     xr.DataArray
         The phased spectrum.
     """
-    # `dim` is guaranteed non-None here by @resolves_spectral_dim; validate that
-    # an explicitly-passed dim actually exists (the resolver only fills None).
+    # `dim` is guaranteed non-None here by @ensures_domain's merged resolution;
+    # validate that an explicitly-passed dim actually exists (only None is filled).
     assert dim is not None
     _check_dims(da, dim, "autophase")
     kwargs.setdefault("disp", False)
@@ -257,9 +256,18 @@ def autophase(
 
     # 4. Optional preprocessing (applied ONLY to the 1D optimization slice)
     if lb > 0:
-        temp_fid = to_fid(opt_da, dim=dim, out_dim=temp_time_dim)
+        opt_src, work_dim = opt_da, dim
+        if dim == DIMS.chemical_shift:
+            # ppm axis: reference to Hz first so `to_fid` reconstructs a physical
+            # dwell time — `lb` is in Hz and needs a correct time axis.
+            from xmris.processing.referencing import to_hz, to_ppm
+
+            opt_src, work_dim = to_hz(opt_da, dim=dim), str(DIMS.frequency)
+        temp_fid = to_fid(opt_src, dim=work_dim, out_dim=temp_time_dim)
         temp_apodized_fid = apodize_exp(temp_fid, dim=temp_time_dim, lb=lb)
-        work_da = to_spectrum(temp_apodized_fid, dim=temp_time_dim, out_dim=dim)
+        work_da = to_spectrum(temp_apodized_fid, dim=temp_time_dim, out_dim=work_dim)
+        if dim == DIMS.chemical_shift:
+            work_da = to_ppm(work_da, dim=work_dim)
     else:
         work_da = opt_da
 

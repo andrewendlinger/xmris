@@ -5,7 +5,8 @@ import numpy as np
 import traitlets
 import xarray as xr
 
-from xmris.core.utils import _check_dims, _resolve_spectral_dim, _spectral_axis_label
+from xmris.core.config import SPECTRAL_DIMS
+from xmris.core.utils import _check_dims, _resolve_dim, _spectral_axis_label
 
 from .._shared import load_css, load_esm
 
@@ -121,7 +122,7 @@ def phase_spectrum(
     # Resolve the spectral axis: an explicit `dim` wins; otherwise auto-detect the
     # canonical spectral dimension (frequency / chemical_shift) via the shared resolver.
     if dim is None:
-        dim = _resolve_spectral_dim(da)
+        dim = _resolve_dim(da, SPECTRAL_DIMS)
     _check_dims(da, dim, "phase_spectrum")
 
     # Build the display axis from the coordinate and its lineage metadata (no name sniffing).

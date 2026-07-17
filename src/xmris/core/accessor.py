@@ -14,15 +14,15 @@ import numpy as np
 import xarray as xr
 
 # Import our core architecture
-from xmris.core.config import ATTRS, COORDS, DIMS
-from xmris.core.utils import _check_dims, as_variable
-from xmris.core.validation import requires_attrs
+from xmris.core.config import DIMS
+from xmris.core.utils import _check_dims, as_variable  # noqa: F401  (re-exported)
 from xmris.processing.baseline import baseline_als
 
 # Processing imports
 from xmris.processing.fid import apodize_exp, apodize_lg, to_fid, to_spectrum, zero_fill
 from xmris.processing.fourier import fft, fftc, fftshift, ifft, ifftc, ifftshift
 from xmris.processing.phasing import autophase, phase
+from xmris.processing.referencing import to_hz, to_ppm
 
 # =============================================================================
 # Sub-Accessors (Terminal / Visualization tools)
@@ -340,43 +340,13 @@ class XmrisWidgetAccessor:
 class XmrisSpectrumCoordsMixin:
     """Mixin providing operations to translate physical coordinate systems."""
 
-    @requires_attrs(ATTRS.reference_frequency, ATTRS.carrier_ppm)
     def to_ppm(self, dim: str = DIMS.frequency) -> xr.DataArray:
         """Convert relative frequency axis [Hz] to absolute chemical shift axis [ppm]."""
-        _check_dims(self._obj, dim, "to_ppm")
+        return to_ppm(self._obj, dim=dim)
 
-        mhz = self._obj.attrs[ATTRS.reference_frequency]
-        carrier_ppm = self._obj.attrs[ATTRS.carrier_ppm]
-        hz_coords = self._obj.coords[dim].values
-
-        # 1. Calculate the math
-        ppm_coords = carrier_ppm + (hz_coords / mhz)
-
-        # 2. Build the fully-formed xarray Variable (data + metadata). Use the
-        #    COORDS term (carries unit="ppm") so the coordinate's lineage is
-        #    complete — mirrors `to_hz` using COORDS.frequency (unit="Hz").
-        shift_var = as_variable(COORDS.chemical_shift, dim, ppm_coords)
-
-        # 3. Assign and swap in one clean sweep
-        obj = self._obj.assign_coords({DIMS.chemical_shift: shift_var})
-        return obj.swap_dims({dim: DIMS.chemical_shift})
-
-    @requires_attrs(ATTRS.reference_frequency, ATTRS.carrier_ppm)
     def to_hz(self, dim: str = DIMS.chemical_shift) -> xr.DataArray:
         """Convert absolute chemical shift axis [ppm] to relative frequency axis [Hz]."""
-        _check_dims(self._obj, dim, "to_hz")
-
-        mhz = self._obj.attrs[ATTRS.reference_frequency]
-        carrier_ppm = self._obj.attrs[ATTRS.carrier_ppm]
-        ppm_coords = self._obj.coords[dim].values
-
-        hz_coords = (ppm_coords - carrier_ppm) * mhz
-
-        # Pack the data and metadata together instantly
-        freq_var = as_variable(COORDS.frequency, dim, hz_coords)
-
-        obj = self._obj.assign_coords({COORDS.frequency: freq_var})
-        return obj.swap_dims({dim: DIMS.frequency})
+        return to_hz(self._obj, dim=dim)
 
 
 class XmrisFourierMixin:

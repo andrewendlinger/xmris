@@ -33,8 +33,9 @@ or user pipelines depend on.
      your new method does not accidentally strip xarray `.attrs`.
 
 * **Modifying or adding a decorator in `validation.py`:**
-  Update the `MockAccessor` class and add specific behavior checks to
-  `TestRequiresAttrsRuntime` or `TestRequiresAttrsDocstring`.
+  Update the module-level probe functions and add specific behavior checks to
+  the decorator sections (`TestRequiresAttrs*`, `TestEnsuresDomain`,
+  `TestComputesIn`, `TestDomainDimRule`).
 
 * **Changing core mathematical logic:**
   Do not test complex scientific logic here. This file is for architecture.
@@ -55,7 +56,9 @@ from xmris.core.config import (
     TIME_DIMS,
     VARS,
 )
-from xmris.core.validation import ensures_domain, requires_attrs, resolves_spectral_dim
+from xmris.core.utils import _resolve_dim
+from xmris.core.validation import computes_in, ensures_domain, requires_attrs
+from xmris.processing.fid import to_fid, to_spectrum
 
 # =============================================================================
 # Fixtures
@@ -276,36 +279,28 @@ class TestConfigMetadata:
 # =============================================================================
 
 
-class MockAccessor:
-    """Minimal mock of the xmris accessor pattern for testing ``@requires_attrs``.
+@requires_attrs(ATTRS.b0_field, ATTRS.reference_frequency)
+def _needs_both(da: xr.DataArray):
+    """Original docstring."""
+    return da.attrs[ATTRS.b0_field]
 
-    Replicates the real accessor's ``self._obj`` convention so the decorator
-    can inspect ``.attrs`` without depending on the full ``XmrisAccessor`` class.
-    """
 
-    def __init__(self, obj: xr.DataArray):
-        """Store the DataArray, matching the real accessor's ``__init__`` signature."""
-        self._obj = obj
+@requires_attrs(ATTRS.b0_field)
+def _needs_one(da: xr.DataArray):
+    """Function requiring only a single attribute."""  # noqa: D401
+    return da.attrs[ATTRS.b0_field]
 
-    @requires_attrs(ATTRS.b0_field, ATTRS.reference_frequency)
-    def needs_both(self):
-        """Original docstring."""
-        return self._obj.attrs[ATTRS.b0_field]
 
-    @requires_attrs(ATTRS.b0_field)
-    def needs_one(self):
-        """Method requiring only a single attribute."""  # noqa: D401
-        return self._obj.attrs[ATTRS.b0_field]
-
-    @requires_attrs(ATTRS.b0_field)
-    def no_docstring(self):  # noqa: D102
-        pass
+@requires_attrs(ATTRS.b0_field)
+def _no_docstring(da: xr.DataArray):  # noqa: D103
+    pass
 
 
 class TestRequiresAttrsRuntime:
     """Verify that ``@requires_attrs`` correctly validates at call time.
 
-    The decorator must:
+    The decorator wraps free functions whose first positional argument is the
+    DataArray. It must:
     - Raise ``ValueError`` if any required attr is missing.
     - Include the missing key names and fix instructions in the error message.
     - Pass through to the wrapped function if all attrs are present.
@@ -314,9 +309,8 @@ class TestRequiresAttrsRuntime:
 
     def test_all_missing(self, empty_da):
         """All required attrs absent — must raise with a descriptive message."""
-        accessor = MockAccessor(empty_da)
         with pytest.raises(ValueError, match="missing attributes"):
-            accessor.needs_both()
+            _needs_both(empty_da)
 
     def test_partial_missing(self, empty_da):
         """One attr present, one missing — must still raise.
@@ -325,32 +319,31 @@ class TestRequiresAttrsRuntime:
         after finding the first present attr instead of checking all of them.
         """
         da = empty_da.assign_attrs({ATTRS.b0_field: 3.0})
-        accessor = MockAccessor(da)
         with pytest.raises(ValueError, match="missing attributes"):
-            accessor.needs_both()
+            _needs_both(da)
 
     def test_all_present(self, valid_spectrum_da):
         """All required attrs present — must execute the function body normally."""
-        accessor = MockAccessor(valid_spectrum_da)
-        result = accessor.needs_both()
+        result = _needs_both(valid_spectrum_da)
         assert result == 3.0
 
     def test_error_message_lists_missing_keys(self, empty_da):
         """The error message must name the specific missing attr keys."""
-        accessor = MockAccessor(empty_da)
         with pytest.raises(ValueError, match=ATTRS.b0_field):
-            accessor.needs_both()
+            _needs_both(empty_da)
 
     def test_error_message_includes_fix(self, empty_da):
         """The error message must include copy-pasteable ``assign_attrs`` fix code."""
-        accessor = MockAccessor(empty_da)
         with pytest.raises(ValueError, match="assign_attrs"):
-            accessor.needs_both()
+            _needs_both(empty_da)
 
     def test_returns_original_value(self, valid_spectrum_da):
         """The decorator must be transparent — return value is unchanged."""
-        accessor = MockAccessor(valid_spectrum_da)
-        assert accessor.needs_one() == valid_spectrum_da.attrs[ATTRS.b0_field]
+        assert _needs_one(valid_spectrum_da) == valid_spectrum_da.attrs[ATTRS.b0_field]
+
+    def test_works_as_keyword_argument(self, valid_spectrum_da):
+        """The DataArray must also be accepted as a keyword argument."""
+        assert _needs_one(da=valid_spectrum_da) == valid_spectrum_da.attrs[ATTRS.b0_field]
 
 
 class TestRequiresAttrsDocstring:
@@ -363,17 +356,17 @@ class TestRequiresAttrsDocstring:
 
     def test_injects_section_header(self):
         """The auto-generated docstring must contain a 'Required Attributes' header."""
-        assert "Required Attributes" in MockAccessor.needs_both.__doc__
+        assert "Required Attributes" in _needs_both.__doc__
 
     def test_injects_key_names(self):
         """Every required attr key must appear in the generated docstring."""
-        doc = MockAccessor.needs_both.__doc__
+        doc = _needs_both.__doc__
         assert ATTRS.b0_field in doc
         assert ATTRS.reference_frequency in doc
 
     def test_preserves_original_docstring(self):
         """The original docstring text must not be overwritten by the injection."""
-        assert "Original docstring." in MockAccessor.needs_both.__doc__
+        assert "Original docstring." in _needs_both.__doc__
 
     def test_handles_no_docstring(self):
         """Decorating a function with ``None`` docstring must not crash.
@@ -381,13 +374,13 @@ class TestRequiresAttrsDocstring:
         The decorator should gracefully create a new docstring containing
         only the 'Required Attributes' section.
         """
-        doc = MockAccessor.no_docstring.__doc__
+        doc = _no_docstring.__doc__
         assert doc is not None
         assert "Required Attributes" in doc
 
     def test_preserves_function_name(self):
         """``functools.wraps`` must preserve ``__name__`` for introspection and debugging."""  # noqa: E501
-        assert MockAccessor.needs_both.__name__ == "needs_both"
+        assert _needs_both.__name__ == "_needs_both"
 
 
 # =============================================================================
@@ -550,11 +543,13 @@ class TestAccessorDefaults:
         )
 
     def test_autophase_dim_is_none_by_design(self):
-        """`autophase` intentionally defaults `dim=None` for the resolver.
+        """`autophase` mirrors the domain-decorator rule: `dim` defaults to None.
 
-        It is resolver-managed: ``@resolves_spectral_dim`` fills ``dim`` at call
-        time by detecting ``frequency`` vs ``chemical_shift``, so it deliberately
-        diverges from the config-constant-default convention above.
+        The free function carries ``@ensures_domain(SPECTRAL_DIMS)`` — a
+        multi-label domain — whose merged resolution fills ``dim`` at call time
+        by detecting ``frequency`` vs ``chemical_shift``. The accessor forwarder
+        mirrors that signature. See ``TestDomainDimRule`` for the package-wide
+        biconditional this instance follows.
         """  # noqa: D205
         import inspect
 
@@ -562,6 +557,73 @@ class TestAccessorDefaults:
 
         sig = inspect.signature(XmrisAccessor.autophase)
         assert sig.parameters["dim"].default is None
+
+
+class TestDomainDimRule:
+    """Enforce the package-wide `dim`-default rule (the "biconditional").
+
+    ``dim`` defaults to ``None`` **iff** the function is domain-decorated with
+    a *multi-label* domain (the decorator's merged resolution fills it at call
+    time); every other ``dim`` defaults to a config constant. This replaces
+    per-function carve-outs with one mechanically-enforced rule.
+    """
+
+    @staticmethod
+    def _public_dim_functions():
+        """Yield (qualname, function, dim_default) for the public processing API."""
+        import inspect
+
+        import xmris.fitting.amares
+        import xmris.processing.baseline
+        import xmris.processing.fid
+        import xmris.processing.fourier
+        import xmris.processing.phasing
+        import xmris.processing.referencing
+        import xmris.processing.utils
+        import xmris.vendor.bruker
+
+        modules = [
+            xmris.processing.baseline,
+            xmris.processing.fid,
+            xmris.processing.fourier,
+            xmris.processing.phasing,
+            xmris.processing.referencing,
+            xmris.processing.utils,
+            xmris.fitting.amares,
+            xmris.vendor.bruker,
+        ]
+        for mod in modules:
+            for name, obj in inspect.getmembers(mod, inspect.isfunction):
+                # Only functions *defined* in the module (functools.wraps keeps
+                # __module__ pointing at the definition site), skip privates.
+                if name.startswith("_") or obj.__module__ != mod.__name__:
+                    continue
+                sig = inspect.signature(obj)
+                if "dim" not in sig.parameters:
+                    continue
+                yield f"{mod.__name__}.{name}", obj, sig.parameters["dim"].default
+
+    def test_dim_defaults_follow_biconditional(self):
+        """``dim=None`` ⟺ domain-decorated with a multi-label domain."""
+        checked = 0
+        for qualname, func, default in self._public_dim_functions():
+            domain_info = getattr(func, "__xmris_domain__", None)
+            multi_label = domain_info is not None and len(domain_info[0]) > 1
+            if multi_label:
+                assert default is None, (
+                    f"{qualname} is domain-decorated with a multi-label domain "
+                    f"but defaults dim={default!r}. Multi-label domain functions "
+                    f"must default dim=None (the decorator resolves it)."
+                )
+            else:
+                assert default is not None, (
+                    f"{qualname} defaults dim=None but is not domain-decorated "
+                    f"with a multi-label domain. Use the config constant "
+                    f"(e.g., DIMS.time) as the default."
+                )
+            checked += 1
+        # Sanity: the introspection must actually cover the processing API.
+        assert checked >= 10, f"only {checked} functions found — introspection broke?"
 
 
 # =============================================================================
@@ -725,41 +787,36 @@ class TestToPpm:
 
 
 # =============================================================================
-# 10. Domain Decorators: @resolves_spectral_dim
+# 10. Domain Resolution: _resolve_dim
 # =============================================================================
 
 
-@resolves_spectral_dim
-def _resolver_probe(da, dim=None):
-    """Test probe for ``@resolves_spectral_dim``: return the dim it settled on."""
-    return dim
+class TestResolveDim:
+    """Verify ``_resolve_dim`` identifies the unique dimension of a domain group.
 
-
-class TestResolvesSpectralDim:
-    """Verify ``@resolves_spectral_dim`` fills ``dim=None`` by introspection.
-
-    The *resolve* tier must inject the unique spectral dimension when the caller
-    omits ``dim``, never override an explicit ``dim``, and raise actionable
-    errors when resolution is impossible or ambiguous.
+    The shared resolution helper behind the domain decorators' merged
+    ``dim=None`` handling (and the visualization widgets' axis auto-detection):
+    it must find the unique candidate dimension and raise actionable errors
+    when resolution is impossible or ambiguous.
     """
 
-    def test_fills_none_with_frequency(self, valid_spectrum_da):
+    def test_finds_frequency(self, valid_spectrum_da):
         """A spectrum in Hz must resolve to ``DIMS.frequency``."""
-        assert _resolver_probe(valid_spectrum_da) == DIMS.frequency
+        assert _resolve_dim(valid_spectrum_da, SPECTRAL_DIMS) == DIMS.frequency
 
-    def test_fills_none_with_chemical_shift(self, valid_spectrum_da):
+    def test_finds_chemical_shift(self, valid_spectrum_da):
         """A spectrum in ppm must resolve to ``DIMS.chemical_shift``."""
         ppm = valid_spectrum_da.xmr.to_ppm()
-        assert _resolver_probe(ppm) == DIMS.chemical_shift
+        assert _resolve_dim(ppm, SPECTRAL_DIMS) == DIMS.chemical_shift
 
-    def test_respects_explicit_dim(self, valid_spectrum_da):
-        """An explicitly-passed ``dim`` must never be overridden."""
-        assert _resolver_probe(valid_spectrum_da, dim="custom") == "custom"
+    def test_finds_time(self, valid_fid_da):
+        """A FID must resolve ``TIME_DIMS`` to ``DIMS.time``."""
+        assert _resolve_dim(valid_fid_da, TIME_DIMS) == DIMS.time
 
-    def test_raises_when_no_spectral_dim(self, valid_fid_da):
+    def test_raises_when_no_candidate(self, valid_fid_da):
         """Time-domain input (no spectral dim) must raise with guidance."""
         with pytest.raises(ValueError, match="spectral dimension"):
-            _resolver_probe(valid_fid_da)
+            _resolve_dim(valid_fid_da, SPECTRAL_DIMS)
 
     def test_raises_when_ambiguous(self):
         """Multiple spectral dims present must raise and ask for an explicit dim."""
@@ -769,11 +826,11 @@ class TestResolvesSpectralDim:
             coords={DIMS.frequency: np.arange(4), DIMS.chemical_shift: np.arange(4)},
         )
         with pytest.raises(ValueError, match="[Aa]mbiguous"):
-            _resolver_probe(da)
+            _resolve_dim(da, SPECTRAL_DIMS)
 
 
 # =============================================================================
-# 11. Domain Decorators: @ensures_domain
+# 11. Domain Decorators: @ensures_domain (funnel contract)
 # =============================================================================
 
 
@@ -789,13 +846,20 @@ def _ensure_time_probe(da):
     return da
 
 
-class TestEnsuresDomain:
-    """Verify ``@ensures_domain`` auto-transforms input into the target domain.
+@ensures_domain(SPECTRAL_DIMS)
+def _funnel_dim_probe(da, dim=None):
+    """Funnel probe with a ``dim`` argument: return the dim the decorator settled on."""
+    return dim
 
-    The *ensures* tier must pass already-in-domain data through untouched
-    (identity, no FFT), Fourier-transform mismatched data into the target
-    domain, leave the result in that domain (no restore), and preserve
-    ``.attrs`` across the transform (the issue #21 coupling).
+
+class TestEnsuresDomain:
+    """Verify ``@ensures_domain`` implements the funnel contract.
+
+    The funnel flavor must pass already-in-domain data through untouched
+    (identity, no FFT), transform mismatched data into the target domain via
+    the standard converters, leave the result there (no restore), resolve a
+    ``dim=None`` argument after coercion, and preserve ``.attrs`` across the
+    transform (the issue #21 coupling).
     """
 
     def test_noop_when_already_spectral(self, valid_spectrum_da):
@@ -832,14 +896,209 @@ class TestEnsuresDomain:
         assert DIMS.time in result.dims
         assert DIMS.frequency not in result.dims
 
+    # --- merged dim resolution -------------------------------------------------
+
+    def test_resolves_dim_on_spectrum(self, valid_spectrum_da):
+        """``dim=None`` on an in-domain spectrum resolves to ``frequency``."""
+        assert _funnel_dim_probe(valid_spectrum_da) == DIMS.frequency
+
+    def test_resolves_dim_on_ppm(self, valid_spectrum_da):
+        """``dim=None`` on a ppm spectrum resolves to ``chemical_shift``."""
+        ppm = valid_spectrum_da.xmr.to_ppm()
+        assert _funnel_dim_probe(ppm) == DIMS.chemical_shift
+
+    def test_resolves_dim_after_coercion(self, valid_fid_da):
+        """A FID is coerced first, then ``dim=None`` resolves on the *coerced* array.
+
+        This is the ordering the old two-decorator stack made load-bearing;
+        merged into one decorator it can no longer be applied wrongly.
+        """
+        assert _funnel_dim_probe(valid_fid_da) == DIMS.frequency
+
+    def test_respects_explicit_dim(self, valid_spectrum_da):
+        """An explicitly-passed ``dim`` must never be overridden."""
+        assert _funnel_dim_probe(valid_spectrum_da, dim="custom") == "custom"
+
+    # --- ppm leg & complexity gate --------------------------------------------
+
+    def test_ppm_to_time_reconstructs_physical_dwell(self, valid_spectrum_da):
+        """Coercing a ppm spectrum to time routes ppm→Hz→FID with a physical dwell time.
+
+        Regression test for the latent dwell-time bug: computing the time axis
+        from *ppm* coordinate spacing would be off by the reference frequency
+        (a factor of ~1e8). The engine must reference back to Hz first.
+        """
+        ppm = valid_spectrum_da.xmr.to_ppm()
+        result = _ensure_time_probe(ppm)
+
+        assert DIMS.time in result.dims
+        hz = valid_spectrum_da.coords[DIMS.frequency].values
+        df = abs(hz[1] - hz[0])
+        expected_dt = 1.0 / (len(hz) * df)
+        actual_dt = float(result.coords[DIMS.time][1] - result.coords[DIMS.time][0])
+        np.testing.assert_allclose(actual_dt, expected_dt, rtol=1e-9)
+
+    def test_ppm_to_time_without_attrs_raises(self):
+        """The ppm leg needs referencing attrs — missing ones raise the standard fix."""
+        rng = np.random.default_rng()
+        bare_ppm = xr.DataArray(
+            rng.standard_normal(64) + 1j * rng.standard_normal(64),
+            dims=[DIMS.chemical_shift],
+            coords={DIMS.chemical_shift: np.linspace(0, 10, 64)},
+        )
+        with pytest.raises(ValueError, match="missing attributes"):
+            _ensure_time_probe(bare_ppm)
+
+    def test_real_spectrum_to_time_raises(self, valid_spectrum_da):
+        """Real-valued spectral data cannot be transformed to time — loud error."""
+        real_spec = valid_spectrum_da.copy(data=valid_spectrum_da.values.real)
+        with pytest.raises(ValueError, match="real-valued"):
+            _ensure_time_probe(real_spec)
+
 
 # =============================================================================
-# 12. Integration: autophase domain-agnostic pilot
+# 12. Domain Decorators: @computes_in (domain-preserving contract)
+# =============================================================================
+
+
+@computes_in(TIME_DIMS)
+def _time_scale_probe(da, dim=DIMS.time, factor=2.0):
+    """Length-preserving time-domain probe: scale values, preserve metadata."""
+    return da.copy(data=da.values * factor)
+
+
+@computes_in(TIME_DIMS)
+def _time_pad_probe(da, dim=DIMS.time):
+    """Length-changing time-domain probe: zero-fill to double length."""
+    from xmris.processing.fid import zero_fill
+
+    return zero_fill(da, dim=dim, target_points=2 * da.sizes[dim])
+
+
+class TestComputesIn:
+    """Verify ``@computes_in`` implements the domain-preserving contract.
+
+    The restore flavor must process in-domain input directly (no transform),
+    round-trip out-of-domain input through the standard converters and hand it
+    back in the input's representation with the original coordinates reassigned
+    verbatim (length-preserving ops), recompute coordinates for length-changing
+    ops, reject real-valued spectral input, and pass an explicitly-requested
+    foreign dim through untouched.
+    """
+
+    def test_in_domain_input_is_not_transformed(self, valid_fid_da):
+        """A FID handed to a time-domain op stays a FID — no round trip."""
+        result = _time_scale_probe(valid_fid_da)
+        assert list(result.dims) == list(valid_fid_da.dims)
+        np.testing.assert_allclose(result.values, valid_fid_da.values * 2.0)
+        np.testing.assert_array_equal(
+            result.coords[DIMS.time].values, valid_fid_da.coords[DIMS.time].values
+        )
+
+    def test_spectrum_round_trips_to_spectrum(self, valid_spectrum_da):
+        """A Hz spectrum comes back as a Hz spectrum (scaling commutes with the FFT)."""
+        result = _time_scale_probe(valid_spectrum_da)
+        assert DIMS.frequency in result.dims
+        assert DIMS.time not in result.dims
+        np.testing.assert_allclose(
+            result.values, valid_spectrum_da.values * 2.0, rtol=1e-12, atol=1e-12
+        )
+
+    def test_round_trip_restores_coords_verbatim(self, valid_spectrum_da):
+        """Length-preserving ops reassign the original coordinate exactly."""
+        result = _time_scale_probe(valid_spectrum_da)
+        np.testing.assert_array_equal(
+            result.coords[DIMS.frequency].values,
+            valid_spectrum_da.coords[DIMS.frequency].values,
+        )
+
+    def test_ppm_round_trips_to_ppm(self, valid_spectrum_da):
+        """A ppm spectrum comes back as a ppm spectrum with its exact coordinates."""
+        ppm = valid_spectrum_da.xmr.to_ppm()
+        result = _time_scale_probe(ppm)
+        assert DIMS.chemical_shift in result.dims
+        assert DIMS.time not in result.dims
+        np.testing.assert_array_equal(
+            result.coords[DIMS.chemical_shift].values,
+            ppm.coords[DIMS.chemical_shift].values,
+        )
+        np.testing.assert_allclose(result.values, ppm.values * 2.0, rtol=1e-12, atol=1e-12)
+
+    def test_round_trip_preserves_attrs(self, valid_spectrum_da):
+        """The full round trip must not drop ``.attrs`` (issue #21 guarantee)."""
+        result = _time_scale_probe(valid_spectrum_da)
+        for key, value in valid_spectrum_da.attrs.items():
+            assert result.attrs.get(key) == value
+
+    def test_length_change_recomputes_coords(self, valid_spectrum_da):
+        """Length-changing ops keep converter-recomputed coordinates (finer grid)."""
+        n = valid_spectrum_da.sizes[DIMS.frequency]
+        result = _time_pad_probe(valid_spectrum_da)
+        assert DIMS.frequency in result.dims
+        assert result.sizes[DIMS.frequency] == 2 * n
+        freqs = result.coords[DIMS.frequency].values
+        assert np.all(np.diff(freqs) > 0)  # monotonic physical axis
+
+    def test_real_spectrum_raises(self, valid_spectrum_da):
+        """Real-valued spectral input has no valid FID behind it — loud error."""
+        real_spec = valid_spectrum_da.copy(data=valid_spectrum_da.values.real)
+        with pytest.raises(ValueError, match="real-valued"):
+            _time_scale_probe(real_spec)
+
+    def test_explicit_foreign_dim_passes_through(self):
+        """An explicitly-requested non-domain dim disables coercion entirely."""
+        rng = np.random.default_rng()
+        kspace = xr.DataArray(
+            rng.standard_normal(32) + 1j * rng.standard_normal(32),
+            dims=["kx"],
+            coords={"kx": np.arange(32)},
+        )
+        result = _time_scale_probe(kspace, dim="kx")
+        assert list(result.dims) == ["kx"]
+        np.testing.assert_allclose(result.values, kspace.values * 2.0)
+
+    def test_decorator_stamps_introspection_metadata(self):
+        """The wrapper must expose ``__xmris_domain__`` for the architecture tests."""
+        assert _time_scale_probe.__xmris_domain__ == (TIME_DIMS, True)
+        assert _ensure_spectral_probe.__xmris_domain__ == (SPECTRAL_DIMS, False)
+
+
+# =============================================================================
+# 13. Converter Round Trip (the guarantee the domain engine relies on)
+# =============================================================================
+
+
+class TestConverterRoundTrip:
+    """``to_fid(to_spectrum(fid)) ≈ fid`` — unitary transforms, physical coords.
+
+    The ``computes_in`` contract is only sound because the converter pair is
+    numerically unitary (``norm="ortho"``) and reconstructs the physical time
+    axis. Pin that guarantee down to tight tolerances.
+    """
+
+    def test_values_round_trip(self, valid_fid_da):
+        """Data values must survive the round trip to ~1e-12."""
+        rt = to_fid(to_spectrum(valid_fid_da))
+        np.testing.assert_allclose(rt.values, valid_fid_da.values, rtol=0, atol=1e-12)
+
+    def test_time_coords_round_trip(self, valid_fid_da):
+        """The reconstructed time axis must match the original dwell spacing."""
+        rt = to_fid(to_spectrum(valid_fid_da))
+        np.testing.assert_allclose(
+            rt.coords[DIMS.time].values,
+            valid_fid_da.coords[DIMS.time].values,
+            rtol=0,
+            atol=1e-12,
+        )
+
+
+# =============================================================================
+# 14. Integration: autophase domain-agnostic pilot
 # =============================================================================
 
 
 class TestAutophasePilot:
-    """End-to-end: ``autophase`` wired to ``@ensures_domain`` + ``@resolves_spectral_dim``.
+    """End-to-end: ``autophase`` wired to ``@ensures_domain`` (funnel + merged resolution).
 
     Proves the taxonomy works through the real accessor: a FID is auto-FFT'd,
     phased, and returned as a spectrum with metadata intact; a spectrum is
@@ -864,6 +1123,13 @@ class TestAutophasePilot:
         assert DIMS.frequency in result.dims
 
     def test_autophase_respects_explicit_dim(self, valid_spectrum_da):
-        """An explicit ``dim`` is honored (resolver does not override it)."""
+        """An explicit ``dim`` is honored (resolution never overrides it)."""
         result = valid_spectrum_da.xmr.autophase(dim=DIMS.frequency)
         assert DIMS.frequency in result.dims
+
+    def test_autophase_on_ppm_stays_ppm(self, valid_spectrum_da):
+        """A ppm spectrum resolves to ``chemical_shift`` and stays in ppm."""
+        ppm = valid_spectrum_da.xmr.to_ppm()
+        result = ppm.xmr.autophase()
+        assert DIMS.chemical_shift in result.dims
+        assert DIMS.time not in result.dims

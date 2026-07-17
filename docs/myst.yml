@@ -94,6 +94,8 @@ project:
               title: FID Processing
             - file: api_reference/processing.phasing.md
               title: Phase Correction
+            - file: api_reference/processing.referencing.md
+              title: Axis Referencing (Hz ↔ ppm)
 
         # --- 2. Visualization Submenu ---
         - title: Visualization

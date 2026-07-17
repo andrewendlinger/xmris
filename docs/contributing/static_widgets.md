@@ -63,7 +63,8 @@ import numpy as np
 import traitlets
 import xarray as xr
 
-from xmris.core.utils import _check_dims, _resolve_spectral_dim, _spectral_axis_label
+from xmris.core.config import SPECTRAL_DIMS
+from xmris.core.utils import _check_dims, _resolve_dim, _spectral_axis_label
 
 from .._shared import load_css, load_esm
 
@@ -162,11 +163,11 @@ Use the shared resolver and validator, and take an explicit `dim` override:
 
 ```python
 if dim is None:
-    dim = _resolve_spectral_dim(da)   # canonical: frequency / chemical_shift
+    dim = _resolve_dim(da, SPECTRAL_DIMS)   # canonical: frequency / chemical_shift
 _check_dims(da, dim, "my_widget")
 ```
 
-`_resolve_spectral_dim` raises a helpful error for non-standard axis names, which
+`_resolve_dim` raises a helpful error for non-standard axis names, which
 is why the factory always exposes `dim: str | None = None` as an escape hatch.
 Derive axis labels from the coordinate's **lineage metadata**, not a hardcoded
 string:

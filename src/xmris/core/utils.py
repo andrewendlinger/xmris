@@ -2,7 +2,7 @@
 import numpy as np
 import xarray as xr
 
-from xmris.core.config import SPECTRAL_DIMS, XmrisTerm
+from xmris.core.config import SPECTRAL_DIMS, TIME_DIMS, XmrisTerm
 
 
 def _check_dims(da: xr.DataArray, dims: str | list[str], method_name: str) -> None:
@@ -21,43 +21,62 @@ def _check_dims(da: xr.DataArray, dims: str | list[str], method_name: str) -> No
         )
 
 
-def _resolve_spectral_dim(da: xr.DataArray) -> str:
-    """Identify the single spectral dimension present on ``da``.
+def _domain_label(candidates: frozenset[str]) -> str:
+    """Human-readable name of a domain dim-group, for error messages and docs."""
+    if candidates == SPECTRAL_DIMS:
+        return "spectral"
+    if candidates == TIME_DIMS:
+        return "time"
+    return "target"
 
-    Scans ``da.dims`` for a dimension belonging to the spectral domain
-    (``SPECTRAL_DIMS`` — ``frequency`` [Hz] or ``chemical_shift`` [ppm]). Used
-    by the ``@resolves_spectral_dim`` decorator to fill a ``dim=None`` argument.
+
+def _resolve_dim(da: xr.DataArray, candidates: frozenset[str]) -> str:
+    """Identify the single dimension of ``da`` belonging to ``candidates``.
+
+    Scans ``da.dims`` for a dimension in the given domain group (e.g.
+    ``SPECTRAL_DIMS`` — ``frequency`` [Hz] or ``chemical_shift`` [ppm]). Used
+    by the domain decorators in ``validation.py`` to fill a ``dim=None``
+    argument, and by the visualization widgets to auto-detect the display axis.
 
     Parameters
     ----------
     da : xr.DataArray
         The data to inspect.
+    candidates : frozenset of str
+        The candidate dimension names constituting the domain — use
+        ``SPECTRAL_DIMS`` or ``TIME_DIMS`` from :mod:`xmris.core.config`.
 
     Returns
     -------
     str
-        The name of the unique spectral dimension found.
+        The name of the unique matching dimension found.
 
     Raises
     ------
     ValueError
-        If no spectral dimension is present, or if more than one is present
+        If no candidate dimension is present, or if more than one is present
         (ambiguous — the caller must pass ``dim`` explicitly).
     """
-    found = [d for d in da.dims if d in SPECTRAL_DIMS]
+    label = _domain_label(candidates)
+    found = [d for d in da.dims if d in candidates]
 
     if not found:
+        if candidates == SPECTRAL_DIMS:
+            hint = (
+                "If this is time-domain data, transform it first:\n"
+                "    >>> obj = obj.xmr.to_spectrum()\n"
+                "Otherwise pass the dimension explicitly, e.g. `dim='frequency'`."
+            )
+        else:
+            hint = f"Pass the dimension explicitly, e.g. `dim={sorted(candidates)[0]!r}`."
         raise ValueError(
-            f"Could not resolve a spectral dimension: none of "
-            f"{sorted(SPECTRAL_DIMS)} are present in {list(da.dims)}.\n\n"
-            f"If this is time-domain data, transform it first:\n"
-            f"    >>> obj = obj.xmr.to_spectrum()\n"
-            f"Otherwise pass the dimension explicitly, e.g. `dim='frequency'`."
+            f"Could not resolve a {label} dimension: none of "
+            f"{sorted(candidates)} are present in {list(da.dims)}.\n\n{hint}"
         )
 
     if len(found) > 1:
         raise ValueError(
-            f"Ambiguous spectral dimension: multiple spectral dims {found} are "
+            f"Ambiguous {label} dimension: multiple {label} dims {found} are "
             f"present in {list(da.dims)}.\n\n"
             f"Pass the target dimension explicitly, e.g. `dim={found[0]!r}`."
         )
