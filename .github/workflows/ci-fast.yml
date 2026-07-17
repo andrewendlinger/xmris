@@ -16,10 +16,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
           cache-dependency-glob: "**/pyproject.toml"
@@ -34,8 +34,13 @@ jobs:
         run: uv run test
 
       - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v4
+        # Dependabot PRs and forks don't receive repo secrets, so CODECOV_TOKEN
+        # is empty and the tokenless upload hard-fails ("Token required because
+        # branch is protected"). Skip the upload in those contexts; keep it
+        # strict (fail_ci_if_error) on normal PRs.
+        if: ${{ github.actor != 'dependabot[bot]' && !github.event.pull_request.head.repo.fork }}
+        uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          file: ./coverage.xml
+          files: ./coverage.xml
           fail_ci_if_error: true
