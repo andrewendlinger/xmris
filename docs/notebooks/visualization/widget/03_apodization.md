@@ -72,10 +72,10 @@ da_fid.xmr.widget.apodize(
 :tags: [remove-input]
 
 from xmris.visualization.widget._static_exporter import export_widget_static
-from xmris.visualization.widget.apodizer.apodizer import apodize_interactive
+from xmris.visualization.widget.apodizer.apodizer import apodize
 
 export_widget_static(
-    apodize_interactive,
+    apodize,
     da_fid,
     unit="hz",
     lb_range=(0.0, 20.0),

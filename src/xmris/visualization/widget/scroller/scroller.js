@@ -1,3 +1,10 @@
+/**
+ * Rendering function for the AnyWidget spectra scroller.
+ *
+ * Shared helpers (`ticks`, `nfmt`, `setupCanvas`, `resizeCanvas`, `themeColors`,
+ * `watchTheme`, `showSnippetBanner`) come from `_shared/canvas.js`, which the
+ * Python asset loader concatenates ahead of this module.
+ */
 export function render({ model, el }) {
     const dpr = window.devicePixelRatio || 1;
     let W = model.get("width");
@@ -16,10 +23,6 @@ export function render({ model, el }) {
     canvasContainer.style.height = H + "px";
 
     const canvas = document.createElement("canvas");
-    canvas.width = W * dpr;
-    canvas.height = H * dpr;
-    canvas.style.width  = W + "px";
-    canvas.style.height = H + "px";
     canvas.className = "nmr-canvas";
     canvas.tabIndex = 0;
     canvasContainer.append(canvas);
@@ -84,41 +87,18 @@ export function render({ model, el }) {
     // Also, keep this comment if you take this code as reference for a new widget.
     const closeBtn = document.createElement("button");
     closeBtn.className = "nmr-btn nmr-btn-outline remove-me-close-btn";
-    closeBtn.textContent = "Close";
+    closeBtn.textContent = "Extract Slice";
+    closeBtn.title = "Emit the .isel() snippet for the current index";
 
     closeBtn.onclick = () => {
         const dim = model.get("scroll_dim");
         const idx = model.get("current_index");
-        const hintStr = `slice_da = da`;
-        const targetStr = `.isel({${dim}: ${idx}})`;
-
-        root.innerHTML = `
-            <div class="nmr-success-banner">
-                <div class="nmr-success-title">Slice Isolated</div>
-                <div class="nmr-success-subtitle">Copy the generated code snippet below to extract index ${idx} along '${dim}':</div>
-                <div class="nmr-copy-container">
-                    <div class="nmr-code-block">
-                        <span class="nmr-code-hint">${hintStr}</span><span class="nmr-code-target">${targetStr}</span>
-                    </div>
-                    <button id="nmr-copy-btn" class="nmr-copy-btn">Copy Code</button>
-                </div>
-            </div>
-        `;
-
-        const copyBtn = root.querySelector("#nmr-copy-btn");
-        copyBtn.onclick = () => {
-            navigator.clipboard.writeText(targetStr).then(() => {
-                copyBtn.textContent = "Copied ✓";
-                copyBtn.classList.add("copied");
-                setTimeout(() => {
-                    copyBtn.textContent = "Copy Code";
-                    copyBtn.classList.remove("copied");
-                }, 2000);
-            }).catch(err => {
-                copyBtn.textContent = "Failed";
-                copyBtn.classList.add("failed");
-            });
-        };
+        showSnippetBanner(root, {
+            title: "Slice Isolated",
+            subtitle: `Copy the generated code snippet below to extract index ${idx} along '${dim}':`,
+            hint: "slice_da = da",
+            target: `.isel({${dim}: ${idx}})`,
+        });
     };
 
     grpR.append(hints, closeBtn);
@@ -126,8 +106,7 @@ export function render({ model, el }) {
     root.append(canvasContainer, tlContainer, bar);
     el.appendChild(root);
 
-    const ctx = canvas.getContext("2d");
-    ctx.scale(dpr, dpr);
+    const ctx = setupCanvas(canvas, W, H, dpr);
 
     /* =========================================================================
        Canvas Drawing & Math
@@ -169,6 +148,8 @@ export function render({ model, el }) {
         const S = model.get("spectra");
         if (!P?.length || !S?.length) return;
 
+        const C = themeColors(root);
+
         const N = S.length;
         const idx = model.get("current_index");
         const doTrace = model.get("show_trace");
@@ -196,31 +177,27 @@ export function render({ model, el }) {
         const mg = { t: 22, r: 22, b: 44, l: 64 };
         const pw = W - mg.l - mg.r, ph = H - mg.t - mg.b;
 
-        // NMR standard: higher ppm values are on the left
-        const isNMR = model.get("x_label").toLowerCase().includes("ppm");
-        const toX = v => isNMR
-            ? mg.l + pw * (xMax - v) / (xMax - xMin)
-            : mg.l + pw * (v - xMin) / (xMax - xMin);
-
+        // Spectral axis: NMR convention plots higher values on the left.
+        const toX = v => mg.l + pw * (xMax - v) / (xMax - xMin);
         const toY = v => mg.t + ph * (1 - (v - gYMin) / (gYMax - gYMin));
 
         const xt = ticks(xMin, xMax, 8);
         const yt = ticks(gYMin, gYMax, 6);
 
         /* Axes and Grid */
-        ctx.strokeStyle = "#e0e0e0"; ctx.lineWidth = 1.0;
+        ctx.strokeStyle = C.grid; ctx.lineWidth = 1.0;
         ctx.beginPath();
         for (const v of xt) { const x = toX(v); ctx.moveTo(x, mg.t); ctx.lineTo(x, mg.t+ph); }
         for (const v of yt) { const y = toY(v); ctx.moveTo(mg.l, y); ctx.lineTo(mg.l+pw, y); }
         ctx.stroke();
 
-        ctx.strokeStyle = "#333"; ctx.lineWidth = 1;
+        ctx.strokeStyle = C.axis; ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.moveTo(mg.l, mg.t); ctx.lineTo(mg.l, mg.t+ph); ctx.lineTo(mg.l+pw, mg.t+ph);
         ctx.stroke();
 
         /* Labels */
-        ctx.fillStyle = "#666"; ctx.font = "11px sans-serif";
+        ctx.fillStyle = C.muted; ctx.font = "11px sans-serif";
         ctx.beginPath(); ctx.textAlign = "center"; ctx.textBaseline = "top";
         for (const v of xt) {
             const x = toX(v);
@@ -237,7 +214,7 @@ export function render({ model, el }) {
         }
         ctx.stroke();
 
-        ctx.fillStyle = "#444"; ctx.font = "12px sans-serif";
+        ctx.fillStyle = C.label; ctx.font = "12px sans-serif";
         ctx.textAlign = "center"; ctx.textBaseline = "top";
         ctx.fillText(model.get("x_label"), mg.l + pw/2, mg.t + ph + 28);
 
@@ -251,20 +228,21 @@ export function render({ model, el }) {
             for (let k = maxK; k >= 1; k--) {
                 const ti = idx - k;
                 const alpha = 0.5 * (1 - (k - 1) / nTrace); // Fade out older traces
-                drawLine(S[ti], P, toX, toY, xMin, xMax, `rgba(0, 85, 170, ${alpha})`, 1);
+                drawLine(S[ti], P, toX, toY, xMin, xMax, C.accent, 1, alpha);
             }
         }
 
         // Active Trace
-        drawLine(S[idx], P, toX, toY, xMin, xMax, "#0055aa", 1.8);
+        drawLine(S[idx], P, toX, toY, xMin, xMax, C.accent, 1.8, 1.0);
 
         ctx.restore();
     }
 
-    function drawLine(d, P, toX, toY, xMin, xMax, color, width) {
+    function drawLine(d, P, toX, toY, xMin, xMax, color, width, alpha) {
         ctx.beginPath();
         ctx.strokeStyle = color;
         ctx.lineWidth = width;
+        ctx.globalAlpha = alpha === undefined ? 1.0 : alpha;
         let isStarted = false;
 
         for (let i = 0; i < P.length; i++) {
@@ -278,23 +256,7 @@ export function render({ model, el }) {
             }
         }
         ctx.stroke();
-    }
-
-    function ticks(lo, hi, n) {
-        const r = hi - lo; if (r <= 0) return [lo];
-        const raw = r / n, mag = Math.pow(10, Math.floor(Math.log10(raw)));
-        const q = raw / mag;
-        const step = q < 1.5 ? mag : q < 3.5 ? 2*mag : q < 7.5 ? 5*mag : 10*mag;
-        const out = []; let v = Math.ceil(lo / step) * step;
-        while (v <= hi + step*1e-9) { out.push(parseFloat(v.toPrecision(12))); v += step; }
-        return out;
-    }
-
-    function nfmt(n) {
-        const a = Math.abs(n);
-        if (n === 0) return "0";
-        if (a >= 1e4 || (a > 0 && a < .01)) return n.toExponential(1);
-        return a >= 100 ? n.toFixed(0) : a >= 1 ? n.toFixed(1) : n.toFixed(2);
+        ctx.globalAlpha = 1.0;
     }
 
     /* =========================================================================
@@ -305,6 +267,17 @@ export function render({ model, el }) {
 
     model.on("change:current_index change:show_trace change:trace_count change:xlim change:ylim", reDraw);
     model.on("change:spectra change:x_coords", recompDraw);
+
+    // Responsive resizing
+    model.on("change:width change:height", () => {
+        W = model.get("width");
+        H = model.get("height");
+        root.style.width = W + "px";
+        canvasContainer.style.width = W + "px";
+        canvasContainer.style.height = H + "px";
+        resizeCanvas(canvas, ctx, W, H, dpr);
+        scheduleDraw();
+    });
 
     // Inputs
     slider.addEventListener("input", () => { model.set("current_index", parseInt(slider.value)); model.save_changes(); });
@@ -360,6 +333,9 @@ export function render({ model, el }) {
             tmr = null;
         }
     });
+
+    // Redraw when the OS light/dark preference flips
+    watchTheme(scheduleDraw);
 
     recomputeY();
     scheduleDraw();

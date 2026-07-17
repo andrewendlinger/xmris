@@ -5,6 +5,10 @@ import numpy as np
 import traitlets
 import xarray as xr
 
+from xmris.core.utils import _check_dims, _resolve_spectral_dim, _spectral_axis_label
+
+from .._shared import load_css, load_esm
+
 _HERE = pathlib.Path(__file__).parent
 
 
@@ -42,8 +46,8 @@ class PhaseWidget(anywidget.AnyWidget):
         The frequency/coordinate where the $p_1$ phase shift is zero.
     """
 
-    _esm = _HERE / "phase.js"
-    _css = _HERE / "phase.css"
+    _esm = load_esm(_HERE / "phase.js")
+    _css = load_css(_HERE / "phase.css")
 
     width = traitlets.Int(740).tag(sync=True)
     height = traitlets.Int(400).tag(sync=True)
@@ -61,6 +65,7 @@ class PhaseWidget(anywidget.AnyWidget):
 
 def phase_spectrum(
     da: xr.DataArray,
+    dim: str | None = None,
     width: int = 740,
     height: int = 400,
     show_grid: bool = True,
@@ -69,14 +74,18 @@ def phase_spectrum(
     """
     Instantiate an interactive phase correction viewer for a 1-D complex xarray.
 
-    This function automatically detects the spectral dimension and sets a
-    physically sensible pivot point at the maximum signal intensity.
+    The spectral axis is resolved from the project vocabulary and the pivot is
+    placed at the maximum signal intensity for physically sensible first-order
+    phasing.
 
     Parameters
     ----------
     da : xr.DataArray
-        A 1-dimensional, complex-valued DataArray. Must contain coordinates
-        representing the spectral axis (e.g., 'ppm' or 'Hz').
+        A 1-dimensional, complex-valued DataArray carrying a spectral coordinate.
+    dim : str, optional
+        Spectral dimension to plot along. If None (default), the canonical
+        spectral dimension (``frequency`` or ``chemical_shift``) is resolved
+        automatically; pass it explicitly for non-standard axis names.
     width : int, optional
         Width of the widget in pixels. The default is 740.
     height : int, optional
@@ -94,7 +103,8 @@ def phase_spectrum(
     Raises
     ------
     ValueError
-        If the input `da` is not 1-dimensional or contains non-complex data.
+        If the input `da` is not 1-dimensional, contains non-complex data, or no
+        spectral dimension can be resolved (pass `dim` explicitly in that case).
 
     Notes
     -----
@@ -108,26 +118,21 @@ def phase_spectrum(
     if not np.iscomplexobj(da.values):
         raise ValueError("Phasing requires complex-valued data (Real + Imaginary).")
 
-    spec_dim = None
-    x_label = "Frequency"
+    # Resolve the spectral axis: an explicit `dim` wins; otherwise auto-detect the
+    # canonical spectral dimension (frequency / chemical_shift) via the shared resolver.
+    if dim is None:
+        dim = _resolve_spectral_dim(da)
+    _check_dims(da, dim, "phase_spectrum")
 
-    # Identify spectral dimension by common naming conventions
-    for d in da.dims:
-        d_str = str(d).lower()
-        if any(k in d_str for k in ("ppm", "chem", "shift")):
-            spec_dim = d
-            x_label = "Chemical Shift [ppm]"
-            break
-        elif any(k in d_str for k in ("hz", "freq")):
-            spec_dim = d
-            x_label = "Frequency [Hz]"
-            break
+    # Build the display axis from the coordinate and its lineage metadata (no name sniffing).
+    if dim in da.coords:
+        coord = da.coords[dim]
+        x_vals = coord.values.astype(float)
+        x_label = _spectral_axis_label(dim, coord)
+    else:
+        x_vals = np.arange(da.sizes[dim], dtype=float)
+        x_label = str(dim)
 
-    if spec_dim is None:
-        spec_dim = da.dims[0]
-        x_label = str(spec_dim)
-
-    x_vals = da.coords[spec_dim].values.astype(float)
     vals = da.values
     mag_vals = np.abs(vals).astype(float)
 

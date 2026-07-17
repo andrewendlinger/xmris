@@ -65,6 +65,35 @@ def _resolve_spectral_dim(da: xr.DataArray) -> str:
     return str(found[0])
 
 
+def _spectral_axis_label(dim: str, coord: xr.DataArray) -> str:
+    """Build an axis label from a coordinate's lineage metadata.
+
+    Prefers the coordinate's ``long_name``/``units`` attrs (set by xmris when it
+    builds spectral coordinates) over any hardcoded string, falling back to the
+    bare dimension name when that metadata is absent. Shared by the visualization
+    widgets so no widget hardcodes an axis label.
+
+    Parameters
+    ----------
+    dim : str
+        Name of the spectral dimension (used as the fallback label).
+    coord : xr.DataArray
+        The coordinate carrying the axis values and its ``.attrs`` metadata.
+
+    Returns
+    -------
+    str
+        A display label such as ``"Chemical Shift [ppm]"``.
+    """
+    long_name = coord.attrs.get("long_name")
+    units = coord.attrs.get("units")
+    if long_name and units:
+        return f"{long_name} [{units}]"
+    if long_name:
+        return str(long_name)
+    return str(dim)
+
+
 def as_variable(term: XmrisTerm, dims: str | tuple, data: np.ndarray) -> xr.Variable:
     """Wrap a numpy array into an xarray Variable.
 

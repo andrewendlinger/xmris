@@ -51,9 +51,7 @@ clean_fid = np.exp(-t / 0.05) * (
 )
 noise = rng.normal(scale=0.08, size=n_points) + 1j * rng.normal(scale=0.08, size=n_points)
 
-da_fid = xr.DataArray(
-    clean_fid + noise, dims=["time"], coords={"time": t}
-)
+da_fid = xr.DataArray(clean_fid + noise, dims=["time"], coords={"time": t})
 da_spec = da_fid.xmr.to_spectrum()
 
 # Intentionally ruin the phase
@@ -81,9 +79,9 @@ from xmris.visualization.widget.phase.phase import phase_spectrum
 
 # This will render the interactive canvas in the docs!
 export_widget_static(
-    phase_spectrum,     # The widget generating function
-    da_ruined,          # Positional arguments
-    width=700,          # Keyword arguments
+    phase_spectrum,  # The widget generating function
+    da_ruined,  # Positional arguments
+    width=700,  # Keyword arguments
 )
 ```
 
@@ -102,7 +100,7 @@ Interactive widgets are great for exploration, but they are generally bad for re
 
 When you have achieved the desired phase, click the **Close** button in the widget control bar. The canvas will unmount, and the widget will generate a strict, reproducible code snippet reflecting your final parameters.
 
-(Screenshot only)
+*Note: Screenshot only*
 
 ![Screenshot of the widget (part 2)](../../../assets/notebook-assets/screenshot_widget_phase_spectrum_II.png)
 

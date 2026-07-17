@@ -122,6 +122,7 @@ class XmrisWidgetAccessor:
 
     def phase_spectrum(
         self,
+        dim: str | None = None,
         width: int = 740,
         height: int = 400,
         show_grid: bool = True,
@@ -137,6 +138,10 @@ class XmrisWidgetAccessor:
 
         Parameters
         ----------
+        dim : str, optional
+            Spectral dimension to plot along. If None (default), the canonical
+            spectral dimension (frequency or chemical_shift) is auto-detected;
+            pass it explicitly for non-standard axis names.
         width : int, optional
             Width of the widget in pixels. Default is 740.
         height : int, optional
@@ -171,9 +176,10 @@ class XmrisWidgetAccessor:
         # Lazy import to avoid loading AnyWidget/frontend assets unless requested
         from xmris.visualization.widget import phase_spectrum
 
-        # The underlying function handles the 1-D and complex-type validation
+        # The underlying function handles the 1-D, complex-type, and dim validation
         return phase_spectrum(
             self._obj,
+            dim=dim,
             width=width,
             height=height,
             show_grid=show_grid,
@@ -184,6 +190,7 @@ class XmrisWidgetAccessor:
     def scroll_spectra(
         self,
         scroll_axis: str | None = None,
+        dim: str | None = None,
         part: str = "real",
         xlim: tuple[float, float] | None = None,
         ylim: tuple[float, float] | None = None,
@@ -204,9 +211,12 @@ class XmrisWidgetAccessor:
         Parameters
         ----------
         scroll_axis : str, optional
-            The specific dimension to scroll through. If None, it attempts to
-            auto-detect 'repetitions' or 'averages', or falls back to the
-            non-spectral dimension.
+            The dimension to scroll through. If None, it is derived as the
+            non-spectral dimension of the 2-D array.
+        dim : str, optional
+            The spectral (display) dimension. If None, the canonical spectral
+            dimension (frequency or chemical_shift) is auto-detected; pass it
+            explicitly for non-standard axis names.
         part : {'real', 'imag', 'abs'}, optional
             Which mathematical component of complex data to display. Default is 'real'.
         xlim : tuple of float, optional
@@ -241,6 +251,7 @@ class XmrisWidgetAccessor:
         return scroll_spectra(
             self._obj,
             scroll_axis=scroll_axis,
+            dim=dim,
             part=part,
             xlim=xlim,
             ylim=ylim,
@@ -255,8 +266,8 @@ class XmrisWidgetAccessor:
         self,
         dim: str | None = None,
         unit: str = "ppm",
-        width: int = 800,
-        height: int = 600,
+        width: int = 740,
+        height: int = 550,
         lb_range: tuple[float, float] = (0.0, 50.0),
         gb_range: tuple[float, float] = (0.0, 50.0),
         **kwargs,
@@ -276,9 +287,9 @@ class XmrisWidgetAccessor:
         unit : {'ppm', 'hz'}, optional
             The unit for the spectral x-axis display. Default is 'ppm'.
         width : int, optional
-            Width of the widget in pixels. Default is 800.
+            Width of the widget in pixels. Default is 740.
         height : int, optional
-            Height of the widget in pixels. Default is 600.
+            Height of the widget in pixels. Default is 550.
         lb_range : tuple of float, optional
             The (min, max) range for the Line Broadening slider. Default is (0.0, 50.0).
         gb_range : tuple of float, optional
@@ -307,9 +318,9 @@ class XmrisWidgetAccessor:
           and imposes a Gaussian shape (gb) for resolution enhancement.
         """  # noqa: E501
         # Lazy import to avoid loading AnyWidget/frontend assets unless requested
-        from xmris.visualization.widget import apodize_interactive
+        from xmris.visualization.widget import apodize
 
-        return apodize_interactive(
+        return apodize(
             da=self._obj,
             dim=dim,
             unit=unit,
@@ -341,8 +352,10 @@ class XmrisSpectrumCoordsMixin:
         # 1. Calculate the math
         ppm_coords = carrier_ppm + (hz_coords / mhz)
 
-        # 2. Build the fully-formed xarray Variable (data + metadata)
-        shift_var = as_variable(DIMS.chemical_shift, dim, ppm_coords)
+        # 2. Build the fully-formed xarray Variable (data + metadata). Use the
+        #    COORDS term (carries unit="ppm") so the coordinate's lineage is
+        #    complete — mirrors `to_hz` using COORDS.frequency (unit="Hz").
+        shift_var = as_variable(COORDS.chemical_shift, dim, ppm_coords)
 
         # 3. Assign and swap in one clean sweep
         obj = self._obj.assign_coords({DIMS.chemical_shift: shift_var})

@@ -1,4 +1,10 @@
-export const MRSDSP = {
+/**
+ * Dependency-free DSP engine (radix-2 FFT + apodization windows) used to
+ * preview the spectrum in the browser without a live kernel. It mirrors the
+ * Python `apodize_exp` / `apodize_lg` methods the widget wraps — keep the two
+ * consistent if the math changes.
+ */
+const MRSDSP = {
     _roll(arr, shift) {
         const n = arr.length;
         const res = new Float64Array(n);
@@ -84,8 +90,8 @@ export function render({ model, el }) {
     root.className = "nmr-viewer";
     root.style.width = W + "px";
 
-    const H_top = Math.floor(H * 0.35);
-    const H_bot = Math.floor(H * 0.65);
+    let H_top = Math.floor(H * 0.35);
+    let H_bot = Math.floor(H * 0.65);
 
     const canvasContainer = document.createElement("div");
     canvasContainer.className = "nmr-canvas-container";
@@ -94,14 +100,10 @@ export function render({ model, el }) {
     // Top Canvas (FID)
     const topCanvas = document.createElement("canvas");
     topCanvas.className = "nmr-canvas top-canvas";
-    topCanvas.width = W * dpr; topCanvas.height = H_top * dpr;
-    topCanvas.style.width = W + "px"; topCanvas.style.height = H_top + "px";
 
     // Bottom Canvas (Spectrum)
     const botCanvas = document.createElement("canvas");
     botCanvas.className = "nmr-canvas bot-canvas";
-    botCanvas.width = W * dpr; botCanvas.height = H_bot * dpr;
-    botCanvas.style.width = W + "px"; botCanvas.style.height = H_bot + "px";
 
     canvasContainer.append(topCanvas, botCanvas);
 
@@ -144,6 +146,8 @@ export function render({ model, el }) {
                 </label>
             </div>
             <div class="nmr-grp">
+                <!-- CONVENTION: 'remove-me-close-btn' lets the static-docs exporter hide
+                     this kernel-dependent button. Keep the class if you copy this widget. -->
                 <button id="btn-close" class="nmr-btn nmr-btn-outline remove-me-close-btn">Close</button>
             </div>
         </div>
@@ -162,15 +166,15 @@ export function render({ model, el }) {
     const grpGb = root.querySelector("#grp-gb");
     const btnClose = root.querySelector("#btn-close");
 
-    const ctxT = topCanvas.getContext("2d"); ctxT.scale(dpr, dpr);
-    const ctxB = botCanvas.getContext("2d"); ctxB.scale(dpr, dpr);
+    let ctxT = setupCanvas(topCanvas, W, H_top, dpr);
+    let ctxB = setupCanvas(botCanvas, W, H_bot, dpr);
 
     let cached_orig_spec = null;
 
-    function getTraceColor(mode) {
-        if (mode === 'real') return "#0055aa";
-        if (mode === 'imag') return "#e63946";
-        return "#111111"; // Magnitude
+    function getTraceColor(mode, C) {
+        if (mode === 'real') return C.real;
+        if (mode === 'imag') return C.imag;
+        return C.mag; // Magnitude
     }
 
     function calcMag(re, im) {
@@ -198,6 +202,8 @@ export function render({ model, el }) {
         const re_t = model.get("reals_t");
         const im_t = model.get("imags_t");
         if (!P_t?.length || !re_t?.length) return;
+
+        const C = themeColors(root);
 
         const N = P_t.length;
         const lb = model.get("lb");
@@ -271,20 +277,19 @@ export function render({ model, el }) {
         // 2. Rendering Helper
         function renderAxes(ctx, w, h, mg, xRange, yRange, invX, xLabel, xticks, yticks) {
             ctx.clearRect(0, 0, w, h);
-            ctx.strokeStyle = "#333"; ctx.lineWidth = 1;
             const pw = w - mg.l - mg.r, ph = h - mg.t - mg.b;
 
             if (model.get("show_grid")) {
-                ctx.strokeStyle = "#eee"; ctx.beginPath();
+                ctx.strokeStyle = C.gridSoft; ctx.lineWidth = 1.0; ctx.beginPath();
                 for (const v of xticks) { const x = invX ? toXr(v) : toX(v); ctx.moveTo(x, mg.t); ctx.lineTo(x, mg.t+ph); }
                 for (const v of yticks) { const y = toY(v); ctx.moveTo(mg.l, y); ctx.lineTo(mg.l+pw, y); }
                 ctx.stroke();
             }
 
-            ctx.strokeStyle = "#333";
+            ctx.strokeStyle = C.axis; ctx.lineWidth = 1;
             ctx.beginPath(); ctx.moveTo(mg.l, mg.t); ctx.lineTo(mg.l, mg.t+ph); ctx.lineTo(mg.l+pw, mg.t+ph); ctx.stroke();
 
-            ctx.fillStyle = "#666"; ctx.font = "10px sans-serif";
+            ctx.fillStyle = C.muted; ctx.font = "10px sans-serif";
             ctx.beginPath(); ctx.textAlign = "center"; ctx.textBaseline = "top";
             for (const v of xticks) {
                 const x = invX ? toXr(v) : toX(v);
@@ -299,7 +304,7 @@ export function render({ model, el }) {
             }
             ctx.stroke();
 
-            ctx.fillStyle = "#444"; ctx.font = "11px sans-serif";
+            ctx.fillStyle = C.label; ctx.font = "11px sans-serif";
             ctx.textAlign = "center"; ctx.textBaseline = "top";
             ctx.fillText(xLabel, mg.l + pw/2, mg.t + ph + 22);
 
@@ -324,8 +329,8 @@ export function render({ model, el }) {
         const axT = renderAxes(ctxT, W, H_top, mgT, [P_t[0], P_t[P_t.length-1]], yT, false, "Time [s]", xtT, ytT);
 
         ctxT.save(); ctxT.beginPath(); ctxT.rect(mgT.l, mgT.t, axT.pw, axT.ph); ctxT.clip();
-        if (showOrig) drawTrace(ctxT, P_t, fid_orig, axT.toX, axT.toY, "#999", 1.5, 0.5);
-        drawTrace(ctxT, P_t, fid_disp, axT.toX, axT.toY, getTraceColor(fidMode), 1.5, 1.0);
+        if (showOrig) drawTrace(ctxT, P_t, fid_orig, axT.toX, axT.toY, C.origTrace, 1.5, 0.5);
+        drawTrace(ctxT, P_t, fid_disp, axT.toX, axT.toY, getTraceColor(fidMode, C), 1.5, 1.0);
 
         // Envelope normalized scaling to FID maximum limits
         const maxFid = Math.max(Math.abs(yT.max), Math.abs(yT.min));
@@ -334,7 +339,7 @@ export function render({ model, el }) {
         for(let i=0; i<N; i++) envScaled[i] = (envelope[i] / maxEnv) * maxFid;
 
         ctxT.setLineDash([4, 4]);
-        drawTrace(ctxT, P_t, envScaled, axT.toX, axT.toY, "#d97706", 2.0, 0.85);
+        drawTrace(ctxT, P_t, envScaled, axT.toX, axT.toY, C.envelope, 2.0, 0.85);
         ctxT.restore();
 
         // --- Render Bottom Canvas (Spectrum) ---
@@ -344,22 +349,9 @@ export function render({ model, el }) {
         const axB = renderAxes(ctxB, W, H_bot, mgB, [P_x[0], P_x[P_x.length-1]], yB, true, model.get("x_label"), xtB, ytB);
 
         ctxB.save(); ctxB.beginPath(); ctxB.rect(mgB.l, mgB.t, axB.pw, axB.ph); ctxB.clip();
-        if (showOrig) drawTrace(ctxB, P_x, spec_orig, axB.toXr, axB.toY, "#999", 1.5, 0.5);
-        drawTrace(ctxB, P_x, spec_disp, axB.toXr, axB.toY, getTraceColor(mode), 1.5, 1.0);
+        if (showOrig) drawTrace(ctxB, P_x, spec_orig, axB.toXr, axB.toY, C.origTrace, 1.5, 0.5);
+        drawTrace(ctxB, P_x, spec_disp, axB.toXr, axB.toY, getTraceColor(mode, C), 1.5, 1.0);
         ctxB.restore();
-    }
-
-    function ticks(lo, hi, n) {
-        const r = hi - lo; if (r <= 0) return [lo];
-        const raw = r / n, mag = Math.pow(10, Math.floor(Math.log10(raw)));
-        const q = raw / mag, step = q < 1.5 ? mag : q < 3.5 ? 2*mag : q < 7.5 ? 5*mag : 10*mag;
-        const out = []; let v = Math.ceil(lo / step) * step;
-        while (v <= hi + step*1e-9) { out.push(parseFloat(v.toPrecision(12))); v += step; }
-        return out;
-    }
-    function nfmt(n) {
-        const a = Math.abs(n); if (n === 0) return "0";
-        return (a >= 1e4 || (a > 0 && a < .001)) ? n.toExponential(1) : a >= 100 ? n.toFixed(0) : a >= 1 ? n.toFixed(1) : n.toFixed(2);
     }
 
     // 3. Observers & Wiring
@@ -374,33 +366,34 @@ export function render({ model, el }) {
         const lb = model.get("lb").toFixed(2);
         const gb = model.get("gb").toFixed(2);
 
-        const hintStr = `da_apodized = da`;
-        const targetStr = method === "exp" ? `.xmr.apodize_exp(lb=${lb})` : `.xmr.apodize_lg(lb=${lb}, gb=${gb})`;
+        const targetStr = method === "exp"
+            ? `.xmr.apodize_exp(lb=${lb})`
+            : `.xmr.apodize_lg(lb=${lb}, gb=${gb})`;
 
-        root.innerHTML = `
-            <div class="nmr-success-banner">
-                <div class="nmr-success-title">Apodization Parameters Extracted</div>
-                <div class="nmr-success-subtitle">Copy the generated code snippet below to apply this filter to your dataset:</div>
-                <div class="nmr-copy-container">
-                    <div class="nmr-code-block">
-                        <span class="nmr-code-hint">${hintStr}</span><span class="nmr-code-target">${targetStr}</span>
-                    </div>
-                    <button id="nmr-copy-btn" class="nmr-copy-btn">Copy Code</button>
-                </div>
-            </div>
-        `;
-
-        const copyBtn = root.querySelector("#nmr-copy-btn");
-        copyBtn.onclick = () => {
-            navigator.clipboard.writeText(targetStr).then(() => {
-                copyBtn.textContent = "Copied ✓"; copyBtn.classList.add("copied");
-                setTimeout(() => { copyBtn.textContent = "Copy Code"; copyBtn.classList.remove("copied"); }, 2000);
-            });
-        };
+        showSnippetBanner(root, {
+            title: "Apodization Parameters Extracted",
+            subtitle: "Copy the generated code snippet below to apply this filter to your dataset:",
+            hint: "da_apodized = da",
+            target: targetStr,
+        });
     };
 
-    model.on("change:lb change:gb change:method change:display_mode change:show_orig", scheduleDraw);
+    model.on("change:lb change:gb change:method change:display_mode change:show_orig change:show_grid", scheduleDraw);
     model.on("change:reals_t", () => { cached_orig_spec = null; scheduleDraw(); });
+
+    // Responsive resizing
+    model.on("change:width change:height", () => {
+        W = model.get("width"); H = model.get("height");
+        H_top = Math.floor(H * 0.35); H_bot = Math.floor(H * 0.65);
+        root.style.width = W + "px";
+        canvasContainer.style.width = W + "px";
+        resizeCanvas(topCanvas, ctxT, W, H_top, dpr);
+        resizeCanvas(botCanvas, ctxB, W, H_bot, dpr);
+        scheduleDraw();
+    });
+
+    // Redraw when the OS light/dark preference flips
+    watchTheme(scheduleDraw);
 
     scheduleDraw();
 }

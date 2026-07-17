@@ -1,0 +1,295 @@
+/* =========================================================================
+   xmris shared widget theme.
+   Concatenated ahead of each widget's own <name>.css by the Python asset
+   loader (_shared/__init__.py::load_css). Holds the `--nmr-*` design tokens
+   (light + dark) and the invariant `nmr-*` chrome shared by every widget.
+   Widget-specific / layout classes live in the widget's own CSS and override
+   these defaults (concatenated afterwards, so they win at equal specificity).
+   ========================================================================= */
+
+:root {
+    --nmr-bg: #ffffff;
+    --nmr-panel: #fafafa;
+    --nmr-border: #e0e0e0;
+    --nmr-border-soft: #eeeeee;
+    --nmr-fg: #333333;
+    --nmr-fg-strong: #111111;
+    --nmr-muted: #666666;
+    --nmr-muted-2: #888888;
+    --nmr-label: #444444;
+    --nmr-input-bg: #f9f9f9;
+    --nmr-input-border: #cccccc;
+    --nmr-grid: #e0e0e0;
+    --nmr-grid-soft: #eeeeee;
+    --nmr-axis: #333333;
+    --nmr-zero-line: #cccccc;
+    --nmr-pivot: rgba(100, 100, 100, 0.5);
+    --nmr-accent: #0055aa;
+    --nmr-accent-strong: #004488;
+    --nmr-real: #0055aa;
+    --nmr-imag: #e63946;
+    --nmr-mag: #111111;
+    --nmr-envelope: #d97706;
+    --nmr-orig-trace: #999999;
+    --nmr-success: #28a745;
+    --nmr-success-border: #218838;
+    --nmr-danger: #dc3545;
+    --nmr-danger-border: #c82333;
+    --nmr-banner-bg: #f8fbff;
+    --nmr-banner-border: #cce0f5;
+    --nmr-code-bg: #ffffff;
+    --nmr-code-border: #d9d9d9;
+    --nmr-code-hint: #999999;
+    --nmr-code-target: #000000;
+    --nmr-shadow: rgba(0, 0, 0, 0.05);
+    --nmr-focus-ring: rgba(100, 150, 200, 0.15);
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --nmr-bg: #1e1e1e;
+        --nmr-panel: #252526;
+        --nmr-border: #3c3c3c;
+        --nmr-border-soft: #333333;
+        --nmr-fg: #d4d4d4;
+        --nmr-fg-strong: #f0f0f0;
+        --nmr-muted: #a0a0a0;
+        --nmr-muted-2: #8a8a8a;
+        --nmr-label: #c8c8c8;
+        --nmr-input-bg: #2d2d2d;
+        --nmr-input-border: #555555;
+        --nmr-grid: #3a3a3a;
+        --nmr-grid-soft: #303030;
+        --nmr-axis: #808080;
+        --nmr-zero-line: #555555;
+        --nmr-pivot: rgba(170, 170, 170, 0.5);
+        --nmr-accent: #4ea1ff;
+        --nmr-accent-strong: #3b82d6;
+        --nmr-real: #4ea1ff;
+        --nmr-imag: #ff6b7a;
+        --nmr-mag: #e0e0e0;
+        --nmr-envelope: #f0a83c;
+        --nmr-orig-trace: #777777;
+        --nmr-success: #2ea043;
+        --nmr-success-border: #238636;
+        --nmr-danger: #f85149;
+        --nmr-danger-border: #da3633;
+        --nmr-banner-bg: #16222e;
+        --nmr-banner-border: #2a3f52;
+        --nmr-code-bg: #1a1a1a;
+        --nmr-code-border: #3c3c3c;
+        --nmr-code-hint: #888888;
+        --nmr-code-target: #e0e0e0;
+        --nmr-shadow: rgba(0, 0, 0, 0.35);
+        --nmr-focus-ring: rgba(120, 170, 220, 0.25);
+    }
+}
+
+/* =========================================
+   Container & Layout
+   ========================================= */
+.nmr-viewer {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-family: system-ui, -apple-system, sans-serif;
+    user-select: none;
+    margin: 10px 0;
+    background: var(--nmr-bg);
+    border: 1px solid var(--nmr-border);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px var(--nmr-shadow);
+    overflow: hidden;
+}
+
+/* Default (single-canvas) container; widgets with stacked canvases override. */
+.nmr-canvas-container {
+    position: relative;
+    background: var(--nmr-panel);
+    border-bottom: 1px solid var(--nmr-border-soft);
+}
+
+.nmr-canvas {
+    outline: none;
+    display: block;
+}
+
+.nmr-canvas:focus {
+    box-shadow: inset 0 0 0 2px var(--nmr-focus-ring);
+}
+
+/* =========================================
+   Control Bar (default: single horizontal row)
+   ========================================= */
+.nmr-bar {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    box-sizing: border-box;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: var(--nmr-bg);
+}
+
+.nmr-grp {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.nmr-lbl {
+    font-size: 13px;
+    color: var(--nmr-label);
+    font-weight: 600;
+}
+
+.nmr-input {
+    width: 55px;
+    padding: 4px;
+    font-size: 13px;
+    border: 1px solid var(--nmr-input-border);
+    border-radius: 4px;
+    text-align: center;
+    font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+    color: var(--nmr-fg-strong);
+    background: var(--nmr-input-bg);
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.nmr-input:focus {
+    border-color: var(--nmr-accent);
+    background: var(--nmr-bg);
+}
+
+.nmr-select {
+    padding: 4px 6px;
+    font-size: 13px;
+    border: 1px solid var(--nmr-input-border);
+    border-radius: 4px;
+    background: var(--nmr-input-bg);
+    color: var(--nmr-fg-strong);
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.nmr-select:focus {
+    border-color: var(--nmr-accent);
+    background: var(--nmr-bg);
+}
+
+/* Buttons */
+.nmr-btn {
+    padding: 5px 10px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s;
+    outline: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.nmr-btn-outline {
+    border: 1px solid var(--nmr-input-border);
+    background: var(--nmr-bg);
+    color: var(--nmr-fg);
+}
+
+.nmr-btn-outline:hover {
+    background: var(--nmr-panel);
+    border-color: var(--nmr-muted-2);
+}
+
+/* Contextual hints text */
+.nmr-hints {
+    font-size: 11px;
+    color: var(--nmr-muted-2);
+    font-style: italic;
+    margin-right: 8px;
+    letter-spacing: 0.2px;
+}
+
+/* =========================================
+   Completion State (Banner & Copying)
+   ========================================= */
+.nmr-success-banner {
+    padding: 16px;
+    border: 1px solid var(--nmr-banner-border);
+    background: var(--nmr-banner-bg);
+    border-radius: 8px;
+    width: 100%;
+    box-sizing: border-box;
+    text-align: left;
+    font-family: system-ui, -apple-system, sans-serif;
+}
+
+.nmr-success-title {
+    font-weight: 600;
+    margin-bottom: 8px;
+    font-size: 15px;
+    color: var(--nmr-accent);
+}
+
+.nmr-success-subtitle {
+    font-size: 13px;
+    color: var(--nmr-muted);
+    margin-bottom: 12px;
+}
+
+.nmr-copy-container {
+    display: flex;
+    gap: 8px;
+    align-items: stretch;
+}
+
+.nmr-code-block {
+    flex-grow: 1;
+    background: var(--nmr-code-bg);
+    border: 1px solid var(--nmr-code-border);
+    padding: 10px 12px;
+    border-radius: 4px;
+    font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+}
+
+.nmr-code-hint {
+    color: var(--nmr-code-hint);
+    user-select: none;
+}
+
+.nmr-code-target {
+    color: var(--nmr-code-target);
+    user-select: all;
+}
+
+.nmr-copy-btn {
+    padding: 0 16px;
+    border: 1px solid var(--nmr-accent-strong);
+    background: var(--nmr-accent);
+    color: #ffffff;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 13px;
+    transition: all 0.2s ease;
+}
+
+.nmr-copy-btn:hover {
+    background: var(--nmr-accent-strong);
+}
+
+.nmr-copy-btn.copied {
+    background: var(--nmr-success);
+    border-color: var(--nmr-success-border);
+}
+
+.nmr-copy-btn.failed {
+    background: var(--nmr-danger);
+    border-color: var(--nmr-danger-border);
+}

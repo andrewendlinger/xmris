@@ -9,114 +9,296 @@ kernelspec:
   name: python3
 ---
 
-# Documenting Interactive Widgets
+# Building & Documenting Interactive Widgets
 
+`xmris` uses [AnyWidget](https://anywidget.dev/) to provide interactive,
+browser-based UI components (phase correction, spectra scrolling, apodization)
+directly inside Jupyter Notebooks. This page is the **canonical reference for
+authoring widgets** — the `new-widget` skill defers to it, the same way the
+processing skill defers to [AI Context](./ai_context.md).
 
-The `xmris` package heavily utilizes [AnyWidget](https://anywidget.dev/) to provide interactive, browser-based UI components (like phase correction and spectra scrolling) directly inside Jupyter Notebooks. 
+Widgets sit in the visualization layer but must still respect the project's
+["8 Commandments"](./ai_context.md). This document adds the widget-specific
+conventions on top.
 
-However, standard Jupyter widgets require a live Python kernel to handle two-way communication. This creates a problem for our static documentation (built with Sphinx/MyST), which consists of pre-rendered HTML without an active Python backend.
+(widget-anatomy)=
+## 1. Anatomy of a widget
 
+Every widget is a **triplet** under `src/xmris/visualization/widget/<name>/`,
+plus two small wiring edits. The `phase/` widget is the reference implementation
+— copy it and adapt.
 
-
-To solve this, we created the **Universal Static Exporter** (`export_widget_static`). This utility intercepts a live widget, extracts its synchronized state, bundles its JavaScript and CSS, and injects a mock Jupyter model to render a fully functional, standalone HTML iframe.
-
-## 1. How to Use the Static Exporter
-
-When writing documentation tutorials, you will typically show the user how to instantiate the live widget, but then actually render the *static* version so it appears on the website.
-
-To do this, use the `:tags: [remove-input]` MyST directive to hide the static export code from the reader.
-
-```{code-cell} ipython3
-import xarray as xr
-import numpy as np
-
-# 1. Create your dummy data
-da = xr.DataArray(10 / (1 + 1j * np.linspace(-20, 20, 1024)) + np.random.randn(1024) * 0.05, dims=["ppm"])
+```text
+src/xmris/visualization/widget/
+├── __init__.py              # re-exports each factory (edit 1)
+├── _static_exporter.py      # export_widget_static — shared, don't touch
+├── _shared/                 # shared frontend layer — don't fork per widget
+│   ├── __init__.py          # load_esm() / load_css() — concatenate shared + widget
+│   ├── canvas.js            # ticks, nfmt, setupCanvas, themeColors, showSnippetBanner…
+│   └── theme.css            # `--nmr-*` design tokens (light + dark) + common chrome
+└── <name>/
+    ├── <name>.py            # AnyWidget subclass + factory function
+    ├── <name>.js            # render({ model, el }) — canvas frontend
+    └── <name>.css           # widget-specific `nmr-*` styles only
 ```
 
-To display the widget in the docs, pass the **widget factory function** and **all its arguments** directly to `export_widget_static`:
+**The shared layer.** There is no JS bundler, so code sharing happens in Python:
+`load_esm`/`load_css` (in `_shared/__init__.py`) read the common `canvas.js` /
+`theme.css` and concatenate them **ahead** of a widget's own file, returning a
+single source string. `canvas.js` is deliberately `import`/`export`-free so it
+sits in the same module scope as the widget's one `export function render`.
+`_static_exporter.py` already accepts `_esm`/`_css` as strings, so this works in
+both live AnyWidget and the static docs. Don't reintroduce per-widget copies of
+`ticks`/`nfmt`/the close-banner — call the shared helpers.
 
-
+**Python (`<name>.py`)** — an `anywidget.AnyWidget` subclass declaring the
+synchronized state, plus a module-level **factory** that prepares the data and
+returns an instance:
 
 ```python
-# this is a dummy cell for the reader
-# we remove the output with the MyST cell tag `remove-output`
+import pathlib
+
+import anywidget
+import numpy as np
+import traitlets
+import xarray as xr
+
+from xmris.core.utils import _check_dims, _resolve_spectral_dim, _spectral_axis_label
+
+from .._shared import load_css, load_esm
+
+_HERE = pathlib.Path(__file__).parent
+
+
+class MyWidget(anywidget.AnyWidget):
+    """One-line summary.
+
+    Attributes
+    ----------
+    width, height : int
+        Canvas size in pixels.
+    x_coords, reals, imags : list of float
+        Synchronized data arrays consumed by the frontend.
+    ...
+    """
+
+    # load_esm/load_css concatenate the shared _shared/{canvas.js,theme.css}
+    # ahead of this widget's own files.
+    _esm = load_esm(_HERE / "my_widget.js")
+    _css = load_css(_HERE / "my_widget.css")
+
+    width = traitlets.Int(740).tag(sync=True)
+    height = traitlets.Int(400).tag(sync=True)
+    # ... every piece of state the JS reads is a `.tag(sync=True)` trait
+
+
+def my_widget(da: xr.DataArray, dim: str | None = None, width: int = 740) -> MyWidget:
+    """Factory: validate `da`, extract numpy arrays, return the widget."""
+    ...
+```
+
+**Frontend (`<name>.js`)** — a single `export function render({ model, el })`.
+It builds the DOM, draws to a `<canvas>`, and redraws on trait changes. Use the
+shared helpers from `_shared/canvas.js` (already in scope — no import): `ticks`,
+`nfmt`, `setupCanvas`/`resizeCanvas`, `showSnippetBanner`, `watchTheme`, and
+`themeColors(el)` for canvas colors so the drawing follows light/dark:
+
+```javascript
+export function render({ model, el }) {
+    const root = document.createElement("div"); // ... build DOM
+    const ctx = setupCanvas(canvas, W, H, window.devicePixelRatio || 1);
+    function draw() {
+        const C = themeColors(root);            // palette from the --nmr-* CSS vars
+        // read model.get(...), paint with C.grid / C.real / C.imag …
+    }
+    model.on("change:p0 change:p1", () => requestAnimationFrame(draw));
+    watchTheme(() => requestAnimationFrame(draw)); // redraw on OS theme flip
+    draw();
+}
+```
+
+**Wiring (2 edits):**
+
+1. Re-export the factory in `src/xmris/visualization/widget/__init__.py` and add
+   it to `__all__`.
+2. Add a thin, lazily-importing method to `XmrisWidgetAccessor` in
+   `src/xmris/core/accessor.py`. The `.xmr.widget` namespace is already wired via
+   a cached property, so `XmrisAccessor` itself needs no change:
+
+   ```python
+   def my_widget(self, dim: str | None = None, width: int = 740, **kwargs):
+       """Full NumPy docstring (feeds the quartodoc API reference)."""
+       from xmris.visualization.widget import my_widget  # lazy import
+       return my_widget(self._obj, dim=dim, width=width, **kwargs)
+   ```
+
+(widget-conventions)=
+## 2. Authoring conventions
+
+These are the rules a `new-widget` must follow. The first three are what set
+widgets apart from the copy-paste heuristics in the older code.
+
+### Reproducibility: return the widget, wrap a real method
+
+Widgets are the **one deliberate exception** to "xarray in, xarray out": a
+factory returns a *widget instance*, not a DataArray. Provenance is preserved a
+different way — the widget's **Close** button emits a copyable snippet that maps
+to a genuine `.xmr` processing call. Therefore **every widget must wrap an
+existing `.xmr` method** so its output is reproducible:
+
+| Widget | Reproducible call it emits |
+| :-- | :-- |
+| `phase_spectrum` | `.xmr.phase(p0=…, p1=…, pivot=…)` |
+| `apodize` | `.xmr.apodize_exp(lb=…)` / `.xmr.apodize_lg(lb=…, gb=…)` |
+| `scroll_spectra` | `.isel({dim: idx})` |
+
+If there is no processing method to reproduce, add that method first (see the
+processing skill) — a widget is a UI over real math, never a home for new math.
+
+### Resolve dimensions from the vocabulary — no name sniffing
+
+Do **not** guess the spectral axis with substring checks like `"ppm" in dim`.
+Use the shared resolver and validator, and take an explicit `dim` override:
+
+```python
+if dim is None:
+    dim = _resolve_spectral_dim(da)   # canonical: frequency / chemical_shift
+_check_dims(da, dim, "my_widget")
+```
+
+`_resolve_spectral_dim` raises a helpful error for non-standard axis names, which
+is why the factory always exposes `dim: str | None = None` as an escape hatch.
+Derive axis labels from the coordinate's **lineage metadata**, not a hardcoded
+string:
+
+```python
+coord = da.coords[dim]
+label = f"{coord.attrs['long_name']} [{coord.attrs['units']}]"
+```
+
+### The Close-button rule (static-docs safety)
+
+The static docs have no Python backend, so any button that needs a live kernel
+(Close, Save, Apply) would trap the reader in a broken state. **Add the CSS class
+`remove-me-close-btn`** to every such button — `export_widget_static` hides it
+automatically.
+
+```javascript
+// CONVENTION: Always add 'remove-me-close-btn' to buttons that finalize, close,
+// or need a live Jupyter kernel, so the static-docs exporter hides them.
+// Keep this comment if you copy this widget as a template.
+const closeBtn = document.createElement("button");
+closeBtn.className = "nmr-btn nmr-btn-outline remove-me-close-btn";
+```
+
+Need to hide extra elements? Pass `hide_selectors=["#save-tooltip", ".menu"]` to
+`export_widget_static`.
+
+### Other conventions
+
+- **CSS namespace:** style everything with the `nmr-*` prefix (`nmr-viewer`,
+  `nmr-btn`, `nmr-bar`, …) to avoid clashing with notebook/host styles.
+- **Theming:** never hardcode colors. In CSS use the `--nmr-*` design tokens
+  from `_shared/theme.css` (`var(--nmr-accent)`, `var(--nmr-real)`, …); the
+  shared `nmr-*` chrome already lives there, so a widget's own `.css` holds only
+  its widget-specific/layout classes. In JS read the same palette via
+  `themeColors(el)`. Both light and dark are defined via
+  `@media (prefers-color-scheme: dark)` — a widget gets dark mode for free by
+  using the tokens, and `watchTheme(redraw)` keeps the canvas in sync when the
+  OS preference flips.
+- **Accessor mirrors the factory:** the `.xmr.widget.*` method must expose the
+  same parameters and the **same default values** as the factory — they are one
+  contract in two places. Keep them in lock-step when either changes.
+- **Docstrings:** give both the widget class (an `Attributes` section for the
+  synced traits) and the factory/accessor method full NumPy docstrings — they
+  feed the quartodoc API reference.
+- **Client-side math stays in sync:** if the frontend reimplements a transform
+  for live preview (e.g. the apodizer's in-browser FFT), it mirrors a Python
+  method — keep the two definitions consistent when the math changes.
+
+(widget-render-docs)=
+## 3. Rendering a widget in the docs
+
+In a tutorial notebook, show the reader the *live* call but render the *static*
+export. Use `:tags: [remove-output]` on the live cell and `:tags: [remove-input]`
+on the export cell.
+
+```{code-cell} ipython3
+import numpy as np
+import xarray as xr
+
+import xmris
+
+# Dummy complex spectrum on a canonical spectral axis (auto-resolves).
+f = np.linspace(-20, 20, 1024)
+da = xr.DataArray(
+    10 / (1 + 1j * f) + np.random.randn(1024) * 0.05,
+    dims=["frequency"],
+    coords={"frequency": f},
+)
+```
+
+The reader sees this (its output is stripped with `remove-output`):
+
+```python
 da.xmr.widget.phase_spectrum()
 ```
 
+…while this cell (hidden with `remove-input`) renders the interactive canvas by
+passing the **factory** and its arguments to `export_widget_static`:
+
 ```{code-cell} ipython3
-# this cell does the heavy lifting in an actual notebook we would
-# remove the cell but keep the output using the MyST cell tag `remove-input`
 from xmris.visualization.widget._static_exporter import export_widget_static
 from xmris.visualization.widget.phase.phase import phase_spectrum
 
-# This will render the interactive canvas in the docs!
 export_widget_static(
-    phase_spectrum,     # The widget generating function
-    da,                 # Positional arguments
-    width=700,          # Keyword arguments
-    show_grid=True      # Keyword arguments
+    phase_spectrum,     # the widget factory function
+    da,                 # positional args forwarded to the factory
+    width=700,          # keyword args forwarded to the factory
 )
 ```
 
-## 2. Widget Development Conventions
+For a non-standard axis name, forward the escape hatch too, e.g.
+`export_widget_static(phase_spectrum, da, dim="ppm")`.
 
-Because the static documentation version has no Python backend, buttons that trigger Python code (e.g., "Save to Workspace", "Close", "Apply Phase") will not work and can trap the user in a broken state.
+(widget-large-data)=
+## 4. Handling large datasets & debugging
 
-**The Rule:** If your widget has a button that relies on the live Jupyter kernel, you must add the CSS class `xmris-close-btn` to it in your Javascript.
+Browsers cap standalone HTML iframes; above ~2.5 MB they silently render a blank
+box. `export_widget_static` guards against this with float compression and hard
+limits: exporting any synced array longer than `max_points` (default `100_000`)
+raises a `ValueError` at docs-build time.
 
-```javascript
-// Example in my_widget.js
-const closeBtn = document.createElement("button");
-
-// Add 'xmris-close-btn' so the documentation exporter knows to hide it!
-closeBtn.className = "nmr-btn nmr-btn-outline xmris-close-btn"; 
-closeBtn.textContent = "Finalize & Close";
-
-closeBtn.onclick = () => { model.send({ event: "save" }); };
-
-```
-
-The `export_widget_static` utility automatically searches for and hides any DOM elements with the `.xmris-close-btn` class.
-
-If you need to hide additional, specific elements, you can pass them via the `hide_selectors` argument:
-
-```python
-export_widget_static(
-    my_widget, data, 
-    hide_selectors=["#save-tooltip", ".advanced-menu"]
-)
-
-```
-
-## 3. Handling Large Datasets & Debugging
-
-Web browsers enforce strict size limits on standalone HTML iframes. If our static widget payload exceeds ~2.5 MB, the browser will silently fail and render a blank white box.
-
-To prevent this, `export_widget_static` includes automatic float compression and aggressive safety checks. If you attempt to export an array larger than `max_points` (default `100_000`), Python will raise a `ValueError` during the documentation build.
-
-**Debugging your Export:**
-If your widget is failing to render or you want to inspect the payload size, set `debug=True`.
+To inspect the payload, pass `debug=True`:
 
 ```{code-cell} ipython3
 export_widget_static(
     phase_spectrum,
     da,
-    debug=True
+    debug=True,
 )
 ```
-
-**Output:**
 
 ```text
 --- Static Export Debug: PhaseWidget ---
   [Sync] width           : int = 700
-  [Sync] height          : int = 400
   [Sync] x_coords        : Array/List (Size: 1024)
   [Sync] reals           : Array/List (Size: 1024)
-  
+
   JSON Payload Size : 18.21 KB (0.02 MB)
   Base64 URI Size   : 25.12 KB (0.02 MB)
 --------------------------------------------------
-
 ```
+
+If a widget's arrays are too large, slice or downsample the `DataArray` before
+exporting.
+
+## 5. Documenting & testing
+
+Each widget ships with a MyST notebook under
+`docs/notebooks/visualization/widget/` and a `myst.yml` TOC entry. The notebook
+*is* the test (nbmake executes it). Use the **`new-doc-notebook` skill** for the
+notebook structure; the widget-specific pieces it must include are the
+live/static two-cell pattern above, and a hidden `remove-cell` assertion block
+that runs the reproducible snippet the widget emits and proves the resulting
+DataArray is correct (values **and** preserved dims/coords/attrs).
