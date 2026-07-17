@@ -338,7 +338,7 @@ VARS = XmrisDataVars()
 # Domain Groupings
 # =============================================================================
 # Semantic groupings of *existing* dimension terms (not new vocabulary) used by
-# the ``ensures_domain`` and ``resolves_spectral_dim`` decorators in
+# the ``ensures_domain`` and ``computes_in`` domain decorators in
 # ``validation.py``. They bundle the already-defined ``DIMS`` into the two
 # physical domains xmris operates in: time-domain FIDs vs. frequency-domain
 # spectra, where the spectral axis may be labelled in Hz (``frequency``) or

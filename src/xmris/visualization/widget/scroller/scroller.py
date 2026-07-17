@@ -5,7 +5,8 @@ import numpy as np
 import traitlets
 import xarray as xr
 
-from xmris.core.utils import _check_dims, _resolve_spectral_dim, _spectral_axis_label
+from xmris.core.config import SPECTRAL_DIMS
+from xmris.core.utils import _check_dims, _resolve_dim, _spectral_axis_label
 
 from .._shared import load_css, load_esm
 
@@ -123,7 +124,7 @@ def scroll_spectra(
     # 1. Resolve the spectral (display) axis from the vocabulary — an explicit
     #    `dim` wins; otherwise auto-detect the canonical spectral dimension.
     if dim is None:
-        spec_dim = _resolve_spectral_dim(da)
+        spec_dim = _resolve_dim(da, SPECTRAL_DIMS)
     else:
         spec_dim = dim
     _check_dims(da, spec_dim, "scroll_spectra")

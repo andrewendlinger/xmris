@@ -32,6 +32,7 @@ from .processing.baseline import baseline_als
 from .processing.fid import apodize_exp, apodize_lg, to_fid, to_spectrum, zero_fill
 from .processing.fourier import fft, fftc, fftshift, ifft, ifftc, ifftshift
 from .processing.phasing import autophase, phase
+from .processing.referencing import to_hz, to_ppm
 from .processing.utils import to_complex, to_real_imag
 
 # =============================================================================
@@ -76,6 +77,8 @@ __all__ = [
     "apodize_lg",
     "to_fid",
     "to_spectrum",
+    "to_ppm",
+    "to_hz",
     "zero_fill",
     "fft",
     "fftc",
