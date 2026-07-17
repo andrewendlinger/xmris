@@ -3,8 +3,9 @@ import xarray as xr
 from scipy import sparse
 from scipy.sparse.linalg import spsolve
 
-from xmris.core.config import ATTRS, DIMS
+from xmris.core.config import ATTRS, SPECTRAL_DIMS
 from xmris.core.utils import _check_dims
+from xmris.core.validation import ensures_domain
 
 
 def _als_core(y: np.ndarray, lam: float, p: float, n_iter: int) -> np.ndarray:
@@ -40,9 +41,10 @@ def _als_core(y: np.ndarray, lam: float, p: float, n_iter: int) -> np.ndarray:
     return z
 
 
+@ensures_domain(SPECTRAL_DIMS)
 def baseline_als(
     da: xr.DataArray,
-    dim: str = DIMS.frequency,
+    dim: str | None = None,
     lam: float = 1e5,
     p: float = 0.001,
     n_iter: int = 10,
@@ -66,9 +68,11 @@ def baseline_als(
     da : xr.DataArray
         The input spectrum. Can be complex-valued and N-dimensional. If complex,
         the real component is extracted automatically.
-    dim : str, optional
-        The coordinate dimension along which to apply correction.
-        Defaults to `DIMS.frequency`.
+    dim : str or None, optional
+        The spectral dimension along which to apply correction. If ``None``
+        (default) it is resolved automatically to the spectral dim present
+        (``frequency`` [Hz] or ``chemical_shift`` [ppm]); time-domain input
+        is transformed to a spectrum first.
     lam : float, optional
         The smoothness penalty ($\lambda$). Higher values result in a stiffer,
         flatter baseline. Typical NMR ranges are 10,000 to 10,000,000.
@@ -87,6 +91,9 @@ def baseline_als(
         parameters ($\lambda$, $p$, iterations) are appended to the dataset
         attributes to preserve data lineage.
     """
+    # `dim` is guaranteed non-None here by @ensures_domain's merged resolution;
+    # validate that an explicitly-passed dim actually exists (only None is filled).
+    assert dim is not None
     _check_dims(da, dim, "baseline_als")
 
     # 1. Enforce real-valued math and intentionally discard the imaginary part

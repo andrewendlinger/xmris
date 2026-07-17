@@ -1133,3 +1133,102 @@ class TestAutophasePilot:
         result = ppm.xmr.autophase()
         assert DIMS.chemical_shift in result.dims
         assert DIMS.time not in result.dims
+
+
+# =============================================================================
+# 15. Domain Contract Rollout (which ops carry which contract)
+# =============================================================================
+
+
+class TestDomainRollout:
+    """Pin every operation's domain contract (or deliberate absence of one).
+
+    The op-class table from the domain-contracts design: funnel ops land in
+    their home domain, domain-preserving physics ops restore the input
+    representation, and converters/primitives/fitting stay undecorated with
+    explicit domain handling.
+    """
+
+    def test_funnel_ops(self):
+        """``autophase`` and ``baseline_als`` carry the funnel contract."""
+        from xmris.processing.baseline import baseline_als
+        from xmris.processing.phasing import autophase
+
+        for func in (autophase, baseline_als):
+            assert getattr(func, "__xmris_domain__", None) == (SPECTRAL_DIMS, False), func.__name__
+
+    def test_domain_preserving_ops(self):
+        """The apodizers and ``zero_fill`` carry the domain-preserving contract."""
+        from xmris.processing.fid import apodize_exp, apodize_lg, zero_fill
+
+        for func in (apodize_exp, apodize_lg, zero_fill):
+            assert getattr(func, "__xmris_domain__", None) == (TIME_DIMS, True), func.__name__
+
+    def test_undecorated_by_design(self):
+        """Converters, primitives, and fitting must NOT auto-convert."""
+        from xmris.fitting.amares import fit_amares
+        from xmris.processing.fourier import fft, ifft
+        from xmris.processing.phasing import phase
+        from xmris.processing.referencing import to_hz, to_ppm
+        from xmris.vendor.bruker import remove_digital_filter
+
+        undecorated = (
+            to_spectrum,
+            to_fid,
+            to_ppm,
+            to_hz,
+            fft,
+            ifft,
+            phase,
+            fit_amares,
+            remove_digital_filter,
+        )
+        for func in undecorated:
+            assert not hasattr(func, "__xmris_domain__"), func.__name__
+
+    def test_baseline_accessor_mirrors_dim_none(self):
+        """The accessor forwarder mirrors ``baseline_als``'s ``dim=None`` signature."""
+        import inspect
+
+        from xmris.core.accessor import XmrisAccessor
+
+        sig = inspect.signature(XmrisAccessor.baseline_als)
+        assert sig.parameters["dim"].default is None
+
+    # --- behavior smoke through the real accessor ------------------------------
+
+    def test_spectrum_apodize_stays_spectrum(self, valid_spectrum_da):
+        """Line-broadening a spectrum hands back a spectrum (round trip inside)."""
+        result = valid_spectrum_da.xmr.apodize_exp(lb=5.0)
+        assert DIMS.frequency in result.dims
+        assert DIMS.time not in result.dims
+
+    def test_fid_baseline_returns_real_spectrum(self, valid_fid_da):
+        """Baseline on a FID funnels: lands as a real-valued spectrum."""
+        result = valid_fid_da.xmr.baseline_als()
+        assert DIMS.frequency in result.dims
+        assert not np.iscomplexobj(result.values)
+
+    def test_ppm_baseline_stays_ppm(self, valid_spectrum_da):
+        """Baseline on a ppm spectrum resolves ``chemical_shift`` and stays ppm."""
+        ppm = valid_spectrum_da.xmr.to_ppm()
+        result = ppm.xmr.baseline_als()
+        assert DIMS.chemical_shift in result.dims
+
+    def test_baseline_then_apodize_raises(self, valid_spectrum_da):
+        """One-way data downstream of baseline is caught by the complexity gate."""
+        corrected = valid_spectrum_da.xmr.baseline_als()
+        with pytest.raises(ValueError, match="real-valued"):
+            corrected.xmr.apodize_exp(lb=2.0)
+
+    def test_kspace_zero_fill_passes_through(self):
+        """An explicit non-domain dim disables coercion — k-space stays k-space."""
+        rng = np.random.default_rng()
+        kspace = xr.DataArray(
+            rng.standard_normal((8, 8)),
+            dims=["kx", "ky"],
+            coords={"kx": np.arange(8), "ky": np.arange(8)},
+        )
+        result = kspace.xmr.zero_fill(dim="kx", target_points=16, position="symmetric")
+        assert result.sizes["kx"] == 16
+        assert list(result.dims) == ["kx", "ky"]

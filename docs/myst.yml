@@ -44,6 +44,8 @@ project:
           title: 3c. Domain-Agnostic Autophase
         - file: notebooks/pipeline/baseline.md
           title: 4. Baseline Correction
+        - file: notebooks/pipeline/domain_contracts.md
+          title: 5. Domain Contracts
 
     # 3. GROUP: Advanced Quantification
     - title: Spectral Fitting & Simulation
