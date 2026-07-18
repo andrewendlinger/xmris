@@ -12,6 +12,8 @@ jobs:
   full-test:
     name: ${{ matrix.os }} / Py ${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}
+    # Bound each matrix leg so a hung kernel fails fast, not at GitHub's 6h ceiling.
+    timeout-minutes: 30
     # macOS failures won't fail the whole pipeline (Experimental)
     continue-on-error: ${{ matrix.os == 'macos-latest' }}
     strategy:
