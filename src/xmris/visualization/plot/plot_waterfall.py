@@ -189,6 +189,14 @@ def plot_waterfall(
     x_dim_str, stack_dim_str = parse_input_dims_timeseries(da, x_dim, stack_dim)
 
     da_plot = da.transpose(stack_dim_str, x_dim_str)
+
+    if np.iscomplexobj(da_plot.values):
+        raise ValueError(
+            "waterfall() needs a real-valued view but got complex data. "
+            "For a phased spectrum use `da.real` (phase first with "
+            "`da.xmr.autophase()`); for a magnitude view use `np.abs(da)`."
+        )
+
     x_vals = da_plot.coords[x_dim_str].values
     stack_vals = da_plot.coords[stack_dim_str].values
 
