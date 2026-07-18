@@ -7,7 +7,7 @@ import xarray as xr
 from xmris.core.config import ATTRS, DIMS, VARS
 from xmris.core.utils import _check_dims
 from xmris.processing.fid import to_spectrum
-from xmris.processing.phasing import _acme_score
+from xmris.processing.phasing import _acme_cost
 
 
 def remove_digital_filter(
@@ -169,7 +169,12 @@ def _resolve_group_delay(da: xr.DataArray, group_delay: float | str, dim: str) -
     raise ValueError(f"group_delay string must be 'header' or 'measure', got {group_delay!r}.")
 
 
-_PHI0_GRID = np.linspace(-180.0, 180.0, 73)
+# φ0 search grid (degrees) for the ACME residual. -180 and +180 are the same phase, so the grid
+# stops one step short of +180 to avoid scoring a duplicate.
+_PHI0_GRID = np.linspace(-180.0, 175.0, 72)
+# Fraction of the best-to-median finite-cost spread within which a local minimum counts as a
+# competing candidate during aliasing disambiguation.
+_NEAR_MINIMA_BAND_FRAC = 0.12
 
 
 def estimate_group_delay(
@@ -258,7 +263,8 @@ def estimate_group_delay(
     else:
         lo, hi = 0.0, 96.0
     lo = max(0.0, lo)
-    hi = min(hi, float(fid.sizes[dim] - 1))  # never probe a delay >= the FID length
+    max_delay = float(fid.sizes[dim] - 1)  # a delay must leave >= 1 point after slicing
+    hi = min(hi, max_delay)  # never probe a delay >= the FID length
     if hi <= lo:
         raise ValueError(f"Invalid search range ({lo}, {hi}).")
 
@@ -267,7 +273,7 @@ def estimate_group_delay(
     def cost(delay: float) -> float:
         cleaned = remove_digital_filter(fid, group_delay=float(delay), dim=dim, keep_length=True)
         spec = to_spectrum(cleaned, dim=dim)
-        return _residual_phase_cost(spec, freq_dim, metric, _PHI0_GRID)
+        return _residual_phase_cost(spec, metric, _PHI0_GRID)
 
     # 1. Coarse integer grid search.
     candidates = np.arange(int(np.floor(lo)), int(np.ceil(hi)) + 1, dtype=float)
@@ -283,11 +289,13 @@ def estimate_group_delay(
     is_local_min = np.r_[True, safe[1:] <= safe[:-1]] & np.r_[safe[:-1] <= safe[1:], True] & finite
     # Scale the band on the median finite cost, not the max: a garbage tail (very wide ranges)
     # or a no-op endpoint must not widen it enough to sweep in tail local minima.
-    band = 0.12 * max(float(np.median(costs[finite])) - gmin, 0.0) if finite.any() else 0.0
+    if finite.any():
+        band = _NEAR_MINIMA_BAND_FRAC * max(float(np.median(costs[finite])) - gmin, 0.0)
+    else:
+        band = 0.0
     near = np.where(is_local_min & (costs <= gmin + band))[0]
-    if near.size == 0:
-        near = np.array([best_i])
-    if near.size > 1:
+    ambiguous = near.size > 1  # several competing local minima -> possible linear-phase aliasing
+    if ambiguous:
         seed = _seed_absolute_delay(fid, dim, freq_dim, header, float(candidates[best_i]))
         if seed is not None and lo <= seed <= hi:
             best_i = int(near[np.argmin(np.abs(candidates[near] - seed))])
@@ -295,7 +303,7 @@ def estimate_group_delay(
 
     # 3. Sub-sample fractional refinement around the chosen integer.
     if refine:
-        r_lo, r_hi = max(0.0, best - 1.0), min(best + 1.0, float(fid.sizes[dim] - 1))
+        r_lo, r_hi = max(0.0, best - 1.0), min(best + 1.0, max_delay)
         if r_hi > r_lo:
             res = scipy.optimize.minimize_scalar(
                 cost,
@@ -314,7 +322,7 @@ def estimate_group_delay(
             f"under-count the true digital-filter delay for this acquisition.",
             stacklevel=2,
         )
-    if near.size > 1 and np.any(np.abs(candidates[near] - best) > 2.0):
+    if ambiguous and np.any(np.abs(candidates[near] - best) > 2.0):
         warnings.warn(
             "Group-delay estimate is ambiguous: several candidate delays give a "
             "near-minimal residual (linear-phase aliasing). Inspect the profile via "
@@ -353,14 +361,15 @@ def _pick_representative_slice(da: xr.DataArray, dim: str) -> xr.DataArray:
     return da.isel(sel)
 
 
-def _residual_phase_cost(spec: xr.DataArray, dim: str, metric: str, p0_grid: np.ndarray) -> float:
+def _residual_phase_cost(spec: xr.DataArray, metric: str, p0_grid: np.ndarray) -> float:
     """Score residual first-order phase in a spectrum, invariant to zero-order phase."""
     if metric == "acme":
-        # Minimize the ACME entropy over a coarse φ0 grid (deterministic). Drop non-finite
-        # scores, which `_acme_score` returns for a degenerate (all-zero) spectrum.
-        vals = [_acme_score([p0], spec, dim, 0.0) for p0 in p0_grid]
-        vals = [v for v in vals if np.isfinite(v)]
-        return min(vals) if vals else np.inf
+        # Minimize the ACME score over a coarse φ0 grid (deterministic). Rotating by each φ0 is a
+        # scalar op on the raw real/imag arrays — far cheaper than rebuilding an xarray per grid
+        # point — and a degenerate spectrum yields inf, which we drop.
+        re, im = spec.real.values, spec.imag.values
+        scores = (_acme_cost(re * np.cos(a) - im * np.sin(a)) for a in np.radians(p0_grid))
+        return min((c for c in scores if np.isfinite(c)), default=np.inf)
     # "coherence": φ0-invariant phase coherence, 0 when all points share one phase; a degenerate
     # all-zero spectrum has no coherence to speak of and scores as worst (inf), not best (0).
     s = spec.values
@@ -388,14 +397,12 @@ def _seed_absolute_delay(
         mag = np.abs(s)
         if mag.max() == 0.0 or f.size < 2:
             return None
-        w = mag**2
         ang = np.unwrap(np.angle(s))
-        wsum = w.sum()
-        fbar = (w * f).sum() / wsum
-        var = (w * (f - fbar) ** 2).sum()
-        if var == 0.0:
+        # Magnitude-weighted least-squares slope. np.polyfit applies the weights inside the
+        # squared residual, so w=mag reproduces the intended mag**2 weighting.
+        slope = np.polyfit(f, ang, 1, w=mag)[0]  # rad/Hz
+        if not np.isfinite(slope):
             return None
-        slope = (w * (f - fbar) * (ang - (w * ang).sum() / wsum)).sum() / var  # rad/Hz
         fs = spec.sizes[freq_dim] * abs(f[1] - f[0])  # spectral width [Hz]
         residual = -slope * fs / (2.0 * np.pi)
         return float(anchor + residual)

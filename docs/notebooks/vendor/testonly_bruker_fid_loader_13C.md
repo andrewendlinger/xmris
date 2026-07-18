@@ -201,7 +201,7 @@ measured_gd = fid_single.xmr.estimate_group_delay()
 def resid_13c(d):
     """Whole-spectrum residual first-order phase cost after removing delay `d`."""
     spec = fid_single.xmr.remove_digital_filter(group_delay=d).xmr.to_spectrum()
-    return _residual_phase_cost(spec, str(DIMS.frequency), "acme", _PHI0_GRID)
+    return _residual_phase_cost(spec, "acme", _PHI0_GRID)
 
 
 # Physically plausible band for high-resolution 13C spectroscopy group delay.

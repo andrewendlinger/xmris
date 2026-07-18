@@ -296,7 +296,7 @@ _TRUE = 84.0
 def _resid(d):
     """Whole-spectrum residual first-order phase cost after removing delay ``d``."""
     _s = bad.xmr.remove_digital_filter(group_delay=d).xmr.to_spectrum()
-    return _residual_phase_cost(_s, "frequency", "acme", _PHI0_GRID)
+    return _residual_phase_cost(_s, "acme", _PHI0_GRID)
 
 
 def _peak_phase_deg(d, f0, half=40.0):
