@@ -10,6 +10,8 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    # A healthy run is ~4 min; bound it so a hung kernel fails fast, not at GitHub's 6h ceiling.
+    timeout-minutes: 20
     strategy:
       matrix:
         python-version: ["3.10", "3.13"]

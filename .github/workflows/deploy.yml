@@ -3,30 +3,33 @@ name: Documentation
 on:
   push:
     branches: [main]
+  # Build (execute) the docs on PRs too, so a docs-breaking or kernel-hanging
+  # dependency is caught pre-merge instead of only surfacing after landing on main.
+  pull_request:
+    branches: [main]
 
 env:
   BASE_URL: /xmris
 
+# Minimal default token; only the deploy job (main-only) elevates to Pages scopes.
 permissions:
   contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: 'pages'
-  cancel-in-progress: false
 
 jobs:
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  # Always runs (PR + push). Executes every notebook via `myst build --execute`,
+  # which is the check that a docs dependency didn't break/hang the build.
+  build:
     runs-on: ubuntu-latest
+    # A healthy build is ~2 min. This bound is the key guard: it turns a hung
+    # kernel into a fast, visible failure instead of a 6h burn at GitHub's ceiling.
+    timeout-minutes: 20
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v7
 
       - name: Setup GitHub Pages
+        # Bakes the Pages base path into the built site; only needed for real deploys.
+        if: github.event_name == 'push'
         uses: actions/configure-pages@v6
 
       - name: Setup uv
@@ -51,10 +54,28 @@ jobs:
           uv run myst build --html --execute
 
       - name: Upload Build Artifacts
+        # Only publish the artifact on main; PR runs are build-only smoke tests.
+        if: github.event_name == 'push'
         uses: actions/upload-pages-artifact@v5
         with:
           path: 'docs/_build/html'
 
+  # Deploy only from main (push). PRs never reach this job.
+  deploy:
+    if: github.event_name == 'push'
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    concurrency:
+      group: 'pages'
+      cancel-in-progress: false
+    steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v5

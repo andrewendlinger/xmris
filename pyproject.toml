@@ -80,7 +80,10 @@ dev = [
     "ipympl>=0.10.0",
     "matplotlib>=3.10.0",
     "jupytext>=1.19.1",
-    "ipykernel>=6.31.0",
+    # Pinned <7: ipykernel 7 hangs myst --execute kernels (never signals `idle`,
+    # so the docs build stalls until CI's 6h ceiling). See vscode-jupyter#17228.
+    # Revisit by removing this pin AND the dependabot ignore together.
+    "ipykernel>=6.31.0,<7",
 ]
 
 # ==============================================================================

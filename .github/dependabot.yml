@@ -40,6 +40,8 @@ updates:
       - dependency-name: "griffe" # held <0.40 to fix a quartodoc parsing bug
       - dependency-name: "pytest-cov"
         versions: [">=7.0"] # held <7 for nbmake subprocess coverage tracking
+      - dependency-name: "ipykernel"
+        versions: [">=7.0"] # held <7: ipykernel 7 hangs myst --execute (vscode-jupyter#17228)
 
     # Cap future pile-ups if the repo goes idle again.
     open-pull-requests-limit: 5
