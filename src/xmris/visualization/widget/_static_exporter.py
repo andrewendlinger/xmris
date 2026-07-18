@@ -184,7 +184,9 @@ class StandaloneModel {{
         evts.forEach(fn => fn());
     }}
     save_changes() {{ return Promise.resolve(); }}
-    send(msg, callbacks, buffers) {{ console.warn("Widget attempted to send message to missing kernel:", msg); }}
+    send(msg, callbacks, buffers) {{
+        console.warn("Widget attempted to send message to missing kernel:", msg);
+    }}
     on(events, fn) {{
         for (const evt of events.split(" ")) {{
             (this._listeners[evt] ||= []).push(fn);
