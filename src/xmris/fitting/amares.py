@@ -19,6 +19,8 @@ from pyAMARES.kernel.lmfit import fitAMARES as pyamares_fitAMARES
 from pyAMARES.libs.logger import set_log_level
 from tqdm.auto import tqdm
 
+from xmris.core.config import ATTRS
+
 
 def _fit_dataset_safe(
     fid_current,
@@ -268,9 +270,14 @@ def fit_amares(
 
     # 1. Extract/Infer Physical Parameters
     if mhz is None:
-        mhz = da.attrs.get("MHz")
+        # Prefer the modern vocabulary key written by simulate_fid / build_fid;
+        # fall back to the legacy "MHz" attr for back-compat.
+        mhz = da.attrs.get(ATTRS.reference_frequency, da.attrs.get("MHz"))
         if mhz is None:
-            raise ValueError("mhz must be provided or present in da.attrs['MHz']")
+            raise ValueError(
+                "mhz must be provided or present in "
+                f"da.attrs['{ATTRS.reference_frequency}'] (or legacy da.attrs['MHz'])."
+            )
 
     if sw is None:
         # Assuming the coordinate is in seconds
