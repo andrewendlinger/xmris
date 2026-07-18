@@ -86,14 +86,11 @@ plt.show()
 
 ### Removing the Digital Filter
 
-Bruker spectrometers utilize digital filters that introduce a group delay at the beginning of the FID. We use the `remove_digital_filter` accessor to correct this, relying on the `groupDelay` attribute from the metadata.
+Bruker spectrometers utilize digital filters that introduce a group delay at the beginning of the FID. `build_fid` already stored that value in the FID's metadata (`group_delay`), so the default `remove_digital_filter()` reads it automatically — no need to pass the delay by hand. If the header value is unreliable, pass `group_delay="measure"` instead to estimate the true delay from the data (see [The Digital Filter Group Delay](bruker_filter_removal.md)).
 
 ```{code-cell} ipython3
-# Remove group delay
-fid_corrected = fid_inspect.xmr.remove_digital_filter(
-    group_delay=raw_1d_data.attrs["groupDelay"],
-    keep_length=False
-)
+# Remove group delay (group_delay="header" reads group_delay from .attrs)
+fid_corrected = fid_inspect.xmr.remove_digital_filter(keep_length=False)
 
 fig, ax = plt.subplots(figsize=(10, 4))
 

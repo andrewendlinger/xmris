@@ -151,6 +151,30 @@ class XmrisAttributes(BaseVocabulary):
         unit="ppm",
     )
 
+    group_delay = XmrisTerm(
+        "group_delay",
+        description=(
+            "The receiver digital-filter group delay, in samples. Modern consoles "
+            "oversample then decimate through an FIR filter cascade, delaying the FID "
+            "by this many points; it must be removed before the Fourier transform to "
+            "avoid a first-order phase roll. Vendor-reported and, for some ParaVision/"
+            "probe combinations, an under-count of the true delay (see "
+            "`estimate_group_delay`). Maps to Bruker 'ACQ_RxFilterInfo'[0].groupDelay "
+            "(TopSpin 'GRPDLY')."
+        ),
+        unit="samples",
+    )
+
+    group_delay_removed = XmrisTerm(
+        "group_delay_removed",
+        description=(
+            "Lineage: the digital-filter group delay actually removed from the FID by "
+            "`remove_digital_filter`, in samples. For `group_delay='measure'` this is the "
+            "sole record of the auto-measured value."
+        ),
+        unit="samples",
+    )
+
     # --- mostly used for demo of attributes ---
     b0_field = XmrisTerm("b0_field", description="Magnetic field strength B0", unit="Tesla")
 

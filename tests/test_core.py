@@ -529,6 +529,7 @@ class TestAccessorDefaults:
             ("to_fid", "out_dim", DIMS.time),
             ("zero_fill", "dim", DIMS.time),
             ("remove_digital_filter", "dim", DIMS.time),
+            ("estimate_group_delay", "dim", DIMS.time),
             ("to_ppm", "dim", DIMS.frequency),
             ("to_hz", "dim", DIMS.chemical_shift),
             ("to_real_imag", "dim", DIMS.component),
@@ -1186,7 +1187,7 @@ class TestDomainRollout:
         from xmris.processing.fourier import fft, ifft
         from xmris.processing.phasing import phase
         from xmris.processing.referencing import to_hz, to_ppm
-        from xmris.vendor.bruker import remove_digital_filter
+        from xmris.vendor.bruker import estimate_group_delay, remove_digital_filter
 
         undecorated = (
             to_spectrum,
@@ -1198,6 +1199,7 @@ class TestDomainRollout:
             phase,
             fit_amares,
             remove_digital_filter,
+            estimate_group_delay,
         )
         for func in undecorated:
             assert not hasattr(func, "__xmris_domain__"), func.__name__
@@ -1376,3 +1378,83 @@ class TestSetOptions:
                 _time_scale_probe(real_spectrum)
         # A `to_fid()` suggestion here would silently fabricate a bogus FID.
         assert "to_fid" not in str(exc.value)
+
+
+class TestGroupDelayAttr:
+    """The ``group_delay`` attr rename keeps reading legacy ``bruker_group_delay`` keys."""
+
+    @staticmethod
+    def _fid_with_attr(key: str, value: float) -> xr.DataArray:
+        n = 512
+        t = np.arange(n) * 0.0002
+        return xr.DataArray(
+            np.exp(-t * 30.0) * np.exp(2j * np.pi * 100.0 * t),
+            dims=[DIMS.time],
+            coords={DIMS.time: t},
+            attrs={key: value},
+        )
+
+    def test_header_reads_legacy_key(self):
+        """``group_delay='header'`` falls back to the legacy ``bruker_group_delay`` attr."""
+        from xmris.vendor.bruker import remove_digital_filter
+
+        da = self._fid_with_attr("bruker_group_delay", 40.0)
+        out = remove_digital_filter(da, group_delay="header")
+        assert out.attrs[ATTRS.group_delay_removed] == 40.0
+
+    def test_header_prefers_canonical_key(self):
+        """The canonical ``group_delay`` key wins when both keys are present."""
+        from xmris.vendor.bruker import remove_digital_filter
+
+        da = self._fid_with_attr("bruker_group_delay", 40.0)
+        da.attrs[ATTRS.group_delay] = 50.0
+        out = remove_digital_filter(da, group_delay="header")
+        assert out.attrs[ATTRS.group_delay_removed] == 50.0
+
+    def test_read_helper_prefers_canonical_and_falls_back(self):
+        """``_read_group_delay_attr`` prefers the new key, falls back, else None."""
+        from xmris.vendor.bruker import _read_group_delay_attr
+
+        assert _read_group_delay_attr(self._fid_with_attr("bruker_group_delay", 76.125)) == 76.125
+        assert _read_group_delay_attr(self._fid_with_attr(ATTRS.group_delay, 84.0)) == 84.0
+        assert _read_group_delay_attr(self._fid_with_attr("unrelated", 1.0)) is None
+
+
+class TestEstimateGroupDelayRobustness:
+    """Regression tests for the review's estimator bugs (crash / degenerate handling)."""
+
+    @staticmethod
+    def _fid(n: int, freqs=(50.0,), amps=None) -> xr.DataArray:
+        from xmris.fitting.simulation import simulate_fid
+
+        amps = list(amps) if amps is not None else [1.0] * len(freqs)
+        return simulate_fid(
+            amplitudes=amps, frequencies=list(freqs), spectral_width=5000.0, n_points=n
+        )
+
+    def test_short_fid_does_not_crash(self):
+        """A FID shorter than the default search ceiling returns a float, not a ValueError."""
+        d = self._fid(64).xmr.estimate_group_delay()
+        assert isinstance(d, float)
+        assert 0.0 <= d <= 63.0
+
+    def test_overlong_explicit_delay_raises_clearly(self):
+        """remove_digital_filter rejects a delay >= the FID length with a clear message."""
+        from xmris.vendor.bruker import remove_digital_filter
+
+        with pytest.raises(ValueError, match="removes .* points, but"):
+            remove_digital_filter(self._fid(64), group_delay=65.0)
+
+    def test_measure_sentinel_short_fid(self):
+        """group_delay='measure' on a short FID completes without crashing."""
+        from xmris.vendor.bruker import remove_digital_filter
+
+        out = remove_digital_filter(self._fid(64), group_delay="measure")
+        assert out.sizes[DIMS.time] == 64
+
+    def test_wide_range_stays_finite_and_in_bounds(self):
+        """A search_range reaching the FID length completes with a finite, in-range result."""
+        fid = self._fid(256, freqs=(300.0, 1200.0), amps=(1.0, 0.7))
+        d = fid.xmr.estimate_group_delay(search_range=(70, 255))
+        assert np.isfinite(d)
+        assert 70.0 <= d <= 255.0

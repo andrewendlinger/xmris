@@ -98,29 +98,33 @@ def phase(
 
 
 # --- Private Scoring Functions ---
-def _acme_score(ph, da, dim, pivot):
-    """ACME objective function natively using xmris coordinates."""
-    p0 = ph[0]
-    p1 = ph[1] if len(ph) > 1 else 0.0
+def _acme_cost(data: np.ndarray) -> float:
+    """ACME score of a real spectrum: entropy of its derivative + a negative-area penalty.
 
-    phased_da = phase(da, dim=dim, p0=p0, p1=p1, pivot=pivot)
-    data = np.real(phased_da.values)
-
-    stepsize = 1
-    ds1 = np.abs((data[1:] - data[:-1]) / (stepsize * 2))
-    p1_prob = ds1 / np.sum(ds1)
+    Returns ``inf`` for a flat/degenerate spectrum. Normalized by the max magnitude (not the
+    signed max) so a fully-negative phasing cannot flip the score negative and create a
+    spurious minimum for the optimizer.
+    """
+    ds1 = np.abs((data[1:] - data[:-1]) / 2.0)
+    ds1_sum = np.sum(ds1)
+    if ds1_sum == 0.0:  # flat / all-zero spectrum — no phase structure to score
+        return np.inf
+    p1_prob = ds1 / ds1_sum
     p1_prob[p1_prob == 0] = 1
-
-    h1 = -p1_prob * np.log(p1_prob)
-    h1s = np.sum(h1)
+    h1s = np.sum(-p1_prob * np.log(p1_prob))
 
     as_ = data - np.abs(data)
-    sumas = np.sum(as_)
-    pfun = 0.0
-    if sumas < 0:
-        pfun = np.sum((as_ / 2) ** 2)
+    pfun = np.sum((as_ / 2) ** 2) if np.sum(as_) < 0 else 0.0
 
-    return (h1s + 1000 * pfun) / data.shape[-1] / np.max(data)
+    # ds1_sum > 0 above guarantees the spectrum has variation, so max|data| > 0 here.
+    return (h1s + 1000 * pfun) / data.shape[-1] / np.max(np.abs(data))
+
+
+def _acme_score(ph, da, dim, pivot):
+    """ACME objective over xmris coordinates: apply (p0, p1) phase, then score the real part."""
+    p0 = ph[0]
+    p1 = ph[1] if len(ph) > 1 else 0.0
+    return _acme_cost(np.real(phase(da, dim=dim, p0=p0, p1=p1, pivot=pivot).values))
 
 
 def _peak_minima_score(ph, da, dim, pivot, target_idx, index_width):

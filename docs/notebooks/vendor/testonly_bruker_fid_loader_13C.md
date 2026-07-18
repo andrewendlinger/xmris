@@ -88,7 +88,7 @@ params = gt_13c["parameters"]
 # Minimal Metadata Assertions
 assert np.isclose(attrs.get("reference_frequency", 0), params["frequency"]["reference_frequency"]["value"], atol=1e-5), "Ref freq mismatch"
 assert attrs.get("carrier_ppm") == params["frequency"]["working_chemical_shift"]["value"], "Carrier PPM mismatch"
-assert attrs.get("bruker_group_delay") == params["rx_filter_info"]["groupDelay"]["value"], "Group delay mismatch"
+assert attrs.get("group_delay") == params["rx_filter_info"]["groupDelay"]["value"], "Group delay mismatch"
 assert attrs.get("units") == "a.u.", "Units mismatch"
 
 # Dimension checks (from xarray sizes, not attributes)
@@ -111,7 +111,7 @@ else:
 # 2. Apply xmris pipeline
 spectrum_hz = (
     fid_single
-    .xmr.remove_digital_filter(group_delay=attrs["bruker_group_delay"], keep_length=False)
+    .xmr.remove_digital_filter(group_delay=attrs["group_delay"], keep_length=False)
     .xmr.apodize_exp(lb=5) # 5 Hz line broadening for visibility
     .xmr.to_spectrum()
     .xmr.autophase()
@@ -185,6 +185,39 @@ for peak_name, locs in gt_13c["spectrum_view"].items():
     print(f"✅ {peak_name.capitalize()} verified. Hz diff: {diff_hz:.2f}, PPM diff: {diff_ppm:.3f}")
 
 print("\n🚀 All pipeline and coordinate assertions passed.")
+```
+
+## 7. Group-Delay Estimator Sanity Check
+
+Validate `estimate_group_delay` against the real acquisition. There is no ground-truth "true" delay for this probe, so we assert conservatively: the measured delay is physically plausible and, being the residual-phase minimiser over the search window, never leaves *more* residual phase than the vendor header value.
+
+```{code-cell} ipython3
+from xmris.vendor.bruker import _PHI0_GRID, _residual_phase_cost
+
+header_gd = float(fid_single.attrs["group_delay"])
+measured_gd = fid_single.xmr.estimate_group_delay()
+
+
+def resid_13c(d):
+    """Whole-spectrum residual first-order phase cost after removing delay `d`."""
+    spec = fid_single.xmr.remove_digital_filter(group_delay=d).xmr.to_spectrum()
+    return _residual_phase_cost(spec, "acme", _PHI0_GRID)
+
+
+# Physically plausible band for high-resolution 13C spectroscopy group delay.
+assert 60.0 < measured_gd < 96.0, f"Implausible measured group delay: {measured_gd}"
+# The measured delay minimises residual phase over the header-anchored window, so on
+# the whole-spectrum cost it can only match or beat the header value.
+assert resid_13c(measured_gd) <= resid_13c(header_gd) + 1e-9, "Measured delay worse than header"
+# Anchor-invariance: two different (overlapping-window) anchors converge to the same minimum.
+# A no-op estimator that just echoed the header would instead return the two different hints.
+m_lo = fid_single.xmr.estimate_group_delay(header_hint=72.0)
+m_hi = fid_single.xmr.estimate_group_delay(header_hint=80.0)
+assert abs(m_lo - m_hi) < 1.0, f"anchor-dependent result: {m_lo:.2f} vs {m_hi:.2f}"
+
+print(f"header group delay  : {header_gd}")
+print(f"measured group delay: {measured_gd:.2f}")
+print("✅ Group-delay estimator sanity check passed.")
 ```
 
 ```{code-cell} ipython3
