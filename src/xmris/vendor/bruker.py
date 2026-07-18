@@ -237,12 +237,11 @@ def estimate_group_delay(
         The measured group delay in samples, or ``(delay, profile)`` when
         ``return_profile=True``.
 
-    Warns
+    Notes
     -----
-    UserWarning
-        When the measured delay deviates strongly from the header (a likely
-        under-counting header), or when the cost profile is ambiguous (several
-        delays give a near-minimal residual — linear-phase aliasing).
+    Emits a ``UserWarning`` when the measured delay deviates strongly from the
+    header (a likely under-counting header), or when the cost profile is ambiguous
+    (several delays give a near-minimal residual — linear-phase aliasing).
     """
     _check_dims(da, dim, "estimate_group_delay")
     if metric not in ("acme", "coherence"):
