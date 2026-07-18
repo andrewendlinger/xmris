@@ -138,17 +138,20 @@ instead of inventing an FID:
 
 ```python
 spec.xmr.baseline_als().xmr.apodize_exp(lb=2)
-# ValueError: real-valued spectral data cannot be round-tripped through the
-# time domain (the imaginary component was discarded, e.g. by baseline_als). …
+# ValueError: Cannot transform real-valued spectral data (dim 'frequency') into
+# the time domain: the imaginary component is gone (e.g. discarded by
+# `baseline_als`), so no valid FID exists behind this spectrum. …
 ```
 
 **The ppm leg is metadata-gated.** Converting `chemical_shift` data through the time domain needs
 `reference_frequency` and `carrier_ppm` in `attrs`; if they are missing you get the standard
 copy-pasteable `assign_attrs` fix, not a wrong axis.
 
-**Explicit dims pass through.** Automatic conversion triggers only when your call targets an
-operation's home domain. `kspace.xmr.zero_fill(dim="kx", position="symmetric")` names a different
-axis — the data passes through untouched.
+**Explicit foreign dims pass through — for domain-preserving ops.** A domain-preserving
+(`@computes_in`) operation called on an axis outside its domain skips conversion entirely:
+`kspace.xmr.zero_fill(dim="kx", position="symmetric")` names a different axis, so the data passes
+through untouched. Funnel (`@ensures_domain`) operations have no such passthrough — they always
+land in their home domain, converting (or raising) even when an explicit foreign `dim` is named.
 
 **Strict mode.** Prefer zero magic — e.g. for quantitative work?
 
@@ -182,7 +185,7 @@ otherwise it defaults to the config constant.*
 flowchart TD
     A[New processing function] --> B{Only meaningful in one domain,<br/>result consumed there?}
     B -- yes --> C["@ensures_domain(&lt;DOMAIN&gt;)"]
-    B -- no --> D{Same physics in both domains,<br/>length-preserving?}
+    B -- no --> D{Same physics seen from<br/>either domain?}
     D -- yes --> E["@computes_in(&lt;DOMAIN&gt;)"]
     D -- no --> F[Undecorated: converter,<br/>primitive, or fitting — validate<br/>with _check_dims]
 ```

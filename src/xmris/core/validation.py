@@ -109,6 +109,24 @@ def _domain_of(da: xr.DataArray, domain: frozenset[str]) -> str | None:
     return next((str(d) for d in da.dims if d in domain), None)
 
 
+def _real_valued_spectral_error(source: str) -> ValueError:
+    """The refusal for taking a real-valued spectrum back to the time domain.
+
+    Shared by the automatic coercion path and the strict-mode raise so both give
+    the same loud answer: a real spectrum (e.g. after ``baseline_als`` discarded
+    the imaginary part) has no valid FID behind it, so no transform can help.
+    """
+    return ValueError(
+        f"Cannot transform real-valued spectral data (dim {source!r}) "
+        f"into the time domain: the imaginary component is gone (e.g. "
+        f"discarded by `baseline_als`), so no valid FID exists behind "
+        f"this spectrum.\n\n"
+        f"Apply time-domain operations before the step that discarded "
+        f"the imaginary part, or pass an explicit existing dimension "
+        f"to operate on."
+    )
+
+
 def _coerce_to_domain(
     da: xr.DataArray, domain: frozenset[str]
 ) -> tuple[xr.DataArray, _RestoreState]:
@@ -137,15 +155,7 @@ def _coerce_to_domain(
         source = _domain_of(da, SPECTRAL_DIMS)
         if source is not None:
             if not np.iscomplexobj(da.values):
-                raise ValueError(
-                    f"Cannot transform real-valued spectral data (dim {source!r}) "
-                    f"into the time domain: the imaginary component is gone (e.g. "
-                    f"discarded by `baseline_als`), so no valid FID exists behind "
-                    f"this spectrum.\n\n"
-                    f"Apply time-domain operations before the step that discarded "
-                    f"the imaginary part, or pass an explicit existing dimension "
-                    f"to operate on."
-                )
+                raise _real_valued_spectral_error(source)
             state = _RestoreState(
                 dim=source,
                 coord=da.coords[source].variable if source in da.coords else None,
@@ -204,6 +214,45 @@ def _restore_domain(
     return out
 
 
+def _strict_domain_error(
+    da: xr.DataArray, domain: frozenset[str], func_name: str, label: str
+) -> ValueError:
+    """Build the strict-mode (``auto_convert=False``) error for a domain mismatch.
+
+    Mirrors :func:`_coerce_to_domain`'s routing *without* transforming, so the
+    manual recipe it prints is exactly as correct and safe as the automatic
+    conversion it stands in for: the ppm leg is referenced through ``to_hz``
+    first, and a real-valued spectrum gets the same loud refusal rather than a
+    ``to_fid`` suggestion that would run ``ifft`` on real data and fabricate a
+    physically meaningless FID.
+    """
+    if domain == SPECTRAL_DIMS:
+        source = _domain_of(da, TIME_DIMS)
+        recipe = "to_spectrum()"
+    else:
+        source = _domain_of(da, SPECTRAL_DIMS)
+        if source is not None and not np.iscomplexobj(da.values):
+            return _real_valued_spectral_error(source)
+        # ppm data must be referenced to Hz before `to_fid` (its math assumes a
+        # Hz coordinate spacing) — the same leg the auto path takes.
+        recipe = "to_hz().xmr.to_fid()" if source == DIMS.chemical_shift else "to_fid()"
+
+    if source is None:
+        return ValueError(
+            f"Cannot ensure domain {sorted(domain)}: found no convertible "
+            f"time/spectral dimension in {list(da.dims)}."
+        )
+
+    return ValueError(
+        f"'{func_name}' requires a {label} dimension, but "
+        f"none of {sorted(domain)} are present in "
+        f"{list(da.dims)}, and automatic conversion is "
+        f"disabled (xmris.set_options(auto_convert=False)).\n\n"
+        f"Convert explicitly first:\n"
+        f"    >>> obj = obj.xmr.{recipe}"
+    )
+
+
 def _domain_decorator(domain: frozenset[str], *, restore: bool) -> Callable:
     """Shared engine behind ``ensures_domain`` (funnel) and ``computes_in`` (restore)."""
     label = _domain_label(domain)
@@ -245,15 +294,7 @@ def _domain_decorator(domain: frozenset[str], *, restore: bool) -> Callable:
                 foreign_request = restore and requested is not None and requested not in domain
                 if not foreign_request:
                     if not OPTIONS["auto_convert"]:
-                        converter = "to_spectrum" if domain == SPECTRAL_DIMS else "to_fid"
-                        raise ValueError(
-                            f"'{func.__name__}' requires a {label} dimension, but "
-                            f"none of {sorted(domain)} are present in "
-                            f"{list(da.dims)}, and automatic conversion is "
-                            f"disabled (xmris.set_options(auto_convert=False)).\n\n"
-                            f"Convert explicitly first:\n"
-                            f"    >>> obj = obj.xmr.{converter}()"
-                        )
+                        raise _strict_domain_error(da, domain, func.__name__, label)
                     da, state = _coerce_to_domain(da, domain)
                     bound.arguments[first_param] = da
 

@@ -615,7 +615,7 @@ class XmrisPhasingMixin:
         self,
         dim: str | None = None,
         method: str = "acme",
-        peak_width: int = 100,
+        peak_width: float = 0.5,
         lb: float = 0.0,
         temp_time_dim: str = DIMS.time,
         **kwargs,
