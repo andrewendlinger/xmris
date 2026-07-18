@@ -108,7 +108,10 @@ def _acme_score(ph, da, dim, pivot):
 
     stepsize = 1
     ds1 = np.abs((data[1:] - data[:-1]) / (stepsize * 2))
-    p1_prob = ds1 / np.sum(ds1)
+    ds1_sum = np.sum(ds1)
+    if ds1_sum == 0.0:  # flat / all-zero spectrum — degenerate, no phase structure to score
+        return np.inf
+    p1_prob = ds1 / ds1_sum
     p1_prob[p1_prob == 0] = 1
 
     h1 = -p1_prob * np.log(p1_prob)
@@ -120,7 +123,11 @@ def _acme_score(ph, da, dim, pivot):
     if sumas < 0:
         pfun = np.sum((as_ / 2) ** 2)
 
-    return (h1s + 1000 * pfun) / data.shape[-1] / np.max(data)
+    # Normalize by the max magnitude, not the signed max: dividing by np.max(data) flips the
+    # score negative when a φ0 rotates the whole real spectrum below zero, creating a spurious
+    # minimum that the differential-evolution optimizer can be drawn to. (ds1_sum > 0 above
+    # guarantees the spectrum has variation, so max|data| > 0 here.)
+    return (h1s + 1000 * pfun) / data.shape[-1] / np.max(np.abs(data))
 
 
 def _peak_minima_score(ph, da, dim, pivot, target_idx, index_width):

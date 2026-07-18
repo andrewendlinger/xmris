@@ -1418,3 +1418,43 @@ class TestGroupDelayAttr:
         assert _read_group_delay_attr(self._fid_with_attr("bruker_group_delay", 76.125)) == 76.125
         assert _read_group_delay_attr(self._fid_with_attr(ATTRS.group_delay, 84.0)) == 84.0
         assert _read_group_delay_attr(self._fid_with_attr("unrelated", 1.0)) is None
+
+
+class TestEstimateGroupDelayRobustness:
+    """Regression tests for the review's estimator bugs (crash / degenerate handling)."""
+
+    @staticmethod
+    def _fid(n: int, freqs=(50.0,), amps=None) -> xr.DataArray:
+        from xmris.fitting.simulation import simulate_fid
+
+        amps = list(amps) if amps is not None else [1.0] * len(freqs)
+        return simulate_fid(
+            amplitudes=amps, frequencies=list(freqs), spectral_width=5000.0, n_points=n
+        )
+
+    def test_short_fid_does_not_crash(self):
+        """A FID shorter than the default search ceiling returns a float, not a ValueError."""
+        d = self._fid(64).xmr.estimate_group_delay()
+        assert isinstance(d, float)
+        assert 0.0 <= d <= 63.0
+
+    def test_overlong_explicit_delay_raises_clearly(self):
+        """remove_digital_filter rejects a delay >= the FID length with a clear message."""
+        from xmris.vendor.bruker import remove_digital_filter
+
+        with pytest.raises(ValueError, match="removes .* points, but"):
+            remove_digital_filter(self._fid(64), group_delay=65.0)
+
+    def test_measure_sentinel_short_fid(self):
+        """group_delay='measure' on a short FID completes without crashing."""
+        from xmris.vendor.bruker import remove_digital_filter
+
+        out = remove_digital_filter(self._fid(64), group_delay="measure")
+        assert out.sizes[DIMS.time] == 64
+
+    def test_wide_range_stays_finite_and_in_bounds(self):
+        """A search_range reaching the FID length completes with a finite, in-range result."""
+        fid = self._fid(256, freqs=(300.0, 1200.0), amps=(1.0, 0.7))
+        d = fid.xmr.estimate_group_delay(search_range=(70, 255))
+        assert np.isfinite(d)
+        assert 70.0 <= d <= 255.0

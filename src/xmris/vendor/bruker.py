@@ -76,6 +76,11 @@ def remove_digital_filter(
 
     # 1. Separate the delay into integer (points) and fractional (phase) components
     int_delay = int(np.floor(group_delay))
+    if int_delay >= da.sizes[dim]:
+        raise ValueError(
+            f"group_delay ({group_delay}) removes {int_delay} points, but '{dim}' has only "
+            f"{da.sizes[dim]}. Pass a delay smaller than the acquisition length."
+        )
     frac_delay = group_delay - int_delay
     axis_idx = da.get_axis_num(dim)
 
@@ -253,6 +258,7 @@ def estimate_group_delay(
     else:
         lo, hi = 0.0, 96.0
     lo = max(0.0, lo)
+    hi = min(hi, float(fid.sizes[dim] - 1))  # never probe a delay >= the FID length
     if hi <= lo:
         raise ValueError(f"Invalid search range ({lo}, {hi}).")
 
@@ -268,12 +274,20 @@ def estimate_group_delay(
     costs = np.array([cost(d) for d in candidates])
     best_i = int(np.argmin(costs))
 
-    # 2. Disambiguate near-equal minima (linear-phase aliasing) with an un-aliased
-    #    phase-slope seed: prefer the near-minimal candidate closest to the seed.
-    gmin, gmax = float(costs[best_i]), float(costs.max())
-    depth = gmax - gmin
-    near = np.where(costs <= gmin + 0.12 * depth)[0] if depth > 0 else np.array([best_i])
-    if len(near) > 1:
+    # 2. Disambiguate near-equal minima (linear-phase aliasing) with an un-aliased phase-slope
+    #    seed. Competitors are *local minima* within a band scaled on the finite cost range;
+    #    non-finite (degenerate) costs are excluded so they cannot poison the band or the seed.
+    gmin = float(costs[best_i])
+    finite = np.isfinite(costs)
+    safe = np.where(finite, costs, np.inf)
+    is_local_min = np.r_[True, safe[1:] <= safe[:-1]] & np.r_[safe[:-1] <= safe[1:], True] & finite
+    # Scale the band on the median finite cost, not the max: a garbage tail (very wide ranges)
+    # or a no-op endpoint must not widen it enough to sweep in tail local minima.
+    band = 0.12 * max(float(np.median(costs[finite])) - gmin, 0.0) if finite.any() else 0.0
+    near = np.where(is_local_min & (costs <= gmin + band))[0]
+    if near.size == 0:
+        near = np.array([best_i])
+    if near.size > 1:
         seed = _seed_absolute_delay(fid, dim, freq_dim, header, float(candidates[best_i]))
         if seed is not None and lo <= seed <= hi:
             best_i = int(near[np.argmin(np.abs(candidates[near] - seed))])
@@ -281,14 +295,16 @@ def estimate_group_delay(
 
     # 3. Sub-sample fractional refinement around the chosen integer.
     if refine:
-        res = scipy.optimize.minimize_scalar(
-            cost,
-            bounds=(best - 1.0, best + 1.0),
-            method="bounded",
-            options={"xatol": 1e-2},
-        )
-        if res.success and res.fun <= costs[best_i]:
-            best = max(0.0, float(res.x))
+        r_lo, r_hi = max(0.0, best - 1.0), min(best + 1.0, float(fid.sizes[dim] - 1))
+        if r_hi > r_lo:
+            res = scipy.optimize.minimize_scalar(
+                cost,
+                bounds=(r_lo, r_hi),
+                method="bounded",
+                options={"xatol": 1e-2},
+            )
+            if res.success and res.fun <= costs[best_i]:
+                best = max(0.0, float(res.x))
 
     # 4. Advisory warnings.
     if header is not None and abs(best - header) > 2.0:
@@ -298,7 +314,7 @@ def estimate_group_delay(
             f"under-count the true digital-filter delay for this acquisition.",
             stacklevel=2,
         )
-    if len(near) > 1 and np.any(np.abs(candidates[near] - best) > 2.0):
+    if near.size > 1 and np.any(np.abs(candidates[near] - best) > 2.0):
         warnings.warn(
             "Group-delay estimate is ambiguous: several candidate delays give a "
             "near-minimal residual (linear-phase aliasing). Inspect the profile via "
@@ -340,18 +356,17 @@ def _pick_representative_slice(da: xr.DataArray, dim: str) -> xr.DataArray:
 def _residual_phase_cost(spec: xr.DataArray, dim: str, metric: str, p0_grid: np.ndarray) -> float:
     """Score residual first-order phase in a spectrum, invariant to zero-order phase."""
     if metric == "acme":
-        # Minimize the ACME entropy over a coarse φ0 grid (deterministic). `_acme_score`
-        # divides by max(Re); when a φ0 phases the whole spectrum negative that max flips
-        # sign and the score turns spuriously negative, so keep only the physical
-        # (positive) absorptive candidates.
+        # Minimize the ACME entropy over a coarse φ0 grid (deterministic). Drop non-finite
+        # scores, which `_acme_score` returns for a degenerate (all-zero) spectrum.
         vals = [_acme_score([p0], spec, dim, 0.0) for p0 in p0_grid]
-        vals = [v for v in vals if np.isfinite(v) and v > 0.0]
+        vals = [v for v in vals if np.isfinite(v)]
         return min(vals) if vals else np.inf
-    # "coherence": φ0-invariant phase coherence, 0 when all points share one phase.
+    # "coherence": φ0-invariant phase coherence, 0 when all points share one phase; a degenerate
+    # all-zero spectrum has no coherence to speak of and scores as worst (inf), not best (0).
     s = spec.values
     denom = float(np.sum(np.abs(s)))
     if denom == 0.0:
-        return 0.0
+        return np.inf
     return 1.0 - float(np.abs(np.sum(s))) / denom
 
 
@@ -384,7 +399,8 @@ def _seed_absolute_delay(
         fs = spec.sizes[freq_dim] * abs(f[1] - f[0])  # spectral width [Hz]
         residual = -slope * fs / (2.0 * np.pi)
         return float(anchor + residual)
-    except Exception:
+    except (ValueError, FloatingPointError, ZeroDivisionError):
+        # e.g. remove_digital_filter rejecting a too-large anchor (Fix 1) — skip the seed.
         return None
 
 

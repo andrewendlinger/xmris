@@ -209,6 +209,11 @@ assert 60.0 < measured_gd < 96.0, f"Implausible measured group delay: {measured_
 # The measured delay minimises residual phase over the header-anchored window, so on
 # the whole-spectrum cost it can only match or beat the header value.
 assert resid_13c(measured_gd) <= resid_13c(header_gd) + 1e-9, "Measured delay worse than header"
+# Anchor-invariance: two different (overlapping-window) anchors converge to the same minimum.
+# A no-op estimator that just echoed the header would instead return the two different hints.
+m_lo = fid_single.xmr.estimate_group_delay(header_hint=72.0)
+m_hi = fid_single.xmr.estimate_group_delay(header_hint=80.0)
+assert abs(m_lo - m_hi) < 1.0, f"anchor-dependent result: {m_lo:.2f} vs {m_hi:.2f}"
 
 print(f"header group delay  : {header_gd}")
 print(f"measured group delay: {measured_gd:.2f}")
