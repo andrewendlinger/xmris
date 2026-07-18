@@ -1,9 +1,16 @@
 """Global runtime options for xmris, mirroring :func:`xarray.set_options`."""
 
+from collections.abc import Callable
 from typing import Any
 
 OPTIONS: dict[str, bool] = {
     "auto_convert": True,
+}
+
+# Per-option value validators, checked up front before any option is applied
+# (mirrors the ``xarray.set_options`` pattern). Extend alongside ``OPTIONS``.
+_VALIDATORS: dict[str, Callable[[Any], bool]] = {
+    "auto_convert": lambda value: isinstance(value, bool),
 }
 
 
@@ -34,14 +41,22 @@ class set_options:
     """
 
     def __init__(self, **kwargs: bool):
-        self.old: dict[str, bool] = {}
+        # Validate every key and value up front, then apply atomically — a raise
+        # mid-call must never leave a partial change behind (the object is never
+        # entered, so ``__exit__`` could not restore it). Mirrors xarray.set_options.
         for key, value in kwargs.items():
             if key not in OPTIONS:
                 raise ValueError(
                     f"Unknown xmris option {key!r}. Available options: {sorted(OPTIONS)}"
                 )
-            self.old[key] = OPTIONS[key]
-            OPTIONS[key] = value
+            validator = _VALIDATORS.get(key)
+            if validator is not None and not validator(value):
+                raise ValueError(
+                    f"Invalid value {value!r} for xmris option {key!r}: expected a bool."
+                )
+
+        self.old: dict[str, bool] = {key: OPTIONS[key] for key in kwargs}
+        OPTIONS.update(kwargs)
 
     def __enter__(self) -> "set_options":
         """Enter the context; options were already applied in ``__init__``."""

@@ -65,6 +65,22 @@ from xmris.processing.fid import to_fid, to_spectrum
 # =============================================================================
 
 
+@pytest.fixture(autouse=True)
+def _restore_xmris_options():
+    """Snapshot and restore the global ``OPTIONS`` around every test.
+
+    ``OPTIONS`` is a process-global with no other reset path. Without this, a
+    leaked mutation — a permanent ``set_options(...)`` call, or a bug in it —
+    would bleed into later tests and flake under ``-n auto``.
+    """
+    from xmris.core.options import OPTIONS
+
+    snapshot = dict(OPTIONS)
+    yield
+    OPTIONS.clear()
+    OPTIONS.update(snapshot)
+
+
 @pytest.fixture
 def empty_da():
     """Create a minimal 1D real-valued DataArray with a non-standard dimension.
@@ -1315,3 +1331,48 @@ class TestSetOptions:
 
         with pytest.raises(ValueError, match="Unknown xmris option"):
             xmris.set_options(auto_conver=False)
+
+    def test_mixed_valid_invalid_does_not_leak(self):
+        """A valid key alongside an invalid one must not be applied (atomicity)."""
+        import xmris
+        from xmris.core.options import OPTIONS
+
+        assert OPTIONS["auto_convert"] is True
+        with pytest.raises(ValueError, match="Unknown xmris option"):
+            xmris.set_options(auto_convert=False, bogus=True)
+        # The valid key must not have been applied before the raise; because
+        # __init__ raised, __exit__ could never restore it.
+        assert OPTIONS["auto_convert"] is True
+
+    def test_non_bool_value_rejected(self):
+        """Only real bools are accepted — truthy strings/ints must fail loudly."""
+        import xmris
+        from xmris.core.options import OPTIONS
+
+        for bad in ("false", 0, 1, None):
+            with pytest.raises(ValueError, match="Invalid value"):
+                xmris.set_options(auto_convert=bad)
+            # A rejected value must never mutate the global.
+            assert OPTIONS["auto_convert"] is True
+
+    def test_strict_ppm_hint_routes_through_to_hz(self, valid_spectrum_da):
+        """Strict hint for ppm input must suggest to_hz().to_fid(), not bare to_fid()."""
+        import xmris
+
+        ppm = valid_spectrum_da.xmr.to_ppm()
+        with xmris.set_options(auto_convert=False):
+            with pytest.raises(ValueError, match="to_hz") as exc:
+                _time_scale_probe(ppm)
+        # Following the printed recipe must not dead-end on `to_fid`'s frequency default.
+        assert "to_hz().xmr.to_fid()" in str(exc.value)
+
+    def test_strict_real_spectrum_refuses_without_to_fid(self, valid_spectrum_da):
+        """Strict mode must reuse the loud real-valued refusal, not suggest to_fid()."""
+        import xmris
+
+        real_spectrum = valid_spectrum_da.real  # imaginary part gone → no valid FID
+        with xmris.set_options(auto_convert=False):
+            with pytest.raises(ValueError, match="real-valued") as exc:
+                _time_scale_probe(real_spectrum)
+        # A `to_fid()` suggestion here would silently fabricate a bogus FID.
+        assert "to_fid" not in str(exc.value)

@@ -223,9 +223,10 @@ except ValueError as err:
     print(err)
 ```
 
-**Explicit dims pass through.** Automatic conversion only triggers when your
-call targets an operation's home domain — naming another axis (k-space, say)
-leaves the data untouched:
+**Explicit foreign dims pass through — for domain-preserving ops.** A
+domain-preserving op named on an axis outside its domain skips conversion
+entirely — naming another axis (k-space, say) leaves the data untouched.
+(Funnel ops have no passthrough: they always land in their home domain.)
 
 ```{code-cell} ipython3
 rng = np.random.default_rng(42)
