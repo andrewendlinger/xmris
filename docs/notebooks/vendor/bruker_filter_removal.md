@@ -115,7 +115,7 @@ def make_raw_fid(peaks_hz, amps, delay, *, sw=5000.0, n=2048, damping=30.0, head
         raw = np.fft.ifft(np.fft.fft(raw) * np.exp(-1j * 2 * np.pi * freqs * frac))
     da = ideal.copy(data=raw)
     if header is not None:
-        da.attrs["bruker_group_delay"] = header  # what the console reports
+        da.attrs["group_delay"] = header  # what the console reports
     return da
 ```
 
@@ -233,7 +233,7 @@ bad = make_raw_fid(peaks_hz, amps, delay=84.0, header=76.125)
 # Reads the header as its search anchor; warns because the measurement contradicts it.
 measured, profile = bad.xmr.estimate_group_delay(return_profile=True)
 
-print(f"reported (header): {bad.attrs['bruker_group_delay']}")
+print(f"reported (header): {bad.attrs['group_delay']}")
 print(f"measured (true)  : {measured:.2f} samples")
 ```
 

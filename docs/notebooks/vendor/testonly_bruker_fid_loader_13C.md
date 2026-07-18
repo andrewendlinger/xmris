@@ -88,7 +88,7 @@ params = gt_13c["parameters"]
 # Minimal Metadata Assertions
 assert np.isclose(attrs.get("reference_frequency", 0), params["frequency"]["reference_frequency"]["value"], atol=1e-5), "Ref freq mismatch"
 assert attrs.get("carrier_ppm") == params["frequency"]["working_chemical_shift"]["value"], "Carrier PPM mismatch"
-assert attrs.get("bruker_group_delay") == params["rx_filter_info"]["groupDelay"]["value"], "Group delay mismatch"
+assert attrs.get("group_delay") == params["rx_filter_info"]["groupDelay"]["value"], "Group delay mismatch"
 assert attrs.get("units") == "a.u.", "Units mismatch"
 
 # Dimension checks (from xarray sizes, not attributes)
@@ -111,7 +111,7 @@ else:
 # 2. Apply xmris pipeline
 spectrum_hz = (
     fid_single
-    .xmr.remove_digital_filter(group_delay=attrs["bruker_group_delay"], keep_length=False)
+    .xmr.remove_digital_filter(group_delay=attrs["group_delay"], keep_length=False)
     .xmr.apodize_exp(lb=5) # 5 Hz line broadening for visibility
     .xmr.to_spectrum()
     .xmr.autophase()
@@ -194,7 +194,7 @@ Validate `estimate_group_delay` against the real acquisition. There is no ground
 ```{code-cell} ipython3
 from xmris.vendor.bruker import _PHI0_GRID, _residual_phase_cost
 
-header_gd = float(fid_single.attrs["bruker_group_delay"])
+header_gd = float(fid_single.attrs["group_delay"])
 measured_gd = fid_single.xmr.estimate_group_delay()
 
 

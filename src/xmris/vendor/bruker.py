@@ -123,17 +123,22 @@ def remove_digital_filter(
     time_coords = da_new.coords[dim].values
     da_new = da_new.assign_coords({dim: time_coords - time_coords[0]})
 
-    # 6. Preserve Lineage
+    # 6. Preserve Lineage — record only the quantifiable parameter applied (Commandment 3).
     new_attrs = da.attrs.copy()
-    new_attrs.update(
-        {
-            "digital_filter_removed": True,
-            "group_delay_removed": group_delay,
-            "length_retained_with_zeros": keep_length,
-        }
-    )
+    new_attrs[ATTRS.group_delay_removed] = group_delay
 
     return da_new.assign_attrs(new_attrs)
+
+
+# Legacy attr key, read-only, for backward compatibility with FIDs saved before the
+# vendor-agnostic ATTRS.group_delay ("group_delay") rename (#85 metadata tidy).
+_LEGACY_GROUP_DELAY_KEY = "bruker_group_delay"
+
+
+def _read_group_delay_attr(da: xr.DataArray) -> float | None:
+    """Read the stored group-delay attr, falling back to the legacy Bruker key."""
+    val = da.attrs.get(ATTRS.group_delay, da.attrs.get(_LEGACY_GROUP_DELAY_KEY))
+    return None if val is None else float(val)
 
 
 def _resolve_group_delay(da: xr.DataArray, group_delay: float | str, dim: str) -> float:
@@ -142,14 +147,14 @@ def _resolve_group_delay(da: xr.DataArray, group_delay: float | str, dim: str) -
         return float(group_delay)
 
     if group_delay == "header":
-        header = da.attrs.get(ATTRS.group_delay)
+        header = _read_group_delay_attr(da)
         if header is None:
             raise ValueError(
                 f"remove_digital_filter(group_delay='header') needs the "
                 f"'{ATTRS.group_delay}' attribute (written by build_fid), which is "
                 f"absent. Pass an explicit float, or use group_delay='measure'."
             )
-        return float(header)
+        return header
 
     if group_delay == "measure":
         measured = estimate_group_delay(da, dim=dim)
@@ -237,8 +242,8 @@ def estimate_group_delay(
 
     # Resolve the header anchor (explicit hint wins, else the stored attr).
     header = header_hint
-    if header is None and ATTRS.group_delay in da.attrs:
-        header = float(da.attrs[ATTRS.group_delay])
+    if header is None:
+        header = _read_group_delay_attr(da)
 
     # Resolve the search window.
     if search_range is not None:
@@ -302,6 +307,11 @@ def estimate_group_delay(
         )
 
     if return_profile:
+        # xmris-diagnostic-dim: "trial_delay" is a deliberate LOCAL dimension label for this
+        # debug-only profile. It is intentionally NOT added to xmris.core.config DIMS/COORDS,
+        # to keep that vocabulary limited to physical/acquisition axes. Revocable: if a
+        # diagnostic-axis vocabulary is later introduced, grep "xmris-diagnostic-dim" to
+        # migrate every such site (e.g. amares' "spectrum"/"Metabolite" output axes).
         profile = xr.DataArray(
             costs,
             dims=["trial_delay"],

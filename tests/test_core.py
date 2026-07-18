@@ -1378,3 +1378,43 @@ class TestSetOptions:
                 _time_scale_probe(real_spectrum)
         # A `to_fid()` suggestion here would silently fabricate a bogus FID.
         assert "to_fid" not in str(exc.value)
+
+
+class TestGroupDelayAttr:
+    """The ``group_delay`` attr rename keeps reading legacy ``bruker_group_delay`` keys."""
+
+    @staticmethod
+    def _fid_with_attr(key: str, value: float) -> xr.DataArray:
+        n = 512
+        t = np.arange(n) * 0.0002
+        return xr.DataArray(
+            np.exp(-t * 30.0) * np.exp(2j * np.pi * 100.0 * t),
+            dims=[DIMS.time],
+            coords={DIMS.time: t},
+            attrs={key: value},
+        )
+
+    def test_header_reads_legacy_key(self):
+        """``group_delay='header'`` falls back to the legacy ``bruker_group_delay`` attr."""
+        from xmris.vendor.bruker import remove_digital_filter
+
+        da = self._fid_with_attr("bruker_group_delay", 40.0)
+        out = remove_digital_filter(da, group_delay="header")
+        assert out.attrs[ATTRS.group_delay_removed] == 40.0
+
+    def test_header_prefers_canonical_key(self):
+        """The canonical ``group_delay`` key wins when both keys are present."""
+        from xmris.vendor.bruker import remove_digital_filter
+
+        da = self._fid_with_attr("bruker_group_delay", 40.0)
+        da.attrs[ATTRS.group_delay] = 50.0
+        out = remove_digital_filter(da, group_delay="header")
+        assert out.attrs[ATTRS.group_delay_removed] == 50.0
+
+    def test_read_helper_prefers_canonical_and_falls_back(self):
+        """``_read_group_delay_attr`` prefers the new key, falls back, else None."""
+        from xmris.vendor.bruker import _read_group_delay_attr
+
+        assert _read_group_delay_attr(self._fid_with_attr("bruker_group_delay", 76.125)) == 76.125
+        assert _read_group_delay_attr(self._fid_with_attr(ATTRS.group_delay, 84.0)) == 84.0
+        assert _read_group_delay_attr(self._fid_with_attr("unrelated", 1.0)) is None
