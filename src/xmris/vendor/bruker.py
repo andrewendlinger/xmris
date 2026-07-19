@@ -5,7 +5,7 @@ import scipy.optimize
 import xarray as xr
 
 from xmris.core.config import ATTRS, COORDS, DIMS, VARS
-from xmris.core.utils import _check_dims, as_variable
+from xmris.core.utils import _check_dims, _first_matching_name, as_variable, read_attr
 from xmris.processing.fid import to_spectrum
 from xmris.processing.phasing import _acme_cost
 
@@ -140,24 +140,14 @@ def remove_digital_filter(
     return da_new.assign_attrs(new_attrs)
 
 
-# Legacy attr key, read-only, for backward compatibility with FIDs saved before the
-# vendor-agnostic ATTRS.group_delay ("group_delay") rename (#85 metadata tidy).
-_LEGACY_GROUP_DELAY_KEY = "bruker_group_delay"
-
-
-def _read_group_delay_attr(da: xr.DataArray) -> float | None:
-    """Read the stored group-delay attr, falling back to the legacy Bruker key."""
-    val = da.attrs.get(ATTRS.group_delay, da.attrs.get(_LEGACY_GROUP_DELAY_KEY))
-    return None if val is None else float(val)
-
-
 def _resolve_group_delay(da: xr.DataArray, group_delay: float | str, dim: str) -> float:
     """Resolve a ``group_delay`` argument (float or ``"header"``/``"measure"``) to samples."""
     if not isinstance(group_delay, str):
         return float(group_delay)
 
     if group_delay == "header":
-        header = _read_group_delay_attr(da)
+        val = read_attr(da, ATTRS.group_delay)
+        header = None if val is None else float(val)
         if header is None:
             raise ValueError(
                 f"remove_digital_filter(group_delay='header') needs the "
@@ -257,7 +247,8 @@ def estimate_group_delay(
     # Resolve the header anchor (explicit hint wins, else the stored attr).
     header = header_hint
     if header is None:
-        header = _read_group_delay_attr(da)
+        val = read_attr(da, ATTRS.group_delay)
+        header = None if val is None else float(val)
 
     # Resolve the search window.
     if search_range is not None:
@@ -474,8 +465,10 @@ def reshape_bruker_raw(raw_data_1d: np.ndarray, pv_params: dict) -> tuple[np.nda
     n_ph1 = 1
     n_ph2 = 1
 
-    # 2. Map standard Bruker order
-    dims = [DIMS.time, "channels", "slices", "averages", "ph1", "ph2", "repetitions"]
+    # 2. Map standard Bruker order. "slices"/"ph1"/"ph2" stay literal: hardcoded
+    # to size 1 above (unlocalized spectroscopy only), they are always filtered
+    # out below and can never appear in the output.
+    dims = [DIMS.time, DIMS.coil, "slices", DIMS.average, "ph1", "ph2", DIMS.repetition]
     sizes = [n_points, n_channels, n_slices, n_averages, n_ph1, n_ph2, n_rep]
 
     # 3. Filter out empty dimensions (size == 1)
@@ -509,7 +502,7 @@ def build_fid(
     Expected Bruker Parameters in `pv_params`:
     ------------------------------------------
     * PVM_SpecSWH        (float): Spectral width in Hz. Used to calculate dwell time.
-    * PVM_RepetitionTime (float): TR in ms. Used to calculate the repetitions coordinate.
+    * PVM_RepetitionTime (float): TR in ms. Used to calculate the repetition coordinate.
     * PVM_FrqRef         (float): Reference Larmor frequency in MHz. (Required for to_ppm)
     * PVM_FrqWorkPpm     (float): Carrier chemical shift in ppm. (Required for to_ppm)
     * groupDelay         (float): Bruker specific FID delay. In `ACQ_RxFilterInfo`.
@@ -548,7 +541,7 @@ def build_fid(
     groupDelay = _get_strict("groupDelay")
 
     # 2. Build explicit coordinates
-    coords = {}
+    coords: dict[str, tuple] = {}
 
     # Time Coordinate
     time_idx = dims.index(DIMS.time)
@@ -560,13 +553,15 @@ def build_fid(
         {"units": "s", "long_name": "Time"},
     )
 
-    # Repetition Coordinate (if present)
-    if "repetitions" in dims:
-        rep_idx = dims.index("repetitions")
+    # Repetition Coordinate (if present). Written under the caller's actual dim
+    # name so legacy plural-named dims (``"repetitions"``) still get the TR coord.
+    rep_dim = _first_matching_name(DIMS.repetition, dims)
+    if rep_dim is not None:
+        rep_idx = dims.index(rep_dim)
         n_rep = data.shape[rep_idx]
         tr_s = tr_ms * 1e-3
-        coords["repetitions"] = (
-            "repetitions",
+        coords[rep_dim] = (
+            rep_dim,
             np.arange(n_rep) * tr_s + tr_s,
             {"units": "s", "long_name": "Elapsed Repetition Time"},
         )

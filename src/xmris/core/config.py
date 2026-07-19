@@ -11,9 +11,20 @@ class XmrisTerm(str):
 
     This allows xarray to treat it as a standard dimension/coordinate name,
     while allowing developers to access `.unit` and `.description` directly.
+    Instances are immutable: all metadata is fixed at construction time.
     """
 
-    def __new__(cls, value: str, description: str = "", unit: str = ""):
+    description: str
+    unit: str
+    aliases: tuple[str, ...]
+
+    def __new__(
+        cls,
+        value: str,
+        description: str = "",
+        unit: str = "",
+        aliases: tuple[str, ...] = (),
+    ):
         """Create a new :class:`XmrisTerm` instance with metadata.
 
         Parameters
@@ -24,16 +35,41 @@ class XmrisTerm(str):
             A human‑readable description of the term (default is empty).
         unit : str, optional
             The unit associated with the term, if any (default is empty).
+        aliases : tuple of str, optional
+            Legacy string values this term was previously known under (default
+            is empty). Readers resolve the canonical value first, then each
+            alias in order — see :func:`xmris.core.utils.read_attr`.
 
         Returns
         -------
         XmrisTerm
-            A new string instance with ``description`` and ``unit`` attributes.
+            A new string instance with ``description``, ``unit`` and
+            ``aliases`` attributes.
         """
         obj = str.__new__(cls, value)
-        obj.description = description
-        obj.unit = unit
+        # Instances are frozen (__setattr__ raises), so bypass it here.
+        object.__setattr__(obj, "description", description)
+        object.__setattr__(obj, "unit", unit)
+        object.__setattr__(obj, "aliases", tuple(str(a) for a in aliases))
         return obj
+
+    def __setattr__(self, name: str, value: object) -> None:
+        """Reject attribute mutation — terms are frozen at construction."""
+        raise AttributeError(
+            f"XmrisTerm is immutable: cannot set {name!r} on {str(self)!r}. "
+            "Define a new term in xmris.core.config instead."
+        )
+
+    def __delattr__(self, name: str) -> None:
+        """Reject attribute deletion — terms are frozen at construction."""
+        raise AttributeError(f"XmrisTerm is immutable: cannot delete {name!r} from {str(self)!r}.")
+
+    def __getnewargs_ex__(self) -> tuple[tuple[str], dict[str, object]]:
+        """Route pickle/copy through ``__new__`` so metadata survives round-trips."""
+        return (
+            (str(self),),
+            {"description": self.description, "unit": self.unit, "aliases": self.aliases},
+        )
 
     @property
     def long_name(self) -> str:
@@ -51,6 +87,28 @@ class BaseVocabulary:
     Provides rich HTML display for Jupyter Notebooks and utility
     methods to fetch metadata for validation decorators.
     """
+
+    def __init_subclass__(cls, **kwargs) -> None:
+        """Enforce key uniqueness (canonical values and aliases) at import time.
+
+        Within one vocabulary class, every canonical term value and every alias
+        must be distinct — a duplicate would make attribute lookups ambiguous.
+        Cross-vocabulary duplicates (e.g. ``time`` in both DIMS and COORDS)
+        remain intentionally allowed.
+        """
+        super().__init_subclass__(**kwargs)
+        seen: dict[str, str] = {}
+        for prop, term in vars(cls).items():
+            if not isinstance(term, XmrisTerm):
+                continue
+            keys = [(str(term), "canonical value")] + [(a, "alias") for a in term.aliases]
+            for key, kind in keys:
+                if key in seen:
+                    raise ValueError(
+                        f"{cls.__name__}: duplicate vocabulary key {key!r} — "
+                        f"{kind} of {prop!r} collides with the {seen[key]}."
+                    )
+                seen[key] = f"{kind} of {prop!r}"
 
     def _get_terms(self) -> dict:
         """Help extract all XmrisTerm attributes from the class."""
@@ -76,6 +134,11 @@ class BaseVocabulary:
         for term in self._get_terms().values():
             if term == target_value:
                 return term.description or "No description provided."
+        for term in self._get_terms().values():
+            if target_value in term.aliases:
+                return f"Legacy alias of {str(term)!r}. " + (
+                    term.description or "No description provided."
+                )
         return "Unknown xarray key."
 
     def _repr_html_(self) -> str:
@@ -112,10 +175,15 @@ class BaseVocabulary:
                 else "<span style='color: #999;'>-</span>"
             )
 
+            key_str = f'<strong><code>"{term}"</code></strong>'
+            if term.aliases:
+                legacy = ", ".join(f'"{a}"' for a in term.aliases)
+                key_str += f"<br><small style='color: #999;'>legacy: {legacy}</small>"
+
             html.append(
                 "<tr style='border-bottom: 1px solid #eee;'>"
                 f"<td style='padding: 8px; white-space: nowrap;'><code>{prop_name}</code></td>"  # noqa: E501
-                f"<td style='padding: 8px; white-space: nowrap;'><strong><code>\"{term}\"</code></strong></td>"  # noqa: E501
+                f"<td style='padding: 8px; white-space: nowrap;'>{key_str}</td>"
                 f"<td style='padding: 8px; white-space: nowrap;'>{unit_str}</td>"
                 f"<td style='padding: 8px;'>{term.description}</td>"
                 "</tr>"
@@ -138,6 +206,7 @@ class XmrisAttributes(BaseVocabulary):
             "(0018,0084) or 'TransmitterFrequency' (0018,9098)."
         ),
         unit="MHz",
+        aliases=("MHz",),
     )
 
     carrier_ppm = XmrisTerm(
@@ -163,6 +232,7 @@ class XmrisAttributes(BaseVocabulary):
             "(TopSpin 'GRPDLY')."
         ),
         unit="samples",
+        aliases=("bruker_group_delay",),
     )
 
     group_delay_removed = XmrisTerm(
@@ -278,10 +348,25 @@ class XmrisDimensions(BaseVocabulary):
 
     component = XmrisTerm("component", description="Dimension separating real and imaginary parts.")
     # --- Standard Acquisition Dimensions ---
+    # Dimension names are uniformly singular; legacy plural spellings are aliases.
     average = XmrisTerm(
-        "average", description="Dimension for multiple signal acquisitions/averages."
+        "average",
+        description="Dimension for multiple signal acquisitions/averages.",
+        aliases=("averages",),
     )
-    coil = XmrisTerm("coil", description="Dimension for multi-coil phased array data.")
+    repetition = XmrisTerm(
+        "repetition",
+        description=(
+            "Dimension for repeated acquisitions over time (dynamic series), "
+            "one entry per TR block."
+        ),
+        aliases=("repetitions",),
+    )
+    coil = XmrisTerm(
+        "coil",
+        description="Dimension for multi-coil phased array data.",
+        aliases=("channels",),
+    )
     echo = XmrisTerm("echo", description="Dimension for multi-echo acquisitions.")
 
     # --- Spatial Frequency (k-space) ---

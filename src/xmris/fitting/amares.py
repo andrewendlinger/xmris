@@ -20,6 +20,7 @@ from pyAMARES.libs.logger import set_log_level
 from tqdm.auto import tqdm
 
 from xmris.core.config import ATTRS
+from xmris.core.utils import read_attr
 
 
 def _fit_dataset_safe(
@@ -239,7 +240,8 @@ def fit_amares(
     dim : str, optional
         The time dimension along which to fit, by default "time".
     mhz : float, optional
-        Spectrometer frequency in MHz. If None, attempts to read from da.attrs['MHz'].
+        Spectrometer frequency in MHz. If None, read from
+        ``da.attrs['reference_frequency']`` (legacy key ``'MHz'`` also accepted).
     sw : float, optional
         Spectral width in Hz. If None, attempts to calculate from `dim` coordinates.
     deadtime : float, optional
@@ -270,13 +272,14 @@ def fit_amares(
 
     # 1. Extract/Infer Physical Parameters
     if mhz is None:
-        # Prefer the modern vocabulary key written by simulate_fid / build_fid;
-        # fall back to the legacy "MHz" attr for back-compat.
-        mhz = da.attrs.get(ATTRS.reference_frequency, da.attrs.get("MHz"))
+        # Resolve the canonical reference_frequency, falling back to the legacy
+        # "MHz" alias, via the shared vocabulary-aware resolver.
+        mhz = read_attr(da, ATTRS.reference_frequency)
         if mhz is None:
             raise ValueError(
-                "mhz must be provided or present in "
-                f"da.attrs['{ATTRS.reference_frequency}'] (or legacy da.attrs['MHz'])."
+                f"mhz must be provided or present in "
+                f"da.attrs[{str(ATTRS.reference_frequency)!r}] "
+                "(legacy key 'MHz' is also accepted)."
             )
 
     if sw is None:
@@ -457,20 +460,12 @@ def fit_amares(
     else:
         # Handle the 1D case directly without unstacking
         ds["raw_data"] = da
-        ds["fit_data"] = xr.DataArray(
-            fit_data[0], dims=[dim], coords={dim: da.coords[dim]}
-        )
+        ds["fit_data"] = xr.DataArray(fit_data[0], dims=[dim], coords={dim: da.coords[dim]})
 
         param_coords = {"Metabolite": metabolites}
-        ds["amplitude"] = xr.DataArray(
-            amplitudes[0], dims=["Metabolite"], coords=param_coords
-        )
-        ds["chem_shift"] = xr.DataArray(
-            chem_shifts[0], dims=["Metabolite"], coords=param_coords
-        )
-        ds["linewidth"] = xr.DataArray(
-            linewidths[0], dims=["Metabolite"], coords=param_coords
-        )
+        ds["amplitude"] = xr.DataArray(amplitudes[0], dims=["Metabolite"], coords=param_coords)
+        ds["chem_shift"] = xr.DataArray(chem_shifts[0], dims=["Metabolite"], coords=param_coords)
+        ds["linewidth"] = xr.DataArray(linewidths[0], dims=["Metabolite"], coords=param_coords)
         ds["phase"] = xr.DataArray(phases[0], dims=["Metabolite"], coords=param_coords)
         ds["crlb"] = xr.DataArray(crlbs[0], dims=["Metabolite"], coords=param_coords)
         ds["snr"] = xr.DataArray(snrs[0], dims=["Metabolite"], coords=param_coords)

@@ -20,7 +20,7 @@ In `xmris`, this visualization is built entirely around our `WaterfallConfig` ob
 Before plotting, your `xarray.DataArray` must meet the following criteria:
 * **Dimensionality:** Must be at least 2D. 
 * **X-Axis (Horizontal):** The accessor will automatically search for dimensions named `chemical_shift` or `frequency`. If your spectral axis has a different name, you must specify it explicitly via the `x_dim` argument.
-* **Stack Axis (Vertical):** The accessor will automatically stack along the remaining dimension. If multiple dimensions remain, it looks for `averages` or `repetitions`, or you can specify it explicitly via the `stack_dim` argument.
+* **Stack Axis (Vertical):** The accessor will automatically stack along the remaining dimension. If multiple dimensions remain, it looks for `average` or `repetition` (the legacy plural names `averages`/`repetitions` are also recognized), or you can specify it explicitly via the `stack_dim` argument.
 
 ## 2. Generating Synthetic Data
 

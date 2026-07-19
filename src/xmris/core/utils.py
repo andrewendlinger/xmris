@@ -1,4 +1,7 @@
 # src/xmris/core/utils.py
+from collections.abc import Iterable
+from typing import Any
+
 import numpy as np
 import xarray as xr
 
@@ -123,3 +126,42 @@ def as_variable(term: XmrisTerm, dims: str | tuple, data: np.ndarray) -> xr.Vari
         attrs["units"] = term.unit
 
     return xr.Variable(dims, data, attrs=attrs)
+
+
+def read_attr(obj: xr.DataArray | xr.Dataset, term: XmrisTerm, default: Any = None) -> Any:
+    """Read an attribute from ``obj.attrs``, falling back to the term's legacy aliases.
+
+    Looks up the canonical key first, then each entry of ``term.aliases`` in
+    declaration order. This is the single shared resolver for attribute keys
+    that were renamed at some point (e.g. legacy ``"MHz"`` →
+    ``"reference_frequency"``): the rename is declared once on the term in
+    :mod:`xmris.core.config` and every reader inherits the fallback.
+
+    Parameters
+    ----------
+    obj : xr.DataArray or xr.Dataset
+        Object whose ``.attrs`` to read.
+    term : XmrisTerm
+        Vocabulary term naming the attribute (e.g. ``ATTRS.reference_frequency``).
+    default : Any, optional
+        Value returned when neither the canonical key nor any alias is present,
+        by default None.
+
+    Returns
+    -------
+    Any
+        The stored attribute value, or ``default`` if absent.
+    """
+    for key in (term, *term.aliases):
+        if key in obj.attrs:
+            return obj.attrs[key]
+    return default
+
+
+def _first_matching_name(term: XmrisTerm, names: Iterable[str]) -> str | None:
+    """Return the first of (canonical value, *aliases) present in ``names``, else None."""
+    available = set(names)
+    for key in (term, *term.aliases):
+        if key in available:
+            return str(key)
+    return None
