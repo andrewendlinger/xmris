@@ -6,7 +6,6 @@ from . import config, core, fitting, processing, vendor, visualization
 # =============================================================================
 # 1. Global Configuration & Singletons (The Central Nervous System)
 # =============================================================================
-from .config import DEFAULTS  # Legacy patch (branch refactor/18)
 from .core import (
     ATTRS,
     COORDS,
@@ -67,7 +66,6 @@ __all__ = [
     "COORDS",
     "DIMS",
     "VARS",
-    "DEFAULTS",  # Legacy patch (branch refactor/18)
     # --- 2. Accessors ---
     "XmrisAccessor",
     "XmrisDatasetAccessor",

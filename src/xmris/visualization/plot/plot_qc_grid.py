@@ -37,14 +37,20 @@ class PlotQCGridConfig(BasePlotConfig):
         default=None,
         metadata={
             "group": "Grid Layout",
-            "description": "Max subplots. If None (default), plots all spectra. If N > max, samples evenly.",
+            "description": (
+                "Max subplots. If None (default), plots all spectra. "
+                "If N > max, samples evenly."
+            ),
         },
     )
     sharey: bool = field(
         default=False,
         metadata={
             "group": "Grid Layout",
-            "description": "Share Y-axis limits across all plots to accurately compare absolute amplitudes.",
+            "description": (
+                "Share Y-axis limits across all plots to accurately "
+                "compare absolute amplitudes."
+            ),
         },
     )
 
