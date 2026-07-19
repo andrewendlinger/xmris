@@ -4,8 +4,8 @@ import numpy as np
 import scipy.optimize
 import xarray as xr
 
-from xmris.core.config import ATTRS, DIMS, VARS
-from xmris.core.utils import _check_dims
+from xmris.core.config import ATTRS, COORDS, DIMS, VARS
+from xmris.core.utils import _check_dims, as_variable
 from xmris.processing.fid import to_spectrum
 from xmris.processing.phasing import _acme_cost
 
@@ -124,9 +124,14 @@ def remove_digital_filter(
     # 5. Rebuild DataArray Safely (Functional Purity)
     da_new = template_da.copy(data=final_values)
 
-    # Ensure Time coordinate starts exactly at 0 after shifting
+    # Ensure Time coordinate starts exactly at 0 after shifting. Rebuild it via
+    # as_variable so the coordinate keeps its units/long_name — a bare-array
+    # assignment silently drops them, which later mislabels the axis downstream
+    # (e.g. a time axis rendered as "Time [ppm]" by the plotters).
     time_coords = da_new.coords[dim].values
-    da_new = da_new.assign_coords({dim: time_coords - time_coords[0]})
+    da_new = da_new.assign_coords(
+        {dim: as_variable(COORDS.time, dim, time_coords - time_coords[0])}
+    )
 
     # 6. Preserve Lineage — record only the quantifiable parameter applied (Commandment 3).
     new_attrs = da.attrs.copy()

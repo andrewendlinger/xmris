@@ -198,6 +198,11 @@ assert clean.sizes["time"] == raw.sizes["time"], "keep_length failed to preserve
 np.testing.assert_allclose(
     clean.coords["time"].values[0], 0.0, err_msg="time coordinate not reset to 0"
 )
+# Regression for #83: the origin reset must keep the coordinate's units metadata
+# (a bare-array assign_coords dropped it, mislabelling the time axis downstream).
+assert clean.coords["time"].attrs.get("units") == "s", (
+    "time coordinate lost its units metadata during remove_digital_filter"
+)
 np.testing.assert_allclose(
     clean.values[-76:], 0.0, atol=1e-9, err_msg="integer-delay tail not zero-filled"
 )

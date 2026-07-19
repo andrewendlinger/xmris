@@ -145,3 +145,15 @@ assert "13" in x_label and "C" in x_label, "Chemical shift LaTeX formatting fail
 assert "kinetic_time" in da_kinetic.dims, "Time dimension was lost during processing."
 assert "chemical_shift" in da_kinetic.dims, "Chemical shift dimension was lost."
 ```
+
+```{code-cell} ipython3
+:tags: [remove-cell]
+
+# Regression for #83: complex input must raise, not be silently plotted as `.real`.
+import pytest
+
+da_complex = da_kinetic_fid.xmr.to_spectrum().xmr.to_ppm()
+assert np.iscomplexobj(da_complex.values), "expected a complex spectrum for this guard test"
+with pytest.raises(ValueError, match="real-valued view"):
+    da_complex.sel(chemical_shift=slice(160, 190)).xmr.plot.carpet()
+```
