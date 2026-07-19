@@ -318,6 +318,13 @@ xmris functions will discover them automatically. The config constants are a
 backend safety net — not a user-facing API.
 :::
 
+:::{seealso}
+**Bringing data that uses different names?** If your scanner calls the reference frequency `spec_freq`
+or the dynamic axis `dyn`, the dictionary is a *fixed* target you conform your data onto —
+[The Controlled Vocabulary](../../explanation/vocabulary.md) picks up exactly here, with the reasoning
+and the one-line rename that gets you there.
+:::
+
 ---
 
 +++
