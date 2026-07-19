@@ -274,7 +274,7 @@ def fit_amares(
         mhz = da.attrs.get(ATTRS.reference_frequency)
         if mhz is None:
             raise ValueError(
-                f"mhz must be provided or present in da.attrs[{str(ATTRS.reference_frequency)!r}]."
+                f"mhz must be provided or present in da.attrs[{ATTRS.reference_frequency!r}]."
             )
 
     if sw is None:

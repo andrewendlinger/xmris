@@ -57,7 +57,11 @@ class XmrisTerm(str):
         raise AttributeError(f"XmrisTerm is immutable: cannot delete {name!r} from {str(self)!r}.")
 
     def __getnewargs_ex__(self) -> tuple[tuple[str], dict[str, object]]:
-        """Route pickle/copy through ``__new__`` so metadata survives round-trips."""
+        """Route pickle/copy through ``__new__`` so metadata survives round-trips.
+
+        Uses ``_ex_`` (not ``__getnewargs__``) so it doesn't override ``str``'s
+        own ``__getnewargs__`` signature — which mypy rejects.
+        """
         return ((str(self),), {"description": self.description, "unit": self.unit})
 
     @property
@@ -87,9 +91,7 @@ class BaseVocabulary:
         """
         super().__init_subclass__(**kwargs)
         seen: dict[str, str] = {}
-        for prop, term in vars(cls).items():
-            if not isinstance(term, XmrisTerm):
-                continue
+        for prop, term in cls._get_terms().items():
             key = str(term)
             if key in seen:
                 raise ValueError(
@@ -98,9 +100,10 @@ class BaseVocabulary:
                 )
             seen[key] = prop
 
-    def _get_terms(self) -> dict:
+    @classmethod
+    def _get_terms(cls) -> dict:
         """Help extract all XmrisTerm attributes from the class."""
-        return {key: val for key, val in vars(self.__class__).items() if isinstance(val, XmrisTerm)}
+        return {key: val for key, val in vars(cls).items() if isinstance(val, XmrisTerm)}
 
     def get_description(self, target_value: str) -> str:
         """

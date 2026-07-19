@@ -74,13 +74,10 @@ def parse_input_dims_timeseries(
         elif len(remaining_dims) == 1:
             stack_dim = remaining_dims[0]
         else:
-            # Try to find a logical secondary dimension
-            if DIMS.average in remaining_dims:
-                stack_dim = DIMS.average
-            elif DIMS.repetition in remaining_dims:
-                stack_dim = DIMS.repetition
-            else:
-                # Fallback to the first available non-x dimension
-                stack_dim = remaining_dims[0]
+            # Prefer a logical secondary dimension, else the first available non-x dim.
+            stack_dim = next(
+                (d for d in (DIMS.average, DIMS.repetition) if d in remaining_dims),
+                remaining_dims[0],
+            )
 
     return str(x_dim), str(stack_dim)

@@ -1571,7 +1571,7 @@ class TestGroupDelayAttr:
         from xmris.vendor.bruker import remove_digital_filter
 
         da = self._fid_with_attr("unrelated", 1.0)
-        with pytest.raises(ValueError, match=re.escape(str(ATTRS.group_delay))):
+        with pytest.raises(ValueError, match=re.escape(ATTRS.group_delay)):
             remove_digital_filter(da, group_delay="header")
 
 
