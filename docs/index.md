@@ -98,7 +98,7 @@ flowchart TD
     subgraph Components ["DataArray Components"]
         direction LR
         NP["Raw NumPy Array<br><span style='color:#6c757d; font-size:0.9em; font-style:italic;'>Complex FID data</span>"]:::component
-        Dims["Dimensions<br><span style='color:#6c757d; font-size:0.9em; font-style:italic;'>'time', 'repetitions'</span>"]:::component
+        Dims["Dimensions<br><span style='color:#6c757d; font-size:0.9em; font-style:italic;'>'time', 'repetition'</span>"]:::component
         Coords["Coordinates<br><span style='color:#6c757d; font-size:0.9em; font-style:italic;'>- array of fid times [s]<br>- array of repetition times [s]</span>"]:::component
         Meta["Metadata (attrs)<br><span style='color:#6c757d; font-size:0.9em; font-style:italic;'>b0_field, reference_frequency</span>"]:::component
     end
@@ -108,7 +108,7 @@ flowchart TD
 
     %% 4a. The Native xarray benefit
     In --> Nat{"Native Methods"}:::native
-    Nat -->|"<span style='font-family:monospace;'>fid_data.mean(dim='repetitions')</span>"| OutNat["📉 Averaged FID DataArray"]:::output
+    Nat -->|"<span style='font-family:monospace;'>fid_data.mean(dim='repetition')</span>"| OutNat["📉 Averaged FID DataArray"]:::output
 
     %% 4b. The Custom processing pipeline
     In --> Acc{"⚙️ .xmr accessor"}:::accessor

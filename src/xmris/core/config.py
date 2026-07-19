@@ -46,6 +46,11 @@ class XmrisTerm(str):
             A new string instance with ``description``, ``unit`` and
             ``aliases`` attributes.
         """
+        if isinstance(aliases, str):
+            raise TypeError(
+                f"aliases must be a tuple of strings, not a bare str; got {aliases!r} "
+                f"for term {value!r} (did you forget a trailing comma?)."
+            )
         obj = str.__new__(cls, value)
         # Instances are frozen (__setattr__ raises), so bypass it here.
         object.__setattr__(obj, "description", description)
@@ -131,12 +136,14 @@ class BaseVocabulary:
         str
             The description string, or a fallback message if not found.
         """
+        # Import-time uniqueness (see __init_subclass__) guarantees target_value
+        # matches at most one term — as its canonical value or as one alias — so a
+        # single pass suffices.
         for term in self._get_terms().values():
             if term == target_value:
                 return term.description or "No description provided."
-        for term in self._get_terms().values():
             if target_value in term.aliases:
-                return f"Legacy alias of {str(term)!r}. " + (
+                return f"Legacy alias of {term!r}. " + (
                     term.description or "No description provided."
                 )
         return "Unknown xarray key."

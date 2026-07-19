@@ -304,14 +304,25 @@ class TestXmrisTermHardening:
     """Vocabulary terms are frozen value objects whose metadata survives round-trips."""
 
     def test_mutation_raises(self):
-        """Setting an attribute on a singleton term must raise."""
+        """Setting an attribute on a term must raise (frozen).
+
+        Uses a local term, not the shared ATTRS singleton: were the freeze to
+        regress, mutating the singleton here would corrupt it for every later test.
+        """
+        term = XmrisTerm("probe", description="d", unit="s")
         with pytest.raises(AttributeError, match="immutable"):
-            ATTRS.reference_frequency.unit = "Hz"
+            term.unit = "Hz"
 
     def test_deletion_raises(self):
-        """Deleting an attribute from a singleton term must raise."""
+        """Deleting an attribute from a term must raise (frozen)."""
+        term = XmrisTerm("probe", description="d", unit="s")
         with pytest.raises(AttributeError, match="immutable"):
-            del ATTRS.reference_frequency.unit
+            del term.unit
+
+    def test_bare_string_alias_rejected(self):
+        """A bare-str ``aliases`` (missing trailing comma) must raise, not explode per-char."""
+        with pytest.raises(TypeError, match="not a bare str"):
+            XmrisTerm("modern", description="d", aliases="legacy")
 
     def test_aliases_are_plain_string_tuples(self):
         """Aliases must be tuples of *plain* str (metadata-free by construction)."""
@@ -424,10 +435,15 @@ class TestParseInputDims:
 
     @pytest.mark.parametrize("stack", ["average", "averages", "repetition", "repetitions"])
     def test_detects_singular_and_legacy_plural(self, stack):
-        """Auto-detect matches the name the data actually carries (was AttributeError)."""
+        """Auto-detect matches the name the data actually carries (was AttributeError).
+
+        ``coil`` is placed FIRST so it is ``remaining_dims[0]`` (the positional
+        fallback). Only correct alias-matching returns ``stack``; a broken match
+        loop would fall back to ``coil`` and fail the assertion.
+        """
         from xmris.visualization.plot._input_parsing import parse_input_dims_timeseries
 
-        da = self._da((DIMS.chemical_shift, stack, DIMS.coil))
+        da = self._da((DIMS.chemical_shift, DIMS.coil, stack))
         x_dim, stack_dim = parse_input_dims_timeseries(da)
         assert x_dim == DIMS.chemical_shift
         assert stack_dim == stack
