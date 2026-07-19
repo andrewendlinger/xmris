@@ -20,7 +20,6 @@ from pyAMARES.libs.logger import set_log_level
 from tqdm.auto import tqdm
 
 from xmris.core.config import ATTRS
-from xmris.core.utils import read_attr
 
 
 def _fit_dataset_safe(
@@ -241,7 +240,7 @@ def fit_amares(
         The time dimension along which to fit, by default "time".
     mhz : float, optional
         Spectrometer frequency in MHz. If None, read from
-        ``da.attrs['reference_frequency']`` (legacy key ``'MHz'`` also accepted).
+        ``da.attrs['reference_frequency']``.
     sw : float, optional
         Spectral width in Hz. If None, attempts to calculate from `dim` coordinates.
     deadtime : float, optional
@@ -272,14 +271,10 @@ def fit_amares(
 
     # 1. Extract/Infer Physical Parameters
     if mhz is None:
-        # Resolve the canonical reference_frequency, falling back to the legacy
-        # "MHz" alias, via the shared vocabulary-aware resolver.
-        mhz = read_attr(da, ATTRS.reference_frequency)
+        mhz = da.attrs.get(ATTRS.reference_frequency)
         if mhz is None:
             raise ValueError(
-                f"mhz must be provided or present in "
-                f"da.attrs[{str(ATTRS.reference_frequency)!r}] "
-                "(legacy key 'MHz' is also accepted)."
+                f"mhz must be provided or present in da.attrs[{str(ATTRS.reference_frequency)!r}]."
             )
 
     if sw is None:

@@ -16,14 +16,12 @@ class XmrisTerm(str):
 
     description: str
     unit: str
-    aliases: tuple[str, ...]
 
     def __new__(
         cls,
         value: str,
         description: str = "",
         unit: str = "",
-        aliases: tuple[str, ...] = (),
     ):
         """Create a new :class:`XmrisTerm` instance with metadata.
 
@@ -35,27 +33,16 @@ class XmrisTerm(str):
             A human‑readable description of the term (default is empty).
         unit : str, optional
             The unit associated with the term, if any (default is empty).
-        aliases : tuple of str, optional
-            Legacy string values this term was previously known under (default
-            is empty). Readers resolve the canonical value first, then each
-            alias in order — see :func:`xmris.core.utils.read_attr`.
 
         Returns
         -------
         XmrisTerm
-            A new string instance with ``description``, ``unit`` and
-            ``aliases`` attributes.
+            A new string instance with ``description`` and ``unit`` attributes.
         """
-        if isinstance(aliases, str):
-            raise TypeError(
-                f"aliases must be a tuple of strings, not a bare str; got {aliases!r} "
-                f"for term {value!r} (did you forget a trailing comma?)."
-            )
         obj = str.__new__(cls, value)
         # Instances are frozen (__setattr__ raises), so bypass it here.
         object.__setattr__(obj, "description", description)
         object.__setattr__(obj, "unit", unit)
-        object.__setattr__(obj, "aliases", tuple(str(a) for a in aliases))
         return obj
 
     def __setattr__(self, name: str, value: object) -> None:
@@ -71,10 +58,7 @@ class XmrisTerm(str):
 
     def __getnewargs_ex__(self) -> tuple[tuple[str], dict[str, object]]:
         """Route pickle/copy through ``__new__`` so metadata survives round-trips."""
-        return (
-            (str(self),),
-            {"description": self.description, "unit": self.unit, "aliases": self.aliases},
-        )
+        return ((str(self),), {"description": self.description, "unit": self.unit})
 
     @property
     def long_name(self) -> str:
@@ -94,26 +78,25 @@ class BaseVocabulary:
     """
 
     def __init_subclass__(cls, **kwargs) -> None:
-        """Enforce key uniqueness (canonical values and aliases) at import time.
+        """Enforce canonical-value uniqueness at import time.
 
-        Within one vocabulary class, every canonical term value and every alias
-        must be distinct — a duplicate would make attribute lookups ambiguous.
-        Cross-vocabulary duplicates (e.g. ``time`` in both DIMS and COORDS)
-        remain intentionally allowed.
+        Within one vocabulary class, every canonical term value must be distinct —
+        a duplicate would make attribute lookups ambiguous. Cross-vocabulary
+        duplicates (e.g. ``time`` in both DIMS and COORDS) remain intentionally
+        allowed.
         """
         super().__init_subclass__(**kwargs)
         seen: dict[str, str] = {}
         for prop, term in vars(cls).items():
             if not isinstance(term, XmrisTerm):
                 continue
-            keys = [(str(term), "canonical value")] + [(a, "alias") for a in term.aliases]
-            for key, kind in keys:
-                if key in seen:
-                    raise ValueError(
-                        f"{cls.__name__}: duplicate vocabulary key {key!r} — "
-                        f"{kind} of {prop!r} collides with the {seen[key]}."
-                    )
-                seen[key] = f"{kind} of {prop!r}"
+            key = str(term)
+            if key in seen:
+                raise ValueError(
+                    f"{cls.__name__}: duplicate vocabulary key {key!r} — "
+                    f"{prop!r} collides with {seen[key]!r}."
+                )
+            seen[key] = prop
 
     def _get_terms(self) -> dict:
         """Help extract all XmrisTerm attributes from the class."""
@@ -129,23 +112,16 @@ class BaseVocabulary:
         ----------
         target_value : str
             The actual string value of the attribute/dimension/coordinate
-            (e.g., "MHz", "time").
+            (e.g., "reference_frequency", "time").
 
         Returns
         -------
         str
             The description string, or a fallback message if not found.
         """
-        # Import-time uniqueness (see __init_subclass__) guarantees target_value
-        # matches at most one term — as its canonical value or as one alias — so a
-        # single pass suffices.
         for term in self._get_terms().values():
             if term == target_value:
                 return term.description or "No description provided."
-            if target_value in term.aliases:
-                return f"Legacy alias of {term!r}. " + (
-                    term.description or "No description provided."
-                )
         return "Unknown xarray key."
 
     def _repr_html_(self) -> str:
@@ -182,15 +158,10 @@ class BaseVocabulary:
                 else "<span style='color: #999;'>-</span>"
             )
 
-            key_str = f'<strong><code>"{term}"</code></strong>'
-            if term.aliases:
-                legacy = ", ".join(f'"{a}"' for a in term.aliases)
-                key_str += f"<br><small style='color: #999;'>legacy: {legacy}</small>"
-
             html.append(
                 "<tr style='border-bottom: 1px solid #eee;'>"
                 f"<td style='padding: 8px; white-space: nowrap;'><code>{prop_name}</code></td>"  # noqa: E501
-                f"<td style='padding: 8px; white-space: nowrap;'>{key_str}</td>"
+                f"<td style='padding: 8px; white-space: nowrap;'><strong><code>\"{term}\"</code></strong></td>"  # noqa: E501
                 f"<td style='padding: 8px; white-space: nowrap;'>{unit_str}</td>"
                 f"<td style='padding: 8px;'>{term.description}</td>"
                 "</tr>"
@@ -213,7 +184,6 @@ class XmrisAttributes(BaseVocabulary):
             "(0018,0084) or 'TransmitterFrequency' (0018,9098)."
         ),
         unit="MHz",
-        aliases=("MHz",),
     )
 
     carrier_ppm = XmrisTerm(
@@ -239,7 +209,6 @@ class XmrisAttributes(BaseVocabulary):
             "(TopSpin 'GRPDLY')."
         ),
         unit="samples",
-        aliases=("bruker_group_delay",),
     )
 
     group_delay_removed = XmrisTerm(
@@ -355,11 +324,9 @@ class XmrisDimensions(BaseVocabulary):
 
     component = XmrisTerm("component", description="Dimension separating real and imaginary parts.")
     # --- Standard Acquisition Dimensions ---
-    # Dimension names are uniformly singular; legacy plural spellings are aliases.
+    # Dimension names are uniformly singular.
     average = XmrisTerm(
-        "average",
-        description="Dimension for multiple signal acquisitions/averages.",
-        aliases=("averages",),
+        "average", description="Dimension for multiple signal acquisitions/averages."
     )
     repetition = XmrisTerm(
         "repetition",
@@ -367,13 +334,8 @@ class XmrisDimensions(BaseVocabulary):
             "Dimension for repeated acquisitions over time (dynamic series), "
             "one entry per TR block."
         ),
-        aliases=("repetitions",),
     )
-    coil = XmrisTerm(
-        "coil",
-        description="Dimension for multi-coil phased array data.",
-        aliases=("channels",),
-    )
+    coil = XmrisTerm("coil", description="Dimension for multi-coil phased array data.")
     echo = XmrisTerm("echo", description="Dimension for multi-echo acquisitions.")
 
     # --- Spatial Frequency (k-space) ---

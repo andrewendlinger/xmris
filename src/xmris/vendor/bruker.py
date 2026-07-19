@@ -5,7 +5,7 @@ import scipy.optimize
 import xarray as xr
 
 from xmris.core.config import ATTRS, COORDS, DIMS, VARS
-from xmris.core.utils import _check_dims, _first_matching_name, as_variable, read_attr
+from xmris.core.utils import _check_dims, as_variable
 from xmris.processing.fid import to_spectrum
 from xmris.processing.phasing import _acme_cost
 
@@ -146,7 +146,7 @@ def _resolve_group_delay(da: xr.DataArray, group_delay: float | str, dim: str) -
         return float(group_delay)
 
     if group_delay == "header":
-        val = read_attr(da, ATTRS.group_delay)
+        val = da.attrs.get(ATTRS.group_delay)
         header = None if val is None else float(val)
         if header is None:
             raise ValueError(
@@ -247,7 +247,7 @@ def estimate_group_delay(
     # Resolve the header anchor (explicit hint wins, else the stored attr).
     header = header_hint
     if header is None:
-        val = read_attr(da, ATTRS.group_delay)
+        val = da.attrs.get(ATTRS.group_delay)
         header = None if val is None else float(val)
 
     # Resolve the search window.
@@ -553,15 +553,13 @@ def build_fid(
         {"units": "s", "long_name": "Time"},
     )
 
-    # Repetition Coordinate (if present). Written under the caller's actual dim
-    # name so legacy plural-named dims (``"repetitions"``) still get the TR coord.
-    rep_dim = _first_matching_name(DIMS.repetition, dims)
-    if rep_dim is not None:
-        rep_idx = dims.index(rep_dim)
+    # Repetition Coordinate (if present)
+    if DIMS.repetition in dims:
+        rep_idx = dims.index(DIMS.repetition)
         n_rep = data.shape[rep_idx]
         tr_s = tr_ms * 1e-3
-        coords[rep_dim] = (
-            rep_dim,
+        coords[DIMS.repetition] = (
+            DIMS.repetition,
             np.arange(n_rep) * tr_s + tr_s,
             {"units": "s", "long_name": "Elapsed Repetition Time"},
         )

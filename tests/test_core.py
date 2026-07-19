@@ -61,7 +61,7 @@ from xmris.core.config import (
     BaseVocabulary,
     XmrisTerm,
 )
-from xmris.core.utils import _resolve_dim, read_attr
+from xmris.core.utils import _resolve_dim
 from xmris.core.validation import computes_in, ensures_domain, requires_attrs
 from xmris.processing.fid import to_fid, to_spectrum
 
@@ -296,7 +296,7 @@ class TestConfigMetadata:
 
 
 # =============================================================================
-# 3b. Configuration: Term Hardening (immutability, aliases, uniqueness)
+# 3b. Configuration: Term Hardening (immutability, uniqueness)
 # =============================================================================
 
 
@@ -319,26 +319,6 @@ class TestXmrisTermHardening:
         with pytest.raises(AttributeError, match="immutable"):
             del term.unit
 
-    def test_bare_string_alias_rejected(self):
-        """A bare-str ``aliases`` (missing trailing comma) must raise, not explode per-char."""
-        with pytest.raises(TypeError, match="not a bare str"):
-            XmrisTerm("modern", description="d", aliases="legacy")
-
-    def test_aliases_are_plain_string_tuples(self):
-        """Aliases must be tuples of *plain* str (metadata-free by construction)."""
-        for vocab in (ATTRS, DIMS, COORDS, VARS):
-            for prop_name, term in vocab._get_terms().items():
-                assert isinstance(term.aliases, tuple)
-                assert all(type(a) is str for a in term.aliases), (
-                    f"{vocab.__class__.__name__}.{prop_name} aliases must be plain str."
-                )
-
-    def test_alias_normalization(self):
-        """Alias inputs are normalized to plain strings, even when given as terms."""
-        term = XmrisTerm("modern", description="d", aliases=(XmrisTerm("legacy"), "older"))
-        assert term.aliases == ("legacy", "older")
-        assert all(type(a) is str for a in term.aliases)
-
     @pytest.mark.parametrize("proto", range(pickle.HIGHEST_PROTOCOL + 1))
     def test_pickle_roundtrip_preserves_metadata_and_freeze(self, proto):
         """Pickle round-trips keep value, metadata, and immutability on every protocol."""
@@ -346,7 +326,6 @@ class TestXmrisTermHardening:
         assert term == ATTRS.reference_frequency
         assert term.description == ATTRS.reference_frequency.description
         assert term.unit == "MHz"
-        assert term.aliases == ("MHz",)
         with pytest.raises(AttributeError):
             term.unit = "Hz"
 
@@ -355,13 +334,12 @@ class TestXmrisTermHardening:
         term = copy.deepcopy(ATTRS.group_delay)
         assert term == ATTRS.group_delay
         assert term.unit == "samples"
-        assert term.aliases == ("bruker_group_delay",)
         with pytest.raises(AttributeError):
             term.unit = "x"
 
 
 class TestVocabularyUniqueness:
-    """Duplicate keys (canonical or alias) inside one vocabulary fail at import time."""
+    """Duplicate canonical values inside one vocabulary fail at import time."""
 
     def test_duplicate_canonical_value_raises(self):
         """Two terms with the same canonical value must fail at class definition."""
@@ -371,75 +349,30 @@ class TestVocabularyUniqueness:
                 a = XmrisTerm("twin", description="d")
                 b = XmrisTerm("twin", description="d")
 
-    def test_alias_colliding_with_canonical_raises(self):
-        """An alias shadowing another term's canonical value must fail."""
-        with pytest.raises(ValueError, match="duplicate vocabulary key 'taken'"):
-
-            class _Broken(BaseVocabulary):
-                a = XmrisTerm("taken", description="d")
-                b = XmrisTerm("other", description="d", aliases=("taken",))
-
-    def test_alias_colliding_with_alias_raises(self):
-        """Two terms claiming the same alias must fail."""
-        with pytest.raises(ValueError, match="duplicate vocabulary key 'legacy'"):
-
-            class _Broken(BaseVocabulary):
-                a = XmrisTerm("a", description="d", aliases=("legacy",))
-                b = XmrisTerm("b", description="d", aliases=("legacy",))
-
     def test_well_formed_vocabulary_constructs(self):
-        """Distinct values and aliases construct without error."""
+        """Distinct values construct without error."""
 
         class _Fine(BaseVocabulary):
-            a = XmrisTerm("a", description="d", aliases=("old_a",))
+            a = XmrisTerm("a", description="d")
             b = XmrisTerm("b", description="d")
 
         assert _Fine()._get_terms().keys() == {"a", "b"}
 
-    def test_get_description_resolves_alias(self):
-        """``get_description`` on a legacy alias points at the canonical term."""
-        desc = ATTRS.get_description("MHz")
-        assert "Legacy alias of 'reference_frequency'" in desc
-
-
-class TestReadAttr:
-    """The shared alias-aware attrs resolver: canonical key wins, aliases fall back."""
-
-    @staticmethod
-    def _da(attrs: dict) -> xr.DataArray:
-        return xr.DataArray(np.zeros(4), dims=[DIMS.time], attrs=attrs)
-
-    def test_canonical_wins_over_alias(self):
-        """The canonical key is preferred when both canonical and alias are present."""
-        da = self._da({ATTRS.reference_frequency: 400.1, "MHz": 999.0})
-        assert read_attr(da, ATTRS.reference_frequency) == 400.1
-
-    def test_alias_fallback(self):
-        """A legacy alias key is read when the canonical key is absent."""
-        da = self._da({"MHz": 120.3})
-        assert read_attr(da, ATTRS.reference_frequency) == 120.3
-
-    def test_missing_returns_default(self):
-        """Neither key present returns the default (None unless overridden)."""
-        da = self._da({"unrelated": 1.0})
-        assert read_attr(da, ATTRS.reference_frequency) is None
-        assert read_attr(da, ATTRS.reference_frequency, default=1.5) == 1.5
-
 
 class TestParseInputDims:
-    """Stack-dim auto-detect uses singular vocabulary dims + legacy plural aliases."""
+    """Stack-dim auto-detect uses the singular vocabulary dims."""
 
     @staticmethod
     def _da(dims: tuple[str, ...]) -> xr.DataArray:
         return xr.DataArray(np.zeros((4, 3, 2)), dims=list(dims))
 
-    @pytest.mark.parametrize("stack", ["average", "averages", "repetition", "repetitions"])
-    def test_detects_singular_and_legacy_plural(self, stack):
-        """Auto-detect matches the name the data actually carries (was AttributeError).
+    @pytest.mark.parametrize("stack", ["average", "repetition"])
+    def test_detects_stack_dim(self, stack):
+        """Auto-detect finds the acquisition axis (was AttributeError on DIMS.averages).
 
         ``coil`` is placed FIRST so it is ``remaining_dims[0]`` (the positional
-        fallback). Only correct alias-matching returns ``stack``; a broken match
-        loop would fall back to ``coil`` and fail the assertion.
+        fallback). Only correct name-matching returns ``stack``; a broken match
+        would fall back to ``coil`` and fail the assertion.
         """
         from xmris.visualization.plot._input_parsing import parse_input_dims_timeseries
 
@@ -479,16 +412,15 @@ class TestBrukerVocabularyDims:
         _, dims = reshape_bruker_raw(raw, self._PV_PARAMS)
         assert dims == [DIMS.time, DIMS.coil, DIMS.average, DIMS.repetition]
 
-    @pytest.mark.parametrize("rep_dim", [str(DIMS.repetition), "repetitions"])
-    def test_build_fid_writes_tr_coordinate(self, rep_dim):
-        """The TR coordinate is written for canonical and legacy plural dim names."""
+    def test_build_fid_writes_tr_coordinate(self):
+        """The TR coordinate is written for the canonical repetition dim."""
         from xmris.vendor.bruker import build_fid
 
         data = np.zeros((8, 4), dtype=complex)
-        da = build_fid(data, [DIMS.time, rep_dim], self._PV_PARAMS)
-        assert rep_dim in da.coords
-        np.testing.assert_allclose(da.coords[rep_dim].values, np.arange(1, 5) * 1.0)
-        assert da.coords[rep_dim].attrs["units"] == "s"
+        da = build_fid(data, [DIMS.time, DIMS.repetition], self._PV_PARAMS)
+        assert DIMS.repetition in da.coords
+        np.testing.assert_allclose(da.coords[DIMS.repetition].values, np.arange(1, 5) * 1.0)
+        assert da.coords[DIMS.repetition].attrs["units"] == "s"
 
 
 # =============================================================================
@@ -1582,7 +1514,7 @@ class TestSetOptions:
 
 
 class TestGroupDelayAttr:
-    """The ``group_delay`` attr rename keeps reading legacy ``bruker_group_delay`` keys."""
+    """``group_delay='header'`` reads the canonical ``group_delay`` attr."""
 
     @staticmethod
     def _fid_with_attr(key: str, value: float) -> xr.DataArray:
@@ -1595,29 +1527,21 @@ class TestGroupDelayAttr:
             attrs={key: value},
         )
 
-    def test_header_reads_legacy_key(self):
-        """``group_delay='header'`` falls back to the legacy ``bruker_group_delay`` attr."""
+    def test_header_reads_canonical_key(self):
+        """``group_delay='header'`` reads the canonical ``group_delay`` attr."""
         from xmris.vendor.bruker import remove_digital_filter
 
-        da = self._fid_with_attr("bruker_group_delay", 40.0)
+        da = self._fid_with_attr(ATTRS.group_delay, 40.0)
         out = remove_digital_filter(da, group_delay="header")
         assert out.attrs[ATTRS.group_delay_removed] == 40.0
 
-    def test_header_prefers_canonical_key(self):
-        """The canonical ``group_delay`` key wins when both keys are present."""
+    def test_header_missing_attr_raises(self):
+        """``group_delay='header'`` raises a guiding error when the attr is absent."""
         from xmris.vendor.bruker import remove_digital_filter
 
-        da = self._fid_with_attr("bruker_group_delay", 40.0)
-        da.attrs[ATTRS.group_delay] = 50.0
-        out = remove_digital_filter(da, group_delay="header")
-        assert out.attrs[ATTRS.group_delay_removed] == 50.0
-
-    def test_read_attr_prefers_canonical_and_falls_back(self):
-        """``read_attr(da, ATTRS.group_delay)`` prefers the new key, falls back, else None."""
-        legacy = self._fid_with_attr("bruker_group_delay", 76.125)
-        assert read_attr(legacy, ATTRS.group_delay) == 76.125
-        assert read_attr(self._fid_with_attr(ATTRS.group_delay, 84.0), ATTRS.group_delay) == 84.0
-        assert read_attr(self._fid_with_attr("unrelated", 1.0), ATTRS.group_delay) is None
+        da = self._fid_with_attr("unrelated", 1.0)
+        with pytest.raises(ValueError, match=str(ATTRS.group_delay)):
+            remove_digital_filter(da, group_delay="header")
 
 
 class TestEstimateGroupDelayRobustness:

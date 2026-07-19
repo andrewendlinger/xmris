@@ -1,7 +1,6 @@
 import xarray as xr
 
 from xmris.core import DIMS
-from xmris.core.utils import _first_matching_name
 
 
 def parse_input_dims_timeseries(
@@ -14,7 +13,7 @@ def parse_input_dims_timeseries(
     This function attempts to automatically identify the most logical dimensions for
     a 2D (1D spectra + time) contour or ridge plot if they are not explicitly provided.
     It prefers 'chemical_shift' or 'frequency' for the x-axis and 'average' or
-    'repetition' (legacy plural spellings also recognized) for the stacked axis.
+    'repetition' for the stacked axis.
 
     Parameters
     ----------
@@ -75,15 +74,12 @@ def parse_input_dims_timeseries(
         elif len(remaining_dims) == 1:
             stack_dim = remaining_dims[0]
         else:
-            # Try to find a logical secondary dimension (canonical singular name
-            # or its legacy plural alias, whichever the data actually carries).
-            stack_dim = None
-            for term in (DIMS.average, DIMS.repetition):
-                match = _first_matching_name(term, remaining_dims)
-                if match is not None:
-                    stack_dim = match
-                    break
-            if stack_dim is None:
+            # Try to find a logical secondary dimension
+            if DIMS.average in remaining_dims:
+                stack_dim = DIMS.average
+            elif DIMS.repetition in remaining_dims:
+                stack_dim = DIMS.repetition
+            else:
                 # Fallback to the first available non-x dimension
                 stack_dim = remaining_dims[0]
 
