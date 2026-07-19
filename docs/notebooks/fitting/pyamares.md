@@ -186,6 +186,30 @@ ds_fit = da_mrsi.xmr.fit_amares(
 )
 ```
 
+```{code-cell} ipython3
+:tags: [remove-cell]
+
+# Regression for #68: fit_amares must resolve the spectrometer frequency from the
+# modern `reference_frequency` attr (written by simulate_fid / build_fid), not only
+# the legacy "MHz" key. Here we fit a single FID carrying ONLY reference_frequency
+# and pass no explicit `mhz=` — this raised a ValueError before the fix.
+from xmris.core.config import ATTRS
+
+fid_modern = da_mrsi.isel(voxel=0).copy()
+fid_modern.attrs = {str(ATTRS.reference_frequency): mhz, "sw": sw}
+assert "MHz" not in fid_modern.attrs  # ensure we exercise the modern-key path
+
+ds_modern = fid_modern.xmr.fit_amares(
+    prior_knowledge_file=pk_path, method="least_squares", num_workers=1
+)
+
+# It fit without raising, and produced finite amplitudes for both metabolites.
+assert np.all(np.isfinite(ds_modern["amplitude"].values)), (
+    "modern reference_frequency fit produced non-finite amplitudes"
+)
+assert float(ds_modern["amplitude"].sel(Metabolite="PCr")) > 0.0
+```
+
 :::{dropdown} Understanding the PyAMARES Warning
 If you look at the cell output above, you might notice this recurring warning:
 `[AMARES | WARNING] pm_index are all NaNs, return None so that P matrix is a identity matrix!`
