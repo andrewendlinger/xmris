@@ -87,6 +87,24 @@ session? Because that is the alias problem wearing a hat: the tolerance becomes 
 two datasets with different conventions can no longer coexist, and *"what does `reference_frequency`
 resolve to right now?"* becomes a live question again. Renaming keeps the answer boring and permanent.
 
+(the-lowercase-convention)=
+### What you're conforming to: the lowercase convention
+
+The canonical names are all **lowercase `snake_case`**, deliberately aligned with the wider xarray
+ecosystem rather than invented from scratch:
+
+| Standard / package | Convention |
+| --- | --- |
+| [CF Conventions](https://cfconventions.org/) | `time`, `latitude`, `longitude` |
+| [cf-xarray](https://cf-xarray.readthedocs.io/) | `time`, `latitude`, `vertical` |
+| xarray docs & tutorials | `time`, `x`, `y`, `space` |
+| **xmris** | `time`, `frequency`, `chemical_shift` |
+
+`snake_case` also stays unambiguous for multi-word names — `chemical_shift` reads one way, where
+`Chemical_Shift` is a hybrid no Python convention endorses. You're free to name *your* axes anything
+you like (every function takes a `dim=` argument); it's only when xmris creates a name itself — the
+`chemical_shift` coordinate from `to_ppm()`, say — that it is guaranteed lowercase.
+
 ## Why the vocabulary can afford to be this strict
 
 All of this only works because the vocabulary is a *fixed point* you can trust. So we make it one,
