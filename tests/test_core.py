@@ -45,6 +45,7 @@ or user pipelines depend on.
 
 import copy
 import pickle
+import re
 
 import numpy as np
 import pytest
@@ -364,7 +365,7 @@ class TestParseInputDims:
 
     @staticmethod
     def _da(dims: tuple[str, ...]) -> xr.DataArray:
-        return xr.DataArray(np.zeros((4, 3, 2)), dims=list(dims))
+        return xr.DataArray(np.zeros((2,) * len(dims)), dims=list(dims))
 
     @pytest.mark.parametrize("stack", ["average", "repetition"])
     def test_detects_stack_dim(self, stack):
@@ -387,6 +388,36 @@ class TestParseInputDims:
 
         da = self._da((DIMS.chemical_shift, DIMS.repetition, DIMS.average))
         assert parse_input_dims_timeseries(da)[1] == DIMS.average
+
+    def test_single_remaining_dim_is_stack(self):
+        """With exactly one non-spectral dim, it becomes the stack axis."""
+        from xmris.visualization.plot._input_parsing import parse_input_dims_timeseries
+
+        da = self._da((DIMS.chemical_shift, DIMS.coil))
+        assert parse_input_dims_timeseries(da) == (DIMS.chemical_shift, DIMS.coil)
+
+    def test_frequency_used_as_x_axis(self):
+        """When chemical_shift is absent, frequency is the x-axis."""
+        from xmris.visualization.plot._input_parsing import parse_input_dims_timeseries
+
+        da = self._da((DIMS.frequency, DIMS.coil))
+        assert parse_input_dims_timeseries(da) == (DIMS.frequency, DIMS.coil)
+
+    def test_one_dimensional_raises(self):
+        """A 1-D spectral array has no stack axis and must raise."""
+        from xmris.visualization.plot._input_parsing import parse_input_dims_timeseries
+
+        da = self._da((DIMS.chemical_shift,))
+        with pytest.raises(ValueError, match="at least two dimensions"):
+            parse_input_dims_timeseries(da)
+
+    def test_no_spectral_axis_raises(self):
+        """Without chemical_shift or frequency, the x-axis cannot be resolved."""
+        from xmris.visualization.plot._input_parsing import parse_input_dims_timeseries
+
+        da = self._da((DIMS.coil, DIMS.echo))
+        with pytest.raises(ValueError, match="resolve x-axis"):
+            parse_input_dims_timeseries(da)
 
 
 class TestBrukerVocabularyDims:
@@ -1540,7 +1571,7 @@ class TestGroupDelayAttr:
         from xmris.vendor.bruker import remove_digital_filter
 
         da = self._fid_with_attr("unrelated", 1.0)
-        with pytest.raises(ValueError, match=str(ATTRS.group_delay)):
+        with pytest.raises(ValueError, match=re.escape(str(ATTRS.group_delay))):
             remove_digital_filter(da, group_delay="header")
 
 

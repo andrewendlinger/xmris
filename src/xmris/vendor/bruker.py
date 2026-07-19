@@ -140,14 +140,19 @@ def remove_digital_filter(
     return da_new.assign_attrs(new_attrs)
 
 
+def _group_delay_attr(da: xr.DataArray) -> float | None:
+    """Read the canonical group-delay attr as a float, or None if absent."""
+    val = da.attrs.get(ATTRS.group_delay)
+    return None if val is None else float(val)
+
+
 def _resolve_group_delay(da: xr.DataArray, group_delay: float | str, dim: str) -> float:
     """Resolve a ``group_delay`` argument (float or ``"header"``/``"measure"``) to samples."""
     if not isinstance(group_delay, str):
         return float(group_delay)
 
     if group_delay == "header":
-        val = da.attrs.get(ATTRS.group_delay)
-        header = None if val is None else float(val)
+        header = _group_delay_attr(da)
         if header is None:
             raise ValueError(
                 f"remove_digital_filter(group_delay='header') needs the "
@@ -247,8 +252,7 @@ def estimate_group_delay(
     # Resolve the header anchor (explicit hint wins, else the stored attr).
     header = header_hint
     if header is None:
-        val = da.attrs.get(ATTRS.group_delay)
-        header = None if val is None else float(val)
+        header = _group_delay_attr(da)
 
     # Resolve the search window.
     if search_range is not None:
