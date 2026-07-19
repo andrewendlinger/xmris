@@ -12,6 +12,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Do NOT use the legacy `xmris.config` `DEFAULTS` in new code — it is a deprecated shim (importing it emits a `DeprecationWarning`). `core.config` is the single source of truth.
 - If a new function needs a dim/coord/attr not already in the vocabulary, add it to `config.py` and explicitly flag the new term to the user.
 
+## Significant changes need a design doc
+
+If a change adds vocabulary or a contract, picks between ≥2 viable approaches, or spans multiple PRs, invoke the `design-doc` skill — at the **start** (draft the reader-facing explanation from the plan, as the branch's first commit) and again at the **end** (reconcile it against what was actually built). The skill always asks before writing anything: whether to document the reasoning at all, and as an explainer, a notebook, or both. Never decide that autonomously.
+
 ## Environment & commands
 
 Package manager is `uv` — never use pip. Add deps with `uv add <pkg>`; sync with `uv sync --all-extras --dev`.
