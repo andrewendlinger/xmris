@@ -42,10 +42,26 @@ Name the concrete trigger in the question ("adds `ATTRS.group_delay` + a new dec
 | Cross-cutting concept, not demonstrable in a few cells | Prose explainer (no kernel) | `docs/explanation/<topic>.md` |
 | Concept whose payoff is a runnable pipeline | Executable notebook | `docs/notebooks/<category>/<topic>.md` |
 | Both — a rule *and* its proof | Explainer + companion notebook | both, cross-linked |
+| Concept that deepens something already documented | **Edits to the existing page** | wherever it already lives |
 
-The domain-contract work is the reference for the "both" case: `docs/explanation/domains.md` states the rule, `docs/notebooks/pipeline/domain_contracts.md` proves it with hidden strict asserts. When you write a notebook, **the mechanics come from the `new-doc-notebook` skill** — frontmatter, targets, hidden assert cells, TOC. This skill only governs the *argument* the page makes.
+That last row is real and easy to miss: not every design decision earns a new file. Extending and sharpening an existing explainer is often the better outcome, and it is always in scope — see §2.
 
-## 2. Pass 1 — draft from the plan (first commit on the branch)
+The domain-contract work is the reference for the "both" case: `docs/explanation/domains.md` states the rule, `docs/notebooks/pipeline/domain_contracts.md` proves it with hidden strict asserts. When you write a notebook, **the mechanics come from the `new-doc-notebook` skill** — frontmatter, targets, hidden assert cells, TOC. This skill governs the *argument* the page makes and the shape it makes it in.
+
+## 2. One home per concept — edit existing pages freely
+
+Before writing, read the pages a reader would hit *before* yours. Then place each concept where it belongs, **consolidating in whichever direction fits best** — "where does this belong?" beats "who had it first."
+
+- If a section of an existing page is really a decision your new page owns, **move it there and thin the original**, leaving a cross-link that resolves to the new anchor. `vocabulary.md` took `architecture.md`'s lowercase-convention subsection for exactly this reason, and `architecture.md` got shorter.
+- If your new material deepens something already explained well, **extend that page instead of starting a new one**.
+- Concise it here, extend it there. Editing other docs is expected work in a design-doc PR, not scope creep — say what you moved in the PR body.
+
+Two limits on the knife:
+
+- **A little redundancy is fine, and often wanted.** A one-line restatement that lets a page stand on its own beats a bare cross-link that makes the reader leave. Cut *duplicated explanation*, not orienting recaps.
+- **Mechanics can pin content in place.** Anything that only renders in an *executed* notebook — `_repr_html_` tables, plots, live widget output — must stay in a notebook page regardless of where it conceptually belongs. That is a rendering constraint, not an ownership claim.
+
+## 3. Pass 1 — draft from the plan (first commit on the branch)
 
 Write it before the implementation, straight off the approved plan, as the branch's first commit:
 
@@ -55,16 +71,23 @@ docs: design note for <topic>
 
 Committing the draft is the point: the reviewer sees design → implementation → reconcile as three phases of one PR, and pass 2's diff is legible. Do not merge the branch with pass 2 outstanding.
 
-### The skeleton
+### Shape: one driving question, never a FAQ of "Why X?" sections
 
-Follow `domains.md` — it is the shape that worked:
+This is the part that decides whether the page works. **Find the single question a reader naturally has after the page that precedes yours, and let it drive the whole article.** Every decision then arrives as the answer to a tension the reader just felt — no decision is *announced*, each is *arrived at*.
 
-1. **The problem.** What breaks without this, in plain language. Concrete failure, not abstraction.
-2. **The goal**, compressed to one sentence in an `{important}` admonition. If you cannot write that sentence, the design is not settled yet — stop and settle it.
-3. **The design.** The taxonomy, mechanism, or rule. A mermaid diagram if the structure is branching.
-4. **What you get, at a glance.** A table of the contract surface — input × operation → output. This is the part users actually return to.
-5. **Guardrails.** One-way doors, failure modes, the exact error text a user hits, the escape hatch (`set_options`, an explicit call).
-6. **For contributors.** How to declare or extend the thing — decorator, config term, decision flowchart.
+- `vocabulary.md` is driven by *"my data doesn't use xmris's names — now what?"* Why not aliases, conform-your-data, why terms are frozen — each falls out of a tension that one question raises.
+- `domains.md` is driven by *"what happens when I call a spectral operation on a FID?"*
+
+The failure mode is a correct decision presented cold:
+
+❌ A `## Why no aliases` heading appearing out of nowhere. The reader disengages, and a sound decision reads as an assertion to accept.
+✅ The reader runs into the aliasing problem while following the driving question, and the decision reads as the conclusion they were already reaching.
+
+Write the driving question down before drafting. If you cannot name it, you have a topic, not an article — and you will produce section-per-topic prose by default.
+
+**Beats, not a template.** `domains.md` passes through: the problem (concrete failure, not abstraction) → the goal, compressed to one sentence in an `{important}` admonition → the design (taxonomy or rule; mermaid if the structure branches) → the contract surface at a glance (a table; the part users return to) → guardrails (one-way doors, exact error text, the escape hatch) → how contributors declare or extend it. Those are waypoints the narrative passes through, not headings to fill. The driving question determines the actual headings, and their order.
+
+**Concise and conversational.** Guide the reader through the thought process; do not write a long technical brief. Code examples are welcome. Deep or tangential rationale — a representation comparison like StrEnum vs dataclass vs plain constants — goes in a `:::{dropdown}`, off the main line of reasoning.
 
 ### Rejected alternatives are pedagogy, not an appendix
 
@@ -80,7 +103,7 @@ Anything the draft asserts that code has not yet demonstrated is an assumption, 
 
 HTML comments do not render. Pass 2 must resolve every one and delete the marker; `grep -rn "ASSUMPTION:" docs/` returning nothing is a merge gate. Be honest here — a draft with no assumptions marked usually means they were not looked for.
 
-## 3. Pass 2 — reconcile against the implementation (last commit on the branch)
+## 4. Pass 2 — reconcile against the implementation (last commit on the branch)
 
 Re-read the draft **against the merged code**, not from memory. Commit as:
 
@@ -107,11 +130,11 @@ uv run test-gen && uv run pytest "tests/autogen_notebooks/<category>/<topic>.ipy
 
 Every user-visible behavior the doc promises should be asserted somewhere — in the companion notebook's hidden test cells for demonstrable claims, in `tests/test_core.py` for architectural invariants. A promise in prose with no assert behind it is the next `#90`.
 
-## 4. Multi-PR chains
+## 5. Multi-PR chains
 
 For work spanning several PRs, the doc lives in the **first** PR of the chain and is reconciled in the **last**. Each intermediate PR that changes behavior the doc describes carries its own reconcile hunk — do not batch them to the end, that is exactly the #76→#90 failure mode. If the chain's design shifts mid-flight, amend the doc in the PR that shifted it, and say so in that PR body.
 
-## 5. Register and link
+## 6. Register and link
 
 - **TOC entry in `docs/myst.yml`** with a `title:`. Explanation articles currently sit in the group whose concepts they explain (`domains.md` → Basics). A page missing from the TOC never renders.
 - **Cross-link the pair**: explainer → notebook via `[text](#explicit-target)`, notebook → explainer via a relative `.md` path. Never link `.ipynb`.
@@ -121,9 +144,12 @@ For work spanning several PRs, the doc lives in the **first** PR of the chain an
 
 - [ ] Trigger assessed and the doc/artifact choice **put to the user**, naming the concrete trigger
 - [ ] Pass 1 committed as the branch's first commit, before implementation
+- [ ] **Driving question named** — and no decision announced as a cold "Why X?" heading
+- [ ] Main line of reasoning concise and conversational; tangents in `:::{dropdown}`
 - [ ] Goal compressed to one sentence in an `{important}` admonition
 - [ ] Contract surface stated as a table
 - [ ] Rejected alternatives walked through as pedagogy, not appended as a list
+- [ ] **Single home per concept** — overlapping sections in existing pages thinned and cross-linked, not duplicated; moves called out in the PR body
 - [ ] Pass 2 committed as the branch's last commit, read against the code
 - [ ] Error messages, diagram branches, and guardrail scopes verified against `src/`
 - [ ] `grep -rn "ASSUMPTION:" docs/` is empty

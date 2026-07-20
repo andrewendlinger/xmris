@@ -16,6 +16,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 If a change adds vocabulary or a contract, picks between ≥2 viable approaches, or spans multiple PRs, invoke the `design-doc` skill — at the **start** (draft the reader-facing explanation from the plan, as the branch's first commit) and again at the **end** (reconcile it against what was actually built). The skill always asks before writing anything: whether to document the reasoning at all, and as an explainer, a notebook, or both. Never decide that autonomously.
 
+Explainer docs read as a **motivated narrative** — one driving question the reader already has, with every decision arriving as the answer to a tension they just felt, never a FAQ of cold "Why X?" headings. Keep concepts to a single home: editing and thinning existing pages to consolidate is expected work, not scope creep.
+
 ## Environment & commands
 
 Package manager is `uv` — never use pip. Add deps with `uv add <pkg>`; sync with `uv sync --all-extras --dev`.
