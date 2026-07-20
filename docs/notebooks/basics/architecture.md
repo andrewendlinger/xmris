@@ -267,28 +267,6 @@ an `AttributeError` at import time — not a silent bug three hours into a proce
 
 ```
 
-(the-lowercase-convention)=
-
-### The Lowercase Convention
-
-All xmris dimension names, coordinate names, and attribute keys are **lowercase `snake_case**`.
-This is a deliberate decision that aligns with the broader xarray ecosystem:
-
-| Standard / Package | Convention |
-| --- | --- |
-| [CF Conventions](https://cfconventions.org/) | `time`, `latitude`, `longitude` |
-| [cf-xarray](https://cf-xarray.readthedocs.io/) | `time`, `latitude`, `vertical` |
-| xarray docs & tutorials | `time`, `x`, `y`, `space` |
-| **xmris** | `time`, `frequency`, `chemical_shift` |
-
-This also avoids ambiguity with multi-word names: `"chemical_shift"` is unambiguous
-`snake_case`, whereas `"Chemical_Shift"` is a hybrid that no Python convention endorses.
-
-As a user, you are free to name your own dimensions however you like — xmris functions
-accept a `dim` argument for exactly this reason (see [section 5]dimensions-vs-attributes-the-great-divide)).
-But whenever xmris creates a name internally (e.g., the `"chemical_shift"` coordinate
-added by `to_ppm()`), it will always be lowercase.
-
 ### How the Dictionary Is Used Internally
 
 Throughout the `xmris` codebase, **no function uses a bare string to access metadata.** Every
@@ -316,6 +294,13 @@ name your dimensions and attributes using the lowercase conventions shown in the
 [Quick Start](../../index.md), and
 xmris functions will discover them automatically. The config constants are a
 backend safety net — not a user-facing API.
+:::
+
+:::{seealso}
+**Bringing data that uses different names?** If your scanner calls the reference frequency `spec_freq`
+or the dynamic axis `dyn`, the dictionary is a *fixed* target you conform your data onto —
+[The Controlled Vocabulary](../../explanation/vocabulary.md) picks up exactly here, with the reasoning
+and the one-line rename that gets you there.
 :::
 
 ---

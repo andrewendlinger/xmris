@@ -18,6 +18,8 @@ project:
       children:
         - file: notebooks/basics/architecture.md
           title: The xmris Architecture
+        - file: explanation/vocabulary.md
+          title: The Controlled Vocabulary
         - file: explanation/domains.md
           title: The Two Domains
         - file: notebooks/basics/complex_numbers.md
