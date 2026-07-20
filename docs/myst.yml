@@ -148,7 +148,13 @@ project:
             - file: api_reference/core.validation.md
               title: Validation
 
-    # 7. Contribute
+    # 7. Dev Diary — newest entry first
+    - title: Dev Diary
+      children:
+        - file: diary/2026-07-20-dev-diary.md
+          title: A dev diary for xmris
+
+    # 8. Contribute
     - title: Contribute
       children:
         - file: contributing/guide.md
