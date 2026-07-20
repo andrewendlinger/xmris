@@ -108,6 +108,35 @@ Write the driving question down before drafting. If you cannot name it, you have
 
 **Concise and conversational.** Guide the reader through the thought process; do not write a long technical brief. Code examples are welcome. Deep or tangential rationale — a representation comparison like StrEnum vs dataclass vs plain constants — goes in a `:::{dropdown}`, off the main line of reasoning.
 
+### Use the MyST palette — the richness *is* part of the argument
+
+A design doc is a page in a docs pipeline that renders and executes, not a README. Plain prose under plain headings wastes the medium, and — more to the point — makes the reasoning harder to review: a decision tree drawn as a flowchart is checkable at a glance, the same tree in paragraphs is not. Reviewability and documentation quality come from the same richness.
+
+Reach for the feature that carries the argumentative load:
+
+| Job in the argument | Feature | In the wild |
+|---|---|---|
+| The choice a contributor has to make | `{mermaid}` flowchart | `domains.md`'s `@ensures_domain` / `@computes_in` decision tree |
+| Structural relation between states | `{mermaid}` graph | the time ↔ spectral converter diagram |
+| The contract surface | markdown table | `domains.md`, "What you get, at a glance" |
+| The goal, in one sentence | `{important}` | `domains.md` |
+| Guardrail, one-way door, footgun | `{warning}` / `{note}` | `bruker_filter_removal.md` |
+| Deep or tangential rationale | `:::{dropdown}` | `architecture.md`'s "Under the Hood" |
+| Rejected approach vs house way | paired ❌ / ✅ code blocks | `architecture.md`'s Parameter Soup |
+| The math being demonstrated | `$…$` / `$$…$$` | `hz_and_ppm.md` |
+| Prerequisite, lateral, onward links | `{seealso}` | §2 above |
+| A claim that must be **true** | `{code-cell}` + hidden assert | `domain_contracts.md` |
+
+Three constraints on reaching:
+
+- **Stay inside the palette the docs already use** — the table above, plus `{tip}` and `{admonition}` with a `:class:`. Nothing in `docs/` uses grids, cards, or tab-sets; a design doc is the wrong place to introduce a directive the rest of the site doesn't share.
+- **Mermaid escaping rules live in the `new-doc-notebook` skill** — quote every label, `<br>` not `\n`, monospace `<span>` for code inside labels. Those diagrams were expensive to get right; copy an existing one rather than hand-rolling syntax.
+- **Every element earns its place.** A diagram that restates the sentence above it is noise. If your flowchart has two nodes, it was a sentence.
+
+```{warning}
+**Static code blocks are pass-2 liabilities.** A plain ` ```python ` block in a `docs/explanation/` page is never executed — nothing checks it, and that is exactly what rotted in #90 (a quoted `ValueError` the implementation had moved on from). Fine for illustration. But the moment the argument depends on the code being *right*, that is the signal to use the notebook flavor or add the companion notebook, where a `{code-cell}` and a hidden assert pin the claim for you.
+```
+
 ### Rejected alternatives are pedagogy, not an appendix
 
 Do not append a dry "Alternatives Considered" list. House style walks the reader *through* the rejected option and lets them feel why it fails — `architecture.md`'s "❌ The Anti-Pattern: Parameter Soup" → "✅ The xmris Way", `domains.md`'s "either you pepper pipelines with manual conversions … or the library converts silently". Same information, and it teaches instead of filing. The decision record falls out of the explanation.
@@ -165,6 +194,8 @@ For work spanning several PRs, the doc lives in the **first** PR of the chain an
 - [ ] Pass 1 committed as the branch's first commit, before implementation
 - [ ] **Driving question named** — and no decision announced as a cold "Why X?" heading
 - [ ] Main line of reasoning concise and conversational; tangents in `:::{dropdown}`
+- [ ] **MyST palette used where it carries the argument** — mermaid for decisions and structure, tables for the contract surface, admonitions for goal and guardrails; nothing decorative
+- [ ] Claims that must be true are pinned by a `{code-cell}` + assert, not a static `python` block
 - [ ] Goal compressed to one sentence in an `{important}` admonition
 - [ ] Contract surface stated as a table
 - [ ] Rejected alternatives walked through as pedagogy, not appended as a list
