@@ -14,7 +14,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Documentation style
 
-These four rules govern everything under `docs/` — explanation articles, notebooks, diary entries, and edits to any of them. This section is their single source of truth; the `dev-diary` and `new-doc-notebook` skills apply them, they don't restate them.
+These four rules govern everything under `docs/` — explanation articles, notebooks, diary entries, and edits to any of them. This section is their single source of truth; the `dev-diary` and `docs-page` skills apply them, they don't restate them. *Exception: guides under `docs/contributing/` are exempt from the motivated-narrative rule — a numbered list of commands is the right shape for a setup page.*
 
 - **Motivated narrative, never a FAQ.** One driving question the reader already has, with every decision arriving as the answer to a tension they just felt. A cold "Why X?" heading makes a sound decision read as an assertion to accept. Concise and conversational; deep or tangential rationale goes in a `:::{dropdown}`, off the main line of reasoning.
 - **One home per concept.** Consolidate in whichever direction fits — "where does this belong?" beats "who had it first." Editing and thinning existing pages is expected work, not scope creep. Say what you moved in the PR body. *Exception: `docs/diary/` entries are dated records, not homes — two entries may touch one concept without either owning it.*

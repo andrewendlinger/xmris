@@ -298,7 +298,7 @@ exporting.
 
 Each widget ships with a MyST notebook under
 `docs/notebooks/visualization/widget/` and a `myst.yml` TOC entry. The notebook
-*is* the test (nbmake executes it). Use the **`new-doc-notebook` skill** for the
+*is* the test (nbmake executes it). Use the **`docs-page` skill** for the
 notebook structure; the widget-specific pieces it must include are the
 live/static two-cell pattern above, and a hidden `remove-cell` assertion block
 that runs the reproducible snippet the widget emits and proves the resulting

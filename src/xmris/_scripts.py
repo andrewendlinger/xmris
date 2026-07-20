@@ -331,19 +331,33 @@ def generate_test_notebooks() -> Path:
         print(f"❌ Error: Source notebook directory not found at: {source_dir!s}")
         sys.exit(1)
 
+    # Explainers under docs/explanation/ are executable notebooks too, so they
+    # join the suite. They keep their own subtree; notebooks/ stays flattened so
+    # existing test paths (autogen_notebooks/<category>/<name>.ipynb) still hold.
+    explanation_dir = project_root / "docs" / "explanation"
+    sources: list[tuple[Path, Path]] = [(source_dir, Path())]
+    if explanation_dir.exists():
+        sources.append((explanation_dir, Path("explanation")))
+
     print(f"🧹 Clearing old test notebooks in '{test_dir.name}'...")
     if test_dir.exists():
         shutil.rmtree(test_dir)
     test_dir.mkdir(parents=True, exist_ok=True)
 
-    md_files = list(source_dir.rglob("*.md"))
+    # Only pages carrying a jupytext kernelspec can be executed by nbmake; a
+    # frontmatter-less explainer converts to a notebook with no kernel to start.
+    md_files = [
+        (md, prefix / md.relative_to(root))
+        for root, prefix in sources
+        for md in root.rglob("*.md")
+        if root is source_dir or md.read_text().startswith("---")
+    ]
     if not md_files:
         print(f"⚠️  Warning: No .md files found in {source_dir!s}")
         return test_dir
 
     # Wrap the md_files list in tqdm to generate a clean progress bar
-    for md_file in tqdm(md_files, desc="Converting MyST to .ipynb", unit="file"):
-        rel_path = md_file.relative_to(source_dir)
+    for md_file, rel_path in tqdm(md_files, desc="Converting MyST to .ipynb", unit="file"):
         out_file = test_dir / rel_path.with_suffix(".ipynb")
         out_file.parent.mkdir(parents=True, exist_ok=True)
 

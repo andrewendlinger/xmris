@@ -79,7 +79,7 @@ If the widget needs a dim/coord/attr not in `src/xmris/core/config.py`, add the
 ## 6. Document & test
 
 Add a MyST notebook under `docs/notebooks/visualization/widget/` and a `myst.yml`
-TOC entry. **Use the `new-doc-notebook` skill** for the notebook structure; follow
+TOC entry. **Use the `docs-page` skill** (tutorial genre) for the structure; follow
 `docs/contributing/static_widgets.md` for the widget-specific pieces:
 - the live-call (`remove-output`) + `export_widget_static` (`remove-input`)
   two-cell pattern;

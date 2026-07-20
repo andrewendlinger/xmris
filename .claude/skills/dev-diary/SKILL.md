@@ -19,8 +19,8 @@ Pass 1 exists because the plan file is precise but heavy — right for executing
 **House style lives in `CLAUDE.md` § "Documentation style"** and is not restated here — with one
 carve-out: a diary entry is a dated record, so *one home per concept* does **not** bind it. Two
 entries months apart may touch the same concept; neither is its home. When a concept needs a
-permanent home it graduates into an explainer under `docs/explanation/`, which is
-`new-doc-notebook`'s job, not this skill's.
+permanent home it graduates into an explainer under `docs/explanation/`, which is `docs-page`'s
+job, not this skill's.
 
 ## 1. Assess the triggers, then ask — always
 
@@ -93,8 +93,9 @@ sketching the call site you *wish* existed, which is design work in its own righ
 The status banner is not decoration: skills are re-read cold, so it is how a later invocation knows
 which pass it is in.
 
-Mermaid escaping rules live in the `new-doc-notebook` skill — quote every label, `<br>` not `\n`,
-monospace `<span>` for code inside labels. Copy an existing diagram rather than hand-rolling syntax.
+Mermaid escaping rules live in `docs-page`'s `templates/patterns.md` — quote every label, `<br>`
+not `\n`, monospace `<span>` for code inside labels. Copy an existing diagram rather than
+hand-rolling syntax.
 
 ## 3. Rejected alternatives
 
