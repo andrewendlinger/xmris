@@ -125,7 +125,7 @@ Reach for the feature that carries the argumentative load:
 | Rejected approach vs house way | paired ❌ / ✅ code blocks | `architecture.md`'s Parameter Soup |
 | The math being demonstrated | `$…$` / `$$…$$` | `hz_and_ppm.md` |
 | Prerequisite, lateral, onward links | `{seealso}` | §2 above |
-| A claim that must be **true** | `{code-cell}` + hidden assert | `domain_contracts.md` |
+| A **load-bearing** claim (pass 2 only, where it earns it) | `{code-cell}` + hidden assert | `domain_contracts.md` |
 
 Three constraints on reaching:
 
@@ -133,8 +133,10 @@ Three constraints on reaching:
 - **Mermaid escaping rules live in the `new-doc-notebook` skill** — quote every label, `<br>` not `\n`, monospace `<span>` for code inside labels. Those diagrams were expensive to get right; copy an existing one rather than hand-rolling syntax.
 - **Every element earns its place.** A diagram that restates the sentence above it is noise. If your flowchart has two nodes, it was a sentence.
 
-```{warning}
-**Static code blocks are pass-2 liabilities.** A plain ` ```python ` block in a `docs/explanation/` page is never executed — nothing checks it, and that is exactly what rotted in #90 (a quoted `ValueError` the implementation had moved on from). Fine for illustration. But the moment the argument depends on the code being *right*, that is the signal to use the notebook flavor or add the companion notebook, where a `{code-cell}` and a hidden assert pin the claim for you.
+```{note}
+**Pass-1 code is illustrative by definition — do not chase executability.** The API does not exist yet. You are sketching the call site you *wish* existed, which is design work in its own right and often the fastest way to feel whether an API is ergonomic. Static ` ```python ` blocks are correct there, and plenty of snippets stay static forever: ❌ anti-pattern blocks (which must *never* run), pseudo-code, quoted error text, illustrative fragments.
+
+What pass 2 owes you is **accuracy, not executability** — the two are easy to conflate. Re-read every snippet against the built API and fix what drifted; that is the #90 lesson, a quoted `ValueError` the implementation had moved on from. Promote a snippet to a `{code-cell}` only where the claim is load-bearing and a reader would be genuinely misled if it were wrong. That is a handful of snippets, in the companion notebook — not all of them, and not the default.
 ```
 
 ### Rejected alternatives are pedagogy, not an appendix
@@ -166,7 +168,7 @@ This pass is not optional polish. In this repo it was skipped once and cost PR #
 - **Quoted error messages.** The doc quoted a `ValueError` whose wording had since changed. Grep the actual string in `src/` and paste it verbatim.
 - **Decision criteria in diagrams and tables.** The draft's flowchart gated on "same physics, length-preserving?" — plausible at design time, and false: `zero_fill` changes length and is still `@computes_in`. Walk every branch of every diagram against the real code and confirm a function takes that path.
 - **Over-general guardrails.** "Explicit dims pass through" was stated unconditionally; it holds only for `@computes_in`, not `@ensures_domain`. For each rule, ask which code paths it actually covers, and scope the sentence to those.
-- **API surface.** Function names, signatures, defaults, attr keys, accessor spellings — all drift during implementation.
+- **API surface, and every code snippet.** Function names, signatures, defaults, attr keys, accessor spellings all drift during implementation, and pass-1 snippets were written against an API that did not exist yet. Read each one against the built code and correct it. Correctness is the bar — a snippet does not have to become executable to be right.
 - **Adopted rejections.** If something the draft argued against got built anyway, the rationale now reads backwards. Rewrite it, or delete the passage.
 
 Then verify the claims execute:
@@ -195,7 +197,7 @@ For work spanning several PRs, the doc lives in the **first** PR of the chain an
 - [ ] **Driving question named** — and no decision announced as a cold "Why X?" heading
 - [ ] Main line of reasoning concise and conversational; tangents in `:::{dropdown}`
 - [ ] **MyST palette used where it carries the argument** — mermaid for decisions and structure, tables for the contract surface, admonitions for goal and guardrails; nothing decorative
-- [ ] Claims that must be true are pinned by a `{code-cell}` + assert, not a static `python` block
+- [ ] Pass 2: every snippet re-read against the built API and corrected — executable only where a claim is load-bearing
 - [ ] Goal compressed to one sentence in an `{important}` admonition
 - [ ] Contract surface stated as a table
 - [ ] Rejected alternatives walked through as pedagogy, not appended as a list
