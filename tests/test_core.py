@@ -1530,6 +1530,21 @@ class TestFittingDomain:
             with pytest.raises(ValueError, match="to_fid"):
                 spec.xmr.fit_amares(prior_knowledge_file=pk_path, num_workers=1)
 
+    def test_scale_trap_defeated(self, fid, pk_path):
+        """A Bruker-scale FID (x1e7) converges and rescales — it doesn't echo the prior."""
+        base = self._fit(fid, pk_path)[VARS.amplitude].values
+        big = (fid * 1e7).assign_attrs(fid.attrs)  # arithmetic drops attrs; real FIDs keep them
+        ds_big = self._fit(big, pk_path)
+        np.testing.assert_allclose(ds_big[VARS.amplitude].values, base * 1e7, rtol=0.05)
+        assert ds_big.attrs[ATTRS.amares_amplitude_scale] > 1e6
+
+    def test_zero_signal_is_nan(self, fid, pk_path):
+        """A zero-signal spectrum yields NaN, distinguishable from a real fit."""
+        stack = xr.concat([fid, xr.zeros_like(fid)], dim="voxel").assign_attrs(fid.attrs)
+        ds = self._fit(stack, pk_path)
+        assert np.all(np.isnan(ds[VARS.amplitude].isel(voxel=1).values))
+        assert np.all(np.isfinite(ds[VARS.amplitude].isel(voxel=0).values))
+
     def test_no_domain_marker(self):
         """Fitting hand-rolls the contract, so it carries no decorator marker."""
         from xmris.fitting.amares import fit_amares
