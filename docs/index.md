@@ -40,7 +40,7 @@ results = (
 )
 
 # 3. Fit the time-domain data using the pyAMARES integration
-fit_dataset = mrsi_data.xmr.fit_amares(prior_knowledge_file="pk.csv")
+fit_dataset = mrsi_data.xmr.fit_amares(prior_knowledge="pk.csv")
 ```
 
 :::{note} Naming convention

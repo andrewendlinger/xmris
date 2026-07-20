@@ -1,6 +1,11 @@
+import contextlib
+import os
+import tempfile
+from collections.abc import Iterator, Mapping
 from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -25,6 +30,7 @@ from xmris.core.validation import (
     _restore_domain,
     _strict_domain_error,
 )
+from xmris.fitting.prior_knowledge import build_prior_knowledge
 
 # pyAMARES result-table column labels (its stateful API speaks these, not the config
 # vocabulary). Kept local so the mapping to VARS lives in exactly one place.
@@ -262,9 +268,45 @@ def _resolve_fit_domain(da: xr.DataArray, dim: str) -> tuple[xr.DataArray, str, 
     return da, dim, None  # pragma: no cover — _check_dims raises above
 
 
+@contextlib.contextmanager
+def _resolve_pk_file(
+    prior_knowledge: Mapping[str, Any] | pd.DataFrame | str | Path,
+) -> Iterator[str]:
+    """Yield a filesystem path to a pyAMARES prior-knowledge file.
+
+    pyAMARES's parser takes only a CSV/XLSX *path*, so an in-memory spec is written
+    to a temporary CSV (removed on exit). A dict is validated and built via
+    :func:`build_prior_knowledge`; a DataFrame (already in pyAMARES's positional
+    layout) is serialized as-is; a path is checked for existence and used directly.
+    """
+    text: str | None = None
+    if isinstance(prior_knowledge, Mapping):
+        text = build_prior_knowledge(prior_knowledge)
+    elif isinstance(prior_knowledge, pd.DataFrame):
+        text = prior_knowledge.to_csv()
+
+    if text is None:
+        path = str(prior_knowledge)
+        if not Path(path).exists():
+            raise FileNotFoundError(
+                f"Prior-knowledge file not found: {path!r}. Pass a path to a CSV/XLSX "
+                f"file, or an in-memory spec (see xmris.fitting.build_prior_knowledge)."
+            )
+        yield path
+        return
+
+    tmp = tempfile.NamedTemporaryFile("w", suffix=".csv", delete=False, newline="")
+    try:
+        tmp.write(text)
+        tmp.close()
+        yield tmp.name
+    finally:
+        os.unlink(tmp.name)
+
+
 def fit_amares(
     da: xr.DataArray,
-    prior_knowledge_file: str | Path,
+    prior_knowledge: Mapping[str, Any] | pd.DataFrame | str | Path,
     dim: str = DIMS.time,
     mhz: float | None = None,
     sw: float | None = None,
@@ -300,8 +342,13 @@ def fit_amares(
     da : xr.DataArray
         Input data. A FID with the specified time dimension, or a complex spectrum
         (`frequency`/`chemical_shift`) that is converted to a FID for the fit.
-    prior_knowledge_file : str | Path
-        Path to the CSV or XLSX file containing the prior knowledge constraints.
+    prior_knowledge : Mapping | pandas.DataFrame | str | Path
+        The prior-knowledge constraints, either in memory or on disk. A mapping of
+        peak name to parameters is built and validated via
+        :func:`~xmris.fitting.build_prior_knowledge` (phase bounds, peak-name and
+        tie-order traps handled for you); a ``str``/``Path`` is a pyAMARES CSV/XLSX
+        file used directly; a DataFrame in pyAMARES's positional layout is accepted
+        as-is.
     dim : str, optional
         The time dimension along which to fit, by default ``DIMS.time``.
     mhz : float, optional
@@ -391,15 +438,18 @@ def fit_amares(
 
     # 6. Setup the shared pyAMARES state (normalize_fid=False — we normalize ourselves
     #    and rescale the amplitudes back, so results come out in the input units).
-    shared_obj = initialize_FID(
-        fid=template_fid,
-        priorknowledgefile=str(prior_knowledge_file),
-        MHz=mhz,
-        sw=sw,
-        deadtime=deadtime,
-        normalize_fid=False,
-        preview=False,
-    )
+    #    An in-memory prior-knowledge spec is materialized to a temp CSV for the
+    #    duration of this call (pyAMARES's parser takes only a file path).
+    with _resolve_pk_file(prior_knowledge) as pk_path:
+        shared_obj = initialize_FID(
+            fid=template_fid,
+            priorknowledgefile=pk_path,
+            MHz=mhz,
+            sw=sw,
+            deadtime=deadtime,
+            normalize_fid=False,
+            preview=False,
+        )
 
     # 7. Fit every spectrum.
     if num_workers == 1:

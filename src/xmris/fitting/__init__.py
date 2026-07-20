@@ -7,12 +7,13 @@ bare ``import xmris`` succeeds even when pyAMARES is not installed.
 
 from typing import TYPE_CHECKING
 
+from .prior_knowledge import build_prior_knowledge
 from .simulation import simulate_fid
 
 if TYPE_CHECKING:
     from .amares import fit_amares
 
-__all__ = ["fit_amares", "simulate_fid"]
+__all__ = ["build_prior_knowledge", "fit_amares", "simulate_fid"]
 
 MISSING_FITTING_DEP_MSG = (
     "AMARES fitting requires the optional 'fitting' extra (pyAMARES). "

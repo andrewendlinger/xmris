@@ -7,10 +7,13 @@ for fluent method chaining (e.g., `da.xmr.apodize_exp().xmr.fft()`), while
 the underlying developer API is strictly modularized into Mixin classes.
 """
 
+from collections.abc import Mapping
 from pathlib import Path
+from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import xarray as xr
 
 # Import our core architecture
@@ -732,7 +735,7 @@ class XmrisAccessor(
 
     def fit_amares(
         self,
-        prior_knowledge_file: str | Path,
+        prior_knowledge: Mapping[str, Any] | pd.DataFrame | str | Path,
         dim: str = DIMS.time,
         mhz: float | None = None,
         sw: float | None = None,
@@ -754,8 +757,12 @@ class XmrisAccessor(
 
         Parameters
         ----------
-        prior_knowledge_file : str | Path
-            Path to the CSV or XLSX file containing the prior knowledge constraints.
+        prior_knowledge : Mapping | pandas.DataFrame | str | Path
+            The prior-knowledge constraints, in memory or on disk. A mapping of peak
+            name to parameters is built and validated via
+            :func:`~xmris.fitting.build_prior_knowledge`; a ``str``/``Path`` is a
+            pyAMARES CSV/XLSX file; a DataFrame in pyAMARES's positional layout is
+            used as-is.
         dim : str, optional
             The time dimension along which to fit, by default ``DIMS.time``. A
             complex spectrum is accepted too and converted to a FID for the fit.
@@ -803,7 +810,7 @@ class XmrisAccessor(
 
         return _internal_fit_amares(
             self._obj,
-            prior_knowledge_file=prior_knowledge_file,
+            prior_knowledge=prior_knowledge,
             dim=dim,
             mhz=mhz,
             sw=sw,

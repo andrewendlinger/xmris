@@ -78,31 +78,35 @@ import xmris.core.accessor
 
 (pyamares-prior-knowledge)=
 ## 1. Define Prior Knowledge
-AMARES requires Prior Knowledge (PK) to know how many peaks to look for and what constraints to place on their parameters (amplitude, frequency, linewidth, phase). This is provided as a CSV file.
+AMARES needs Prior Knowledge (PK): how many peaks to expect and what constraints to place on each one's amplitude, chemical shift, linewidth, and phase. We'll model Phosphocreatine (PCr) at 0 ppm and an ATP peak at -7.5 ppm.
 
-Let's write a simple 2-peak prior knowledge file to disk. We will model Phosphocreatine (PCr) at 0 ppm and an ATP peak at -7.5 ppm.
+`build_prior_knowledge` turns a plain spec into a valid pyAMARES file. You give it peaks and numbers; it fills in sensible defaults and handles the traps that make hand-written files fragile — a blank phase bound that silently `NaN`s the fit, or a trailing digit in a peak name that pyAMARES reads as a multiplet. Pass the spec straight to `fit_amares`, or save it to reuse.
 
 ```{code-cell} ipython3
-:tags: [remove-output]
+from xmris import build_prior_knowledge
 
-pk_csv_content = """Index,PCr,ATP
-Initial Values,,
-amplitude,10.0,5.0
-chemicalshift,0.0,-7.5
-linewidth,15.0,20.0
-phase,0,0
-g,0,0
-Bounds,,
-amplitude,"(0, ","(0, "
-chemicalshift,"(-0.5, 0.5)","(-8.0, -7.0)"
-linewidth,"(5.0, 30.0)","(10.0, 40.0)"
-phase,"(-180, 180)","(-180, 180)"
-g,"(0, 1)","(0, 1)"
-"""
+pk = {
+    "PCr": {"amplitude": 10.0, "chem_shift": 0.0, "linewidth": 15.0},
+    "ATP": {"amplitude": 5.0, "chem_shift": -7.5, "linewidth": 20.0,
+            "chem_shift_bounds": (-8.0, -7.0)},
+}
 
+# Optional — save a reusable, inspectable copy to disk.
 pk_path = Path("example_pk.csv")
-pk_path.write_text(pk_csv_content)
+pk_path.write_text(build_prior_knowledge(pk))
 ```
+
+Only `amplitude`, `chem_shift`, and `linewidth` are required per peak; phase (0), lineshape `g` (0), and the bounds fall back to safe defaults — here PCr's shift keeps the default ±0.5 ppm window while ATP's is pinned explicitly.
+
+:::{dropdown} What the generated file looks like
+`build_prior_knowledge` emits pyAMARES's positional CSV — an `Initial Values` block then a `Bounds` block, with peaks as columns. Easy to read, fiddly to write by hand (which is the point):
+
+```{code-cell} ipython3
+:tags: [remove-input]
+
+print(build_prior_knowledge(pk))
+```
+:::
 
 (pyamares-simulate)=
 ## 2. Generate N-Dimensional Synthetic Data
@@ -176,9 +180,10 @@ Under the hood, `xmris` evaluates the Signal-to-Noise Ratio (SNR) of all voxels,
 ```{code-cell} ipython3
 :tags: [skip-execution]
 
-# We use num_workers=4 to parallelize the fitting across our spatial dimensions!
+# Pass the spec straight in — no file needed. num_workers=4 parallelizes the fit
+# across our spatial dimensions.
 ds_fit = da_mrsi.xmr.fit_amares(
-    prior_knowledge_file=pk_path, method="least_squares", num_workers=4
+    prior_knowledge=pk, method="least_squares", num_workers=4
 )
 ```
 
@@ -187,7 +192,7 @@ ds_fit = da_mrsi.xmr.fit_amares(
 
 # Hidden cell for pytest-cov tracking, has to be a single thread with one worker only!
 ds_fit = da_mrsi.xmr.fit_amares(
-    prior_knowledge_file=pk_path, method="least_squares", num_workers=1
+    prior_knowledge=pk, method="least_squares", num_workers=1
 )
 ```
 
@@ -204,8 +209,9 @@ fid_modern = da_mrsi.isel(voxel=0).copy()
 fid_modern.attrs = {str(ATTRS.reference_frequency): mhz, "sw": sw}
 assert "MHz" not in fid_modern.attrs  # ensure we exercise the modern-key path
 
+# Path input still works too (exercises the file route alongside the dict above).
 ds_modern = fid_modern.xmr.fit_amares(
-    prior_knowledge_file=pk_path, method="least_squares", num_workers=1
+    prior_knowledge=pk_path, method="least_squares", num_workers=1
 )
 
 # It fit without raising, and produced finite amplitudes for both metabolites.

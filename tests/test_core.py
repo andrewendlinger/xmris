@@ -67,6 +67,7 @@ from xmris.core.config import (
 )
 from xmris.core.utils import _resolve_dim
 from xmris.core.validation import computes_in, ensures_domain, requires_attrs
+from xmris.fitting import build_prior_knowledge
 from xmris.processing.fid import to_fid, to_spectrum
 
 # =============================================================================
@@ -1425,6 +1426,134 @@ class TestDomainRollout:
         assert list(result.dims) == ["kx", "ky"]
 
 
+class TestPriorKnowledgeBuilder:
+    """Pin the in-memory prior-knowledge builder and the traps it defends against.
+
+    The builder is dependency-light (no pyAMARES), so these run everywhere. It
+    emits pyAMARES's positional CSV from a friendly spec while baking in the
+    hard-won rules: always-explicit phase bounds, letters-only peak names, and
+    anchor-first ordering for phase ties.
+    """
+
+    _SPEC = {
+        "PCr": {"amplitude": 10, "chem_shift": 0.0, "linewidth": 15},
+        "ATP": {
+            "amplitude": 5,
+            "chem_shift": -7.5,
+            "linewidth": 20,
+            "chem_shift_bounds": (-8.0, -7.0),
+        },
+    }
+
+    def _sections(self, text):
+        """Parse into (header, init_rows, bound_rows), handling quoted bound cells.
+
+        Init and Bounds repeat the same five row labels, so a flat dict would
+        collide them — this keeps the two sections apart.
+        """
+        import csv
+        import io
+
+        rows = list(csv.reader(io.StringIO(text)))
+        header = rows[0][1:]
+        init = {r[0]: r[1:] for r in rows[2:7]}  # after "Index" + "Initial Values"
+        bounds = {r[0]: r[1:] for r in rows[8:13]}  # after the "Bounds" marker
+        return header, init, bounds
+
+    def test_builds_positional_layout(self):
+        """The CSV has the exact section/row order pyAMARES reads positionally."""
+        lines = build_prior_knowledge(self._SPEC).splitlines()
+        labels = [ln.split(",")[0] for ln in lines]
+        assert labels == [
+            "Index",
+            "Initial Values",
+            "amplitude",
+            "chemicalshift",
+            "linewidth",
+            "phase",
+            "g",
+            "Bounds",
+            "amplitude",
+            "chemicalshift",
+            "linewidth",
+            "phase",
+            "g",
+        ]
+        assert lines[0] == "Index,PCr,ATP"
+
+    def test_phase_bounds_always_explicit(self):
+        """Every phase gets (-180, 180) bounds — a blank cell is pyAMARES's NaN trap."""
+        text = build_prior_knowledge(self._SPEC)
+        phase_bound_line = text.splitlines()[-2]  # phase is 4th of 5 bound rows
+        assert "(-180.0, 180.0)" in phase_bound_line
+
+    def test_amplitude_upper_bound_is_open(self):
+        """Amplitude is non-negative with an open upper bound."""
+        text = build_prior_knowledge(self._SPEC)
+        amp_bounds = [ln for ln in text.splitlines() if ln.startswith("amplitude,")][1]
+        assert "(0.0, " in amp_bounds and "(0.0, )" not in amp_bounds
+
+    def test_chem_shift_default_window(self):
+        """Absent explicit bounds, chem-shift is a symmetric window around the init."""
+        text = build_prior_knowledge(self._SPEC, shift_window=0.5)
+        cs_bounds = [ln for ln in text.splitlines() if ln.startswith("chemicalshift,")][1]
+        assert "(-0.5, 0.5)" in cs_bounds  # PCr at 0.0 +/- 0.5
+        assert "(-8.0, -7.0)" in cs_bounds  # ATP override respected
+
+    def test_rejects_multiplet_digit_name(self):
+        """A trailing digit would silently multiplet-sum in pyAMARES (BUG-008)."""
+        with pytest.raises(ValueError, match="letters only"):
+            build_prior_knowledge({"ATP2": {"amplitude": 1, "chem_shift": 0, "linewidth": 1}})
+
+    def test_rejects_missing_required(self):
+        """Every peak needs amplitude, chem_shift and linewidth."""
+        with pytest.raises(ValueError, match="missing required"):
+            build_prior_knowledge({"PCr": {"amplitude": 1, "chem_shift": 0}})
+
+    def test_rejects_unknown_key(self):
+        """Canonical-only: no aliases, unknown keys are refused (not silently dropped)."""
+        with pytest.raises(ValueError, match="unknown key"):
+            build_prior_knowledge(
+                {"PCr": {"amplitude": 1, "chem_shift": 0, "linewidth": 1, "cs": 9}}
+            )
+
+    def test_rejects_empty(self):
+        """An empty spec is a user error, caught early."""
+        with pytest.raises(ValueError, match="empty"):
+            build_prior_knowledge({})
+
+    def test_rejects_inverted_bounds(self):
+        """A (lower > upper) bound is refused before it reaches the solver."""
+        with pytest.raises(ValueError, match="lower > upper"):
+            build_prior_knowledge(
+                {
+                    "PCr": {
+                        "amplitude": 1,
+                        "chem_shift": 0,
+                        "linewidth": 1,
+                        "linewidth_bounds": (30, 5),
+                    }
+                }
+            )
+
+    def test_optional_phase_and_g_default_zero(self):
+        """Phase and g are optional and default to 0."""
+        _, init, _ = self._sections(build_prior_knowledge(self._SPEC))
+        assert init["phase"] == ["0.0", "0.0"]
+        assert init["g"] == ["0.0", "0.0"]
+
+    def test_tie_phase_orders_anchor_first(self):
+        """A phase tie moves the anchor to the first column and ties the rest to it."""
+        header, init, _ = self._sections(build_prior_knowledge(self._SPEC, tie_phase_to="ATP"))
+        assert header == ["ATP", "PCr"]  # anchor first
+        assert init["phase"] == ["0.0", "ATP"]  # anchor's value, then the tie expr
+
+    def test_tie_phase_unknown_anchor_raises(self):
+        """A tie anchor that names no peak is a clear error, not a silent no-op."""
+        with pytest.raises(ValueError, match="not one of the peaks"):
+            build_prior_knowledge(self._SPEC, tie_phase_to="Xx")
+
+
 # =============================================================================
 # 16. Runtime Options: strict mode (auto_convert=False)
 # =============================================================================
@@ -1486,9 +1615,7 @@ class TestFittingDomain:
         )
 
     def _fit(self, da, pk_path):
-        return da.xmr.fit_amares(
-            prior_knowledge_file=pk_path, method="least_squares", num_workers=1
-        )
+        return da.xmr.fit_amares(prior_knowledge=pk_path, method="least_squares", num_workers=1)
 
     def test_fid_in_returns_time_domain(self, fid, pk_path):
         """A FID fits directly; outputs stay time-domain and carry the vocab."""
@@ -1522,7 +1649,7 @@ class TestFittingDomain:
         """A real-valued spectrum has no FID behind it — refused, not fitted."""
         real_spec = fid.xmr.to_spectrum().real
         with pytest.raises(ValueError, match="real-valued"):
-            real_spec.xmr.fit_amares(prior_knowledge_file=pk_path, num_workers=1)
+            real_spec.xmr.fit_amares(prior_knowledge=pk_path, num_workers=1)
 
     def test_strict_mode_refuses_with_recipe(self, fid, pk_path):
         """Under auto_convert=False a spectrum fit raises the explicit to_fid recipe."""
@@ -1531,7 +1658,7 @@ class TestFittingDomain:
         spec = fid.xmr.to_spectrum()
         with set_options(auto_convert=False):
             with pytest.raises(ValueError, match="to_fid"):
-                spec.xmr.fit_amares(prior_knowledge_file=pk_path, num_workers=1)
+                spec.xmr.fit_amares(prior_knowledge=pk_path, num_workers=1)
 
     def test_scale_trap_defeated(self, fid, pk_path):
         """A Bruker-scale FID (x1e7) converges and rescales — it doesn't echo the prior."""
@@ -1547,6 +1674,51 @@ class TestFittingDomain:
         ds = self._fit(stack, pk_path)
         assert np.all(np.isnan(ds[VARS.amplitude].isel(voxel=1).values))
         assert np.all(np.isfinite(ds[VARS.amplitude].isel(voxel=0).values))
+
+    # --- in-memory prior knowledge (workstream C) ---
+
+    # A dict spec numerically equivalent to the `pk_path` hand-written fixture.
+    _DICT_PK = {
+        "PCr": {
+            "amplitude": 10.0,
+            "chem_shift": 0.0,
+            "linewidth": 15.0,
+            "chem_shift_bounds": (-0.5, 0.5),
+            "linewidth_bounds": (5.0, 30.0),
+        },
+        "ATP": {
+            "amplitude": 5.0,
+            "chem_shift": -7.5,
+            "linewidth": 20.0,
+            "chem_shift_bounds": (-8.0, -7.0),
+            "linewidth_bounds": (10.0, 40.0),
+        },
+    }
+
+    def test_dict_prior_knowledge_fits(self, fid):
+        """A fit runs straight from an in-memory dict — no CSV the user must write."""
+        ds = fid.xmr.fit_amares(
+            prior_knowledge=self._DICT_PK, method="least_squares", num_workers=1
+        )
+        assert list(ds[DIMS.metabolite].values) == ["PCr", "ATP"]
+        amps = ds[VARS.amplitude].values
+        assert np.all(np.isfinite(amps))
+        np.testing.assert_allclose(amps[0] / amps[1], 2.0, rtol=0.05)  # true 10:5
+
+    def test_dict_and_path_agree(self, fid, pk_path):
+        """The builder reproduces the hand-written fixture: identical fits."""
+        by_dict = fid.xmr.fit_amares(
+            prior_knowledge=self._DICT_PK, method="least_squares", num_workers=1
+        )
+        by_path = self._fit(fid, pk_path)
+        np.testing.assert_allclose(
+            by_dict[VARS.amplitude].values, by_path[VARS.amplitude].values, rtol=1e-6
+        )
+
+    def test_missing_path_raises(self, fid):
+        """A nonexistent prior-knowledge path fails clearly, not deep inside pyAMARES."""
+        with pytest.raises(FileNotFoundError, match="not found"):
+            fid.xmr.fit_amares(prior_knowledge="/no/such/pk.csv", num_workers=1)
 
     def test_no_domain_marker(self):
         """Fitting hand-rolls the contract, so it carries no decorator marker."""

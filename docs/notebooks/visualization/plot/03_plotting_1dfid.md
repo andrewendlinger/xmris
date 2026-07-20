@@ -150,7 +150,7 @@ We fit the dynamic series using the parallel batch processor.
 :tags: [skip-execution]
 
 ds_dyn = da_dyn.xmr.fit_amares(
-    prior_knowledge_file=pk_path, method="least_squares", num_workers=4
+    prior_knowledge=pk_path, method="least_squares", num_workers=4
 )
 ```
 
@@ -159,7 +159,7 @@ ds_dyn = da_dyn.xmr.fit_amares(
 
 # CI execution (Single core for coverage tracking)
 ds_dyn = da_dyn.xmr.fit_amares(
-    prior_knowledge_file=pk_path, method="least_squares", num_workers=1
+    prior_knowledge=pk_path, method="least_squares", num_workers=1
 )
 ```
 

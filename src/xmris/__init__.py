@@ -26,7 +26,8 @@ from .core.options import set_options
 # =============================================================================
 # `fit_amares` needs the optional `fitting` extra (pyAMARES); it is exposed
 # lazily via __getattr__ below so `import xmris` works without it. `simulate_fid`
-# is dependency-light and stays eager.
+# and `build_prior_knowledge` are dependency-light and stay eager.
+from .fitting.prior_knowledge import build_prior_knowledge
 from .fitting.simulation import simulate_fid
 from .processing.baseline import baseline_als
 
@@ -99,6 +100,7 @@ __all__ = [
     # --- 4. Fitting ---
     "fit_amares",
     "simulate_fid",
+    "build_prior_knowledge",
     # --- 5. Vendor ---
     "remove_digital_filter",
     # --- 6. Visualization Configs ---
