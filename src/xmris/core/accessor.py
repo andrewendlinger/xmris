@@ -797,10 +797,9 @@ class XmrisAccessor(
         try:
             from xmris.fitting.amares import fit_amares as _internal_fit_amares
         except ImportError as e:
-            raise ImportError(
-                "The '.fit_amares()' method requires the optional 'pyAMARES' package. "
-                "Please install it using 'pip install pyAMARES' or 'uv add pyAMARES'."
-            ) from e
+            from xmris.fitting import MISSING_FITTING_DEP_MSG
+
+            raise ImportError(MISSING_FITTING_DEP_MSG) from e
 
         return _internal_fit_amares(
             self._obj,

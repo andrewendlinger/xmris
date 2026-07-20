@@ -6,7 +6,9 @@ name = "xmris"
 version = "0.6.1"
 description = "An xarray-based MRI and MRS toolbox"
 readme = "README.md"
-# Python restricted to <3.14 due to dependency constraints (pyamares)
+# The <=3.13 ceiling is a pyAMARES constraint (the `fitting` extra). It stays
+# project-wide only because requires-python cannot be scoped to an optional
+# extra; core xmris itself has no such cap. Revisit once pyAMARES supports 3.14.
 requires-python = ">=3.10,<=3.13"
 authors = [
     { name = "Andrecho", email = "37243793+andrewendlinger@users.noreply.github.com" }
@@ -28,10 +30,24 @@ classifiers = [
 
 dependencies = [
     "anywidget>=0.9.21",
-    "joblib>=1.5.3",
     "numpy>=1.26.0",
-    "pyamares",         # Sourced from git below
+    "scipy>=1.11.0",    # core baseline/phasing/bruker import scipy directly
     "xarray<2025.11.0", # Pinned for compatibility
+]
+
+[project.optional-dependencies]
+# AMARES fitting via pyAMARES. Optional so that a bare `pip install xmris` stays
+# clean: without pyamares there is no `hlsvdpro` (which ships no arm64 wheel and
+# no sdist -> unbuildable on Apple Silicon) and no numpy<2 ceiling forced on
+# users who never fit. The numpy/pandas caps below are pyAMARES's real limits;
+# official pyAMARES under-declares them (no upper bound), so xmris asserts them
+# here. Once an official pyamares that carries the hlsvdpro platform marker lands
+# on PyPI, drop the [tool.uv.sources] git pin below and this group is unchanged.
+fitting = [
+    "pyamares>=0.3.33",
+    "joblib>=1.5.3", # parallel fit dispatch (fitting-only)
+    "numpy<2.0",
+    "pandas<2.2",
 ]
 
 [project.urls]

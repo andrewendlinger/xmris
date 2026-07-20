@@ -46,6 +46,9 @@ or user pipelines depend on.
 import copy
 import pickle
 import re
+import subprocess
+import sys
+import textwrap
 
 import numpy as np
 import pytest
@@ -1550,6 +1553,80 @@ class TestFittingDomain:
         from xmris.fitting.amares import fit_amares
 
         assert not hasattr(fit_amares, "__xmris_domain__")
+
+
+class TestFittingPackaging:
+    """Pin the optional-``fitting``-extra guard (pyAMARES).
+
+    Fitting is an optional extra so a bare ``pip install xmris`` stays clean on
+    every platform (no ``hlsvdpro``, no ``numpy<2``). These run in a subprocess
+    so the result is independent of whatever the test session already imported,
+    and they need pyAMARES *absent*, so they carry no ``importorskip``.
+    """
+
+    def _run(self, script: str) -> subprocess.CompletedProcess:
+        result = subprocess.run(
+            [sys.executable, "-c", textwrap.dedent(script)],
+            capture_output=True,
+            text=True,
+        )
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.strip().endswith("OK"), result.stdout
+        return result
+
+    def test_import_does_not_eagerly_load_pyamares(self):
+        """``import xmris`` must not pull in pyAMARES — fitting is opt-in."""
+        self._run(
+            """
+            import sys
+            import xmris
+
+            leaked = sorted(m for m in sys.modules if m.lower().startswith("pyamares"))
+            assert not leaked, f"import xmris eagerly loaded pyAMARES: {leaked}"
+
+            # The dependency-light constructor works without any fitting import.
+            fid = xmris.simulate_fid([1.0], frequencies=[100.0], n_points=32)
+            assert fid.sizes["time"] == 32
+            assert not any(m.lower().startswith("pyamares") for m in sys.modules)
+            print("OK")
+            """
+        )
+
+    def test_fit_amares_absent_raises_friendly(self):
+        """With pyAMARES absent, core imports but every fitting path errors clearly."""
+        self._run(
+            """
+            import importlib.abc
+            import sys
+
+            class _Block(importlib.abc.MetaPathFinder):
+                def find_spec(self, name, path, target=None):
+                    if name == "pyAMARES" or name.startswith("pyAMARES."):
+                        raise ModuleNotFoundError(name)
+                    return None
+
+            sys.meta_path.insert(0, _Block())
+
+            import xmris  # must succeed with pyAMARES "absent"
+            fid = xmris.simulate_fid([1.0], frequencies=[100.0], n_points=32)
+
+            def _expect_import_error(fn, label):
+                try:
+                    fn()
+                except ImportError as exc:
+                    assert "fitting" in str(exc).lower(), (label, str(exc))
+                else:
+                    raise AssertionError(f"{label}: expected ImportError")
+
+            def _reach_subpackage():
+                from xmris.fitting import fit_amares  # noqa: F401
+
+            _expect_import_error(lambda: xmris.fit_amares, "top-level free function")
+            _expect_import_error(_reach_subpackage, "xmris.fitting attribute")
+            _expect_import_error(lambda: fid.xmr.fit_amares("x.csv"), "accessor method")
+            print("OK")
+            """
+        )
 
 
 class TestSetOptions:

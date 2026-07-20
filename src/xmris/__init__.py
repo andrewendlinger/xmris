@@ -1,3 +1,5 @@
+from typing import TYPE_CHECKING
+
 # =============================================================================
 # 0. Submodules (Required to expose the namespace for quartodoc / Griffe)
 # =============================================================================
@@ -22,9 +24,14 @@ from .core.options import set_options
 # =============================================================================
 # 4. Modeling & Fitting
 # =============================================================================
-from .fitting.amares import fit_amares
+# `fit_amares` needs the optional `fitting` extra (pyAMARES); it is exposed
+# lazily via __getattr__ below so `import xmris` works without it. `simulate_fid`
+# is dependency-light and stays eager.
 from .fitting.simulation import simulate_fid
 from .processing.baseline import baseline_als
+
+if TYPE_CHECKING:
+    from .fitting.amares import fit_amares
 
 # =============================================================================
 # 3. Core Signal Processing & Utilities
@@ -100,3 +107,17 @@ __all__ = [
     "PlotTrajectoryConfig",
     "PlotQCGridConfig",
 ]
+
+
+def __getattr__(name: str):
+    """Resolve optional-dependency exports lazily (PEP 562).
+
+    ``fit_amares`` lives behind the optional ``fitting`` extra (pyAMARES). Keeping
+    it out of the eager imports lets ``import xmris`` succeed without pyAMARES,
+    deferring the friendly ImportError to the moment fitting is actually used.
+    """
+    if name == "fit_amares":
+        from .fitting import fit_amares
+
+        return fit_amares
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

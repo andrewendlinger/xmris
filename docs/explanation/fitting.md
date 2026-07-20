@@ -148,11 +148,21 @@ the xmris adapter around pyAMARES — not in the AMARES algorithm. The `NaN` sen
 likewise about how xmris assembles results into an xarray Dataset. Both are
 xmris-shaped, so both live in xmris, in code you can read.
 
-That leaves the fork with nothing to carry. The `xmris-compatible` branch is three
-commits against pyAMARES's `setup.py` — a dependency marker and a pair of version caps
-— with **zero** algorithm changes, and it fixes none of the behavior above. It buys
-nothing at runtime while blocking a clean `pip install xmris`. So xmris tracks
-**official pyAMARES** and keeps every real fix in the adapter.
+That leaves the fork with nothing *algorithmic* to carry. The `xmris-compatible`
+branch is three commits against pyAMARES's `setup.py` — an `hlsvdpro` platform marker
+and a pair of version caps — with **zero** kernel changes: it fixes none of the
+behavior above. What it carries is pure *packaging*. `hlsvdpro` ships no wheel for
+Apple Silicon, so official pyAMARES — which requires it unconditionally — cannot
+install on an arm64 Mac at all; the marker simply skips it there (pyAMARES falls back
+to a bundled pure-Python HLSVD). The caps (`numpy<2`, `pandas<2.2`) are pyAMARES's real
+limits, which its own metadata under-declares.
+
+So every *robustness* fix stays in the adapter, where it belongs, and the fork is
+treated as a temporary packaging shim. That is why fitting is an **optional extra**: a
+bare `pip install xmris` never pulls pyAMARES — clean on every platform — and only
+`pip install "xmris[fitting]"` inherits the fork, only until an official pyAMARES that
+carries the marker reaches PyPI, at which point xmris pins it directly with nothing else
+to change.
 
 :::{seealso}
 The [pyAMARES tutorial](../notebooks/fitting/pyamares.md) demonstrates a full fit and

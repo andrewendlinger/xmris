@@ -3499,10 +3499,18 @@ version = "0.6.1"
 source = { editable = "." }
 dependencies = [
     { name = "anywidget" },
+    { name = "numpy" },
+    { name = "scipy", version = "1.15.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "scipy", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "xarray" },
+]
+
+[package.optional-dependencies]
+fitting = [
     { name = "joblib" },
     { name = "numpy" },
+    { name = "pandas" },
     { name = "pyamares" },
-    { name = "xarray" },
 ]
 
 [package.dev-dependencies]
@@ -3527,11 +3535,15 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "anywidget", specifier = ">=0.9.21" },
-    { name = "joblib", specifier = ">=1.5.3" },
+    { name = "joblib", marker = "extra == 'fitting'", specifier = ">=1.5.3" },
     { name = "numpy", specifier = ">=1.26.0" },
-    { name = "pyamares", git = "https://github.com/andrewendlinger/pyAMARES?branch=xmris-compatible" },
+    { name = "numpy", marker = "extra == 'fitting'", specifier = "<2.0" },
+    { name = "pandas", marker = "extra == 'fitting'", specifier = "<2.2" },
+    { name = "pyamares", marker = "extra == 'fitting'", git = "https://github.com/andrewendlinger/pyAMARES?branch=xmris-compatible" },
+    { name = "scipy", specifier = ">=1.11.0" },
     { name = "xarray", specifier = "<2025.11.0" },
 ]
+provides-extras = ["fitting"]
 
 [package.metadata.requires-dev]
 dev = [
