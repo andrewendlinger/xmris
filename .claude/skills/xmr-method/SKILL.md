@@ -37,7 +37,7 @@ the converters.
 
 **Doesn't route here:**
 
-- Widgets (`visualization/widget/`) → the **`new-widget`** skill.
+- Widgets (`visualization/widget/`) → the **`xmr-widget`** skill.
 - Plots (`visualization/plot/`) → **no skill yet**, overhaul pending. The `*Config`/`PlotParam`
   dataclass convention in `_base_config.py` is unlike anything below; don't apply this skill to it.
 - Docs pages → **`docs-page`**. Diary entries → **`dev-diary`**.

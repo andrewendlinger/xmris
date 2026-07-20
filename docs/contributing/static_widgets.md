@@ -14,8 +14,8 @@ kernelspec:
 `xmris` uses [AnyWidget](https://anywidget.dev/) to provide interactive,
 browser-based UI components (phase correction, spectra scrolling, apodization)
 directly inside Jupyter Notebooks. This page is the **canonical reference for
-authoring widgets** — the `new-widget` skill defers to it, the same way the
-processing skill defers to [AI Context](./ai_context.md).
+authoring widgets** — the `xmr-widget` skill defers to it, the same way the
+`xmr-method` skill defers to [AI Context](./ai_context.md).
 
 Widgets sit in the visualization layer but must still respect the project's
 ["8 Commandments"](./ai_context.md). This document adds the widget-specific
@@ -136,7 +136,7 @@ export function render({ model, el }) {
 (widget-conventions)=
 ## 2. Authoring conventions
 
-These are the rules a `new-widget` must follow. The first three are what set
+These are the rules a new widget must follow. The first three are what set
 widgets apart from the copy-paste heuristics in the older code.
 
 ### Reproducibility: return the widget, wrap a real method
@@ -154,27 +154,40 @@ existing `.xmr` method** so its output is reproducible:
 | `scroll_spectra` | `.isel({dim: idx})` |
 
 If there is no processing method to reproduce, add that method first (see the
-processing skill) — a widget is a UI over real math, never a home for new math.
+`xmr-method` skill) — a widget is a UI over real math, never a home for new math.
 
 ### Resolve dimensions from the vocabulary — no name sniffing
 
-Do **not** guess the spectral axis with substring checks like `"ppm" in dim`.
-Use the shared resolver and validator, and take an explicit `dim` override:
+Do **not** guess the axis with substring checks like `"ppm" in dim`. Resolve it
+from the vocabulary, then validate — which branch you take depends on the domain
+the widget operates in:
 
 ```python
+# Spectral widget (phase, scroller): frequency / chemical_shift
 if dim is None:
-    dim = _resolve_dim(da, SPECTRAL_DIMS)   # canonical: frequency / chemical_shift
+    dim = _resolve_dim(da, SPECTRAL_DIMS)
+
+# Time-domain widget (apodizer): the input is an FID, so the spectral
+# resolver does not apply — fall back to the canonical time dimension.
+if dim is None:
+    dim = DIMS.time
+
 _check_dims(da, dim, "my_widget")
 ```
 
-`_resolve_dim` raises a helpful error for non-standard axis names, which
-is why the factory always exposes `dim: str | None = None` as an escape hatch.
+`_resolve_dim` handles the multi-label spectral domain and raises a helpful error
+for non-standard axis names; a single-label domain needs no resolver, just the
+constant. Either way the factory exposes `dim: str | None = None` as an escape
+hatch — that `None` is a widget convention, not the domain-decorator
+biconditional that governs library functions.
+
 Derive axis labels from the coordinate's **lineage metadata**, not a hardcoded
-string:
+string. The shared helper does this, including the fallback when the metadata is
+absent — call it rather than reassembling the f-string:
 
 ```python
 coord = da.coords[dim]
-label = f"{coord.attrs['long_name']} [{coord.attrs['units']}]"
+label = _spectral_axis_label(dim, coord)   # xmris.core.utils
 ```
 
 ### The Close-button rule (static-docs safety)
