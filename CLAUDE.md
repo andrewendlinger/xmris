@@ -37,7 +37,8 @@ Package manager is `uv` — never use pip. Add deps with `uv add <pkg>`; sync wi
 - Architecture tests only, fast iteration: `uv run pytest tests/test_core.py -n0 --no-cov` (pytest `addopts` otherwise forces `-n auto --nbmake --cov`). Single test: append `::TestClass::test_name`.
 - Lint: `uv run ruff check .` (`--fix` to auto-fix). Format: `uv run ruff format .`.
 - Type-check: `uv run mypy src/xmris` — run it and fix clear type errors before finishing. It is not in CI and not configured, so xarray typing can be noisy; fix real issues, don't chase false positives.
-- Docs API stubs: `uv run docs-api`.
+- Docs API stubs: `uv run docs-api`. Check a page renders: `myst build --html` from `docs/` — one-shot, ~10 s warm, exit 0 (add `--execute` to run notebooks too).
+- `uv run docs` and `uv run docs-notebooks` **launch a blocking preview server** (`myst start --execute`) and never exit. They are for a human reading the site — never put them in a verification step. In general, check what a `uv run <name>` alias does in `src/xmris/_scripts.py`; the inline comments in `pyproject.toml` describe intent, not blocking behaviour.
 
 Ruff: line length 100, NumPy docstring convention. Public functions need fully-typed signatures + NumPy-format docstrings (they feed the quartodoc API docs).
 

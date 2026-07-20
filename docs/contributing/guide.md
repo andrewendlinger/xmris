@@ -58,7 +58,7 @@ We don't use standard `test_*.py` files. Your tutorials *are* the test suite. Cr
 
 1. **API Docs:** Run `uv run docs-api`. This triggers `quartodoc` to scrape your new function's docstring into the API Reference.
 2. **Navigation:** Add your new tutorial to the `nav` section in `myst.yml`.
-3. **Verify Build:** Run `uv run docs` to ensure the site renders correctly.
+3. **Verify Build:** Run `myst build --html` inside `docs/` — a one-shot render check, and the same command CI runs. (`uv run docs` serves a live preview for browsing and never exits, so it is not a build check.)
 
 
 ### Step 5: Tests

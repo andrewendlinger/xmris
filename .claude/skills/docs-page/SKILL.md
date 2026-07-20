@@ -91,7 +91,9 @@ uv run pytest "tests/autogen_notebooks/<category>/<name>.ipynb" -n0 --no-cov
 ```
 
 (`--nbmake` is already in pytest addopts.) Explainer and guide cells are executed by the docs
-build instead — `cd docs && uv run myst start --execute` locally, and `deploy.yml` on every PR.
+build instead — `cd docs && uv run myst build --html --execute` locally, the same command
+`deploy.yml` runs on every PR. (`uv run docs` and `myst start` serve a live preview and never exit;
+they are for reading the site, not for checking it.)
 
 Two pathspec traps, both of which produced wrong answers while auditing this repo:
 
