@@ -58,8 +58,25 @@ Before writing, read the pages a reader would hit *before* yours. Then place eac
 
 Two limits on the knife:
 
-- **A little redundancy is fine, and often wanted.** A one-line restatement that lets a page stand on its own beats a bare cross-link that makes the reader leave. Cut *duplicated explanation*, not orienting recaps.
+- **Every article must still read on its own** — see below. Consolidation trims duplicated *explanation*, never the orienting sentence that keeps the origin page whole.
 - **Mechanics can pin content in place.** Anything that only renders in an *executed* notebook — `_repr_html_` tables, plots, live widget output — must stay in a notebook page regardless of where it conceptually belongs. That is a rendering constraint, not an ownership claim.
+
+### Standalone readability, and declared prerequisites
+
+Readers arrive from search, from a deep link, from the API reference — not by walking the TOC in order. **Every article must be readable start to finish on its own**, referencing others where useful rather than depending on them silently.
+
+That is a real constraint on §2's knife. When you move a section into a new page, leave behind whatever the origin page needs to still make sense — a sentence of recap plus the cross-link, not a hole where the explanation was. Redundancy of that kind is wanted; it is what lets both pages stand.
+
+When an article genuinely **builds on** another — it cannot be made self-contained without restating the whole thing — say so at the top, before the first section, using the house `seealso`:
+
+```markdown
+::: {seealso}
+Builds on [The Two Domains](domains.md) — the domain contracts and the
+`@ensures_domain` / `@computes_in` split are assumed here.
+:::
+```
+
+Placement follows existing usage: **top** for a hard prerequisite the whole page assumes; **inline, where the dependency bites**, for a lateral reference (`bruker_filter_removal.md` points at `phase.md` exactly where the phase twist starts mattering); **end** for onward reading (`domain_contracts.md`). Use the top note sparingly — needing one on most pages means concepts are split too thin, and the fix is consolidation, not more notes.
 
 ## 3. Pass 1 — draft from the plan (first commit on the branch)
 
@@ -73,7 +90,9 @@ Committing the draft is the point: the reviewer sees design → implementation �
 
 ### Shape: one driving question, never a FAQ of "Why X?" sections
 
-This is the part that decides whether the page works. **Find the single question a reader naturally has after the page that precedes yours, and let it drive the whole article.** Every decision then arrives as the answer to a tension the reader just felt — no decision is *announced*, each is *arrived at*.
+This is the part that decides whether the page works. **Find the single question a reader naturally arrives with, and let it drive the whole article.** Every decision then arrives as the answer to a tension the reader just felt — no decision is *announced*, each is *arrived at*.
+
+That question comes from the page's declared prerequisite where it has one, and otherwise from the concept itself — not from TOC adjacency, since readers land here from search and deep links as often as from the previous page.
 
 - `vocabulary.md` is driven by *"my data doesn't use xmris's names — now what?"* Why not aliases, conform-your-data, why terms are frozen — each falls out of a tension that one question raises.
 - `domains.md` is driven by *"what happens when I call a spectral operation on a FID?"*
@@ -150,6 +169,7 @@ For work spanning several PRs, the doc lives in the **first** PR of the chain an
 - [ ] Contract surface stated as a table
 - [ ] Rejected alternatives walked through as pedagogy, not appended as a list
 - [ ] **Single home per concept** — overlapping sections in existing pages thinned and cross-linked, not duplicated; moves called out in the PR body
+- [ ] **Reads start to finish on its own**, including any page you thinned; hard prerequisites declared in a top `seealso`
 - [ ] Pass 2 committed as the branch's last commit, read against the code
 - [ ] Error messages, diagram branches, and guardrail scopes verified against `src/`
 - [ ] `grep -rn "ASSUMPTION:" docs/` is empty
