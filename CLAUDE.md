@@ -12,11 +12,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Do NOT use the legacy `xmris.config` `DEFAULTS` in new code — it is a deprecated shim (importing it emits a `DeprecationWarning`). `core.config` is the single source of truth.
 - If a new function needs a dim/coord/attr not already in the vocabulary, add it to `config.py` and explicitly flag the new term to the user.
 
+## Documentation style
+
+These four rules govern everything under `docs/` — explanation articles, notebooks, and edits to either. This section is their single source of truth; the `design-doc` and `new-doc-notebook` skills apply them, they don't restate them.
+
+- **Motivated narrative, never a FAQ.** One driving question the reader already has, with every decision arriving as the answer to a tension they just felt. A cold "Why X?" heading makes a sound decision read as an assertion to accept. Concise and conversational; deep or tangential rationale goes in a `:::{dropdown}`, off the main line of reasoning.
+- **One home per concept.** Consolidate in whichever direction fits — "where does this belong?" beats "who had it first." Editing and thinning existing pages is expected work, not scope creep. Say what you moved in the PR body.
+- **Every article stands alone.** Readers arrive from search and deep links, not by walking the TOC. Each page must read start to finish on its own, so cross-reference rather than depend silently, and keep the orienting recap when you thin a page. Declare a hard prerequisite in a `seealso` at the top.
+- **The MyST palette carries the argument.** Mermaid, admonitions, dropdowns, tables, LaTeX, executable `code-cell`s — reach for the one that does real work (a decision tree drawn as a flowchart is checkable at a glance; the same tree in prose is not). Nothing decorative. Stay inside the palette the docs already use.
+
+Reader-facing prose uses plain strings (`"time"`, `"frequency"`), per the library-internals-only rule above. `ATTRS`/`DIMS`/`COORDS` appear only in passages explicitly addressed to contributors, or inside hidden test cells.
+
 ## Significant changes need a design doc
 
-If a change adds vocabulary or a contract, picks between ≥2 viable approaches, or spans multiple PRs, invoke the `design-doc` skill — at the **start** (draft the reader-facing explanation from the plan, as the branch's first commit) and again at the **end** (reconcile it against what was actually built). The skill always asks before writing anything: whether to document the reasoning at all, and as an explainer, a notebook, or both. Never decide that autonomously.
-
-Explainer docs read as a **motivated narrative** — one driving question the reader already has, with every decision arriving as the answer to a tension they just felt, never a FAQ of cold "Why X?" headings. Keep concepts to a single home: editing and thinning existing pages to consolidate is expected work, not scope creep. Every article must still read start to finish on its own — readers arrive from search and deep links, so cross-reference rather than depend silently, and declare a hard prerequisite in a `seealso` at the top. Use the MyST palette (mermaid, admonitions, dropdowns, tables, LaTeX, executable `code-cell`s) wherever it carries the argument — the richness is what makes the reasoning reviewable, not decoration.
+If a change adds vocabulary or a contract, picks between ≥2 viable approaches, or spans multiple PRs, invoke the `design-doc` skill — at the **start** (draft the reader-facing explanation from the plan, as the branch's first commit) and again at the **end** (reconcile it against what was actually built). The skill always asks before writing anything: whether to document the reasoning at all, and in which form. Never decide that autonomously.
 
 ## Environment & commands
 
