@@ -43,6 +43,9 @@ at most one diagram and one table.>
 
 ## Pass 2 — what changes
 
+The 500-word budget is a **pass-1** figure. Pass 2 legitimately exceeds it: corrections plus the
+closing section are what the entry is for.
+
 - Banner → `:::{note} Status: built — #101, #104` (link the merged PRs).
 - Drifted prose corrected **in place**, so the article never misleads.
 - The `{attention}` block **deleted**: each item folded into prose (it held) or promoted to a
