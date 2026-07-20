@@ -94,6 +94,13 @@ fid.xmr.apodize_exp(lb=2)    # → FID   (home domain — no transform)
 spec.xmr.apodize_exp(lb=2)   # → spectrum, smoothed (round trip inside)
 ```
 
+**Fitting (`fit_amares`) is domain-preserving too**, with a twist. It models the FID, but you may
+hand it a spectrum: it round-trips through the time domain to fit and returns its signal variables
+(`data`/`fit`/`residuals`) in the representation you passed — ppm in, ppm out — while the quantified
+parameters are domain-independent. It is the one such operation that carries **no decorator**: it
+returns a `Dataset`, and the round trip must transform only the signals, never the parameter table,
+so it hand-rolls the same converter routing the decorators use.
+
 (domains-converters)=
 ### Converters — the only functions that change representation *on purpose*
 
@@ -106,9 +113,9 @@ that strictness is what makes "accidentally Fourier-transformed twice" impossibl
 (domains-explicit)=
 ### Explicit operations — no magic, by design
 
-`phase` (the low-level primitive under `autophase`), the raw `fft`/`ifft` family, and fitting
-(`fit_amares`) never convert for you. In fitting, the transform is part of the forward model —
-hiding it would hide the model.
+`phase` (the low-level primitive under `autophase`) and the raw `fft`/`ifft` family never convert
+for you: they are the sharp tools the converters are built from, so they act exactly where you
+point them.
 
 (domains-contract-table)=
 ## What you get, at a glance
@@ -121,6 +128,7 @@ hiding it would hide the model.
 | `zero_fill()`       | FID (longer)            | spectrum (finer grid)                        |
 | `to_spectrum()`     | spectrum                | error — no `time` dim                        |
 | `to_fid()`          | error — no spectral dim | FID                                          |
+| `fit_amares()`      | fit `Dataset` (time-domain) | fit `Dataset` (spectral)                 |
 
 Spectral outputs keep their input's labeling: ppm in, ppm out.
 
@@ -198,8 +206,12 @@ flowchart TD
     B -- yes --> C["@ensures_domain(&lt;DOMAIN&gt;)"]
     B -- no --> D{Same physics seen from<br/>either domain?}
     D -- yes --> E["@computes_in(&lt;DOMAIN&gt;)"]
-    D -- no --> F[Undecorated: converter,<br/>primitive, or fitting — validate<br/>with _check_dims]
+    D -- no --> F[Undecorated: converter<br/>or primitive — validate<br/>with _check_dims]
 ```
+
+`fit_amares` is the exception the tree can't draw: it is domain-preserving (the `computes_in`
+branch) but returns a `Dataset`, so it hand-rolls the round trip instead of wearing the decorator —
+see [domain-preserving operations](#domains-preserving) above.
 
 Two hard rules keep the system honest: decorator-inserted transforms **must route through the
 converters** (never inline `fft`/`ifft` — the converters own the conventions), and only converters

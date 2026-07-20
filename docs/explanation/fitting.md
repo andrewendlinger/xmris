@@ -61,7 +61,6 @@ scale = abs(fid).max()
 ds = (fid / scale).xmr.fit_amares(pk)   # fit where the tolerance behaves
 ds["amplitude"] *= scale                # ...then restore your input units   ✅
 ```
-<!-- ASSUMPTION: normalize-and-rescale lives inside fit_amares; the snippet shows internal logic, not something the user writes. Verify the real signature in pass 2. -->
 
 At the call site you just write `fid.xmr.fit_amares(pk)` — the round trip happens
 inside, so the result is already in your units and safe at any scale.
@@ -81,15 +80,14 @@ dynamics intact.
 
 The factor isn't thrown away — `fit_amares` records it in `attrs` as
 `amares_amplitude_scale`, so the normalization is auditable rather than hidden.
-<!-- ASSUMPTION: attr key is `amares_amplitude_scale`, to be registered in config.py (workstream B). Confirm in pass 2. -->
 
 :::{dropdown} Why not pyAMARES's own `normalize_fid`?
-pyAMARES already has a `normalize_fid` switch, and `fit_amares` could just flip it on.
-But it normalizes for the *fit* and reports amplitudes in normalized units — it does
-not put the scale back, so you would read out normalized concentrations and have to
-undo the factor yourself, on every call. Doing the round trip inside `fit_amares` is
-the difference between a fix and a footgun with a manual.
-<!-- ASSUMPTION: normalize_fid does not rescale reported amplitudes back into input units. Verify against pyAMARES in pass 2. -->
+pyAMARES has a `normalize_fid` switch, but it only touches the single template FID
+handed to its initializer (`opts.fid = fid / np.max(fid)`) — not every spectrum in an
+N-dimensional series, and not the reported amplitudes, which stay in normalized units.
+`fit_amares` instead applies one magnitude factor across the whole array (so a dynamic
+series keeps its relative scale) and multiplies the amplitudes back, so your results
+land in input units with no per-call bookkeeping.
 :::
 
 (fitting-nan)=
@@ -127,9 +125,8 @@ fitted parameters are identical either way.
 ds_fid  = fid.xmr.fit_amares(pk)                      # data/fit/residuals are FIDs
 ds_spec = fid.xmr.to_spectrum().xmr.fit_amares(pk)    # ...come back as spectra
 
-xr.testing.assert_allclose(ds_fid.amplitude, ds_spec.amplitude)   # same fit
+np.testing.assert_allclose(ds_fid.amplitude, ds_spec.amplitude, rtol=1e-3)  # same fit
 ```
-<!-- ASSUMPTION: fit_amares auto-converts and matches the input representation (workstream G, not yet built). Verify the round-trip parameter equivalence with a test in pass 2. -->
 
 This doesn't hide the model — it makes it *legible*. xmris's [domain contract](domains.md)
 keeps the domain readable on every axis (the `repr` says `time` vs `frequency` vs
@@ -156,11 +153,9 @@ commits against pyAMARES's `setup.py` — a dependency marker and a pair of vers
 — with **zero** algorithm changes, and it fixes none of the behavior above. It buys
 nothing at runtime while blocking a clean `pip install xmris`. So xmris tracks
 **official pyAMARES** and keeps every real fix in the adapter.
-<!-- ASSUMPTION: fork is exactly 3 setup.py commits, no algorithm changes (established from investigation). Re-confirm in pass 2. -->
 
 :::{seealso}
 The [pyAMARES tutorial](../notebooks/fitting/pyamares.md) demonstrates a full fit and
-its Dataset output. The scale trap, the `NaN` sentinel, and the normalization round
-trip are exercised directly in the fitting robustness tests.
-<!-- ASSUMPTION: link the testonly_amares_robustness notebook here once it exists (workstream F). -->
+its Dataset output. The scale trap, the `NaN` sentinel, and the domain round trip are
+pinned by the `TestFittingDomain` suite in `tests/test_core.py`.
 :::
