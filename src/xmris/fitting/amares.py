@@ -4,9 +4,6 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-
-# Import pyAMARES and its core utilities
-import pyAMARES
 import xarray as xr
 from joblib import Parallel, delayed
 from pyAMARES import (
@@ -19,8 +16,26 @@ from pyAMARES.kernel.lmfit import fitAMARES as pyamares_fitAMARES
 from pyAMARES.libs.logger import set_log_level
 from tqdm.auto import tqdm
 
-from xmris.core.config import ATTRS, DIMS
+from xmris.core.config import ATTRS, DIMS, SPECTRAL_DIMS, TIME_DIMS, VARS
+from xmris.core.options import OPTIONS
 from xmris.core.utils import _check_dims
+from xmris.core.validation import (
+    _coerce_to_domain,
+    _domain_of,
+    _restore_domain,
+    _strict_domain_error,
+)
+
+# pyAMARES result-table column labels (its stateful API speaks these, not the config
+# vocabulary). Kept local so the mapping to VARS lives in exactly one place.
+_PYAMARES_COLS = {
+    VARS.amplitude: "amplitude",
+    VARS.chem_shift: "chem shift(ppm)",
+    VARS.linewidth: "LW(Hz)",
+    VARS.phase: "phase(deg)",
+    VARS.crlb: "CRLB(%)",
+    VARS.snr: "SNR",
+}
 
 
 def _fit_dataset_safe(
@@ -155,7 +170,7 @@ def _run_parallel_fitting_optimal(
     num_workers : int, optional
         The number of concurrent worker processes to spawn. Defaults to 8.
     verbose: bool, optional
-        If True, sets logging level to INFO. Default is False -> log level ERROR.
+        If True, sets logging level to INFO and prints timing. Default is False.
 
     Returns
     -------
@@ -180,7 +195,7 @@ def _run_parallel_fitting_optimal(
             initial_params,
             method,
             initialize_with_lm,
-            verbose,  # <-- Pass to worker
+            verbose,
         )
         for i in range(n_spectra)
     ]
@@ -193,18 +208,58 @@ def _run_parallel_fitting_optimal(
     )
 
     # Process and assign back to the correct index
-    with tqdm(total=n_spectra, desc="Fitting Spectra") as pbar:
+    with tqdm(total=n_spectra, desc="Fitting Spectra", disable=not verbose) as pbar:
         for i, res in enumerate(parallel_gen):
             result_array[i] = res
             pbar.update(1)
 
-    timeafter = datetime.now()
-    print(
-        f"Fitting {n_spectra} spectra with {num_workers} workers took "
-        f"{(timeafter - timebefore).total_seconds():.2f} seconds."
-    )
+    if verbose:
+        timeafter = datetime.now()
+        print(
+            f"Fitting {n_spectra} spectra with {num_workers} workers took "
+            f"{(timeafter - timebefore).total_seconds():.2f} seconds."
+        )
 
     return result_array
+
+
+def _resolve_fit_domain(da: xr.DataArray, dim: str) -> tuple[xr.DataArray, str, tuple | None]:
+    """Return a time-domain FID to fit, its time dim, and how to restore the input.
+
+    AMARES fits in the time domain. This funnels the caller's data there while
+    remembering its representation, so the result can be handed back in the same
+    domain (FID in -> FID out, ppm in -> ppm out). It reuses the domain engine's
+    own converter routing (``_coerce_to_domain``), so an inserted transform is
+    bit-identical to an explicit ``to_fid()`` and a real-valued spectrum earns the
+    same refusal.
+
+    Parameters
+    ----------
+    da : xr.DataArray
+        The input data — a FID (``dim`` present) or a complex spectrum.
+    dim : str
+        The requested time dimension.
+
+    Returns
+    -------
+    tuple[xr.DataArray, str, tuple | None]
+        The FID to fit, the time dimension to fit along, and the
+        ``_RestoreState`` to invert the coercion (``None`` if no conversion ran).
+    """
+    if dim in da.dims and dim not in SPECTRAL_DIMS:
+        # Already a FID along the requested axis (canonical `time` or a custom name).
+        return da, dim, None
+
+    if _domain_of(da, SPECTRAL_DIMS) is not None:
+        # Spectral input: convert to a FID for the fit (unless strict mode forbids it).
+        if not OPTIONS["auto_convert"]:
+            raise _strict_domain_error(da, TIME_DIMS, "fit_amares", "time")
+        fid, state = _coerce_to_domain(da, TIME_DIMS)
+        return fid, str(DIMS.time), state
+
+    # Neither the requested time dim nor a convertible spectral dim is present.
+    _check_dims(da, dim, "fit_amares")
+    return da, dim, None  # pragma: no cover — _check_dims raises above
 
 
 def fit_amares(
@@ -215,109 +270,127 @@ def fit_amares(
     sw: float | None = None,
     deadtime: float | None = None,
     method: str = "leastsq",
-    initialize_with_lm: bool = True,
+    initialize_with_lm: bool = False,
     num_workers: int = 4,
     init_fid: np.ndarray | None = None,
     verbose: bool = False,
 ) -> xr.Dataset:
     """
-    Apply AMARES time-domain fitting to an N-dimensional Free Induction Decay (FID).
+    Apply AMARES time-domain fitting to an N-dimensional signal.
 
     This function isolates the stateful pyAMARES API to perform parallelized batch
     fitting across spatial or repetition dimensions. It automatically scans the
     dataset to initialize the fitting template using the voxel with the highest
     Signal-to-Noise Ratio (SNR), ensuring robust prior knowledge instantiation.
 
-    The numerical results and the reconstructed time-domain fits are packed into
-    an aligned xarray Dataset, preserving all physical coordinates.
+    AMARES fits in the time domain. Following the domain-preserving contract, a
+    spectrum handed to `fit_amares` is round-tripped through the FID for the fit and
+    the returned time-domain variables (`data`, `fit`, `residuals`) are restored to
+    the representation that was passed in (ppm in -> ppm out); a FID is fitted and
+    returned as-is. The quantified parameters are domain-independent.
+
+    Robustness: the FID is normalized by a single global factor before fitting — so
+    pyAMARES's magnitude-derived optimizer tolerance behaves at any signal scale (a
+    Bruker-scale FID no longer "converges" on the prior) — and the fitted amplitudes
+    are rescaled back into the input units. A fit that fails is recorded as `NaN`, so
+    it is distinguishable from a genuine zero-signal spectrum.
 
     Parameters
     ----------
     da : xr.DataArray
-        Input FID data. Must contain the specified time dimension.
+        Input data. A FID with the specified time dimension, or a complex spectrum
+        (`frequency`/`chemical_shift`) that is converted to a FID for the fit.
     prior_knowledge_file : str | Path
         Path to the CSV or XLSX file containing the prior knowledge constraints.
     dim : str, optional
-        The time dimension along which to fit, by default `DIMS.time`.
+        The time dimension along which to fit, by default ``DIMS.time``.
     mhz : float, optional
         Spectrometer frequency in MHz. If None, read from
         ``da.attrs['reference_frequency']``.
     sw : float, optional
-        Spectral width in Hz. If None, attempts to calculate from `dim` coordinates.
+        Spectral width in Hz. If None, calculated from the `dim` coordinate spacing.
     deadtime : float, optional
-        Time delay before the first point in seconds. If None, defaults to 0.0.
+        Acquisition time origin in seconds. If None, taken from the first `dim`
+        coordinate value (the single source of truth for the time axis).
     method : {"leastsq", "least_squares"}, optional
         Fitting method. Defaults to 'leastsq' (Levenberg-Marquardt).
     initialize_with_lm : bool, optional
-        Run an internal Levenberg-Marquardt initializer before fitting. Defaults to True.
+        Run an internal Levenberg-Marquardt initializer before fitting. Defaults to
+        False (True can diverge on real data).
     num_workers : int, optional
         Number of parallel processes to spawn. Defaults to 4.
     init_fid : np.ndarray, optional
         A 1D complex array to use as the template for pyAMARES initialization. If None,
         the function automatically selects the spectrum with the highest SNR.
-    verbose: bool, optional
-        If True, sets logging level to INFO. Default is False -> log level ERROR.
+    verbose : bool, optional
+        If True, sets logging level to INFO and prints progress. Default is False.
 
     Returns
     -------
     xr.Dataset
-        A dataset containing the original data, the fitted FIDs, the residuals,
-        and quantified parameters (amplitude, chem_shift, linewidth, phase, CRLB, SNR)
-        mapped across the original dimensions and the new 'Metabolite' dimension.
+        A dataset containing the original data, the fitted model, the residuals, and
+        the quantified parameters (amplitude, chem_shift, linewidth, phase, CRLB, SNR)
+        mapped across the original dimensions and the new ``metabolite`` dimension.
     """
     set_log_level("info" if verbose else "error", verbose=False)
 
-    _check_dims(da, dim, "fit_amares")
+    # 1. Domain handling: obtain a FID to fit and remember how to restore the input.
+    da_fid, dim, restore_state = _resolve_fit_domain(da, dim)
 
-    # 1. Extract/Infer Physical Parameters
+    # 2. Extract/infer physical parameters from the FID.
     if mhz is None:
-        mhz = da.attrs.get(ATTRS.reference_frequency)
+        mhz = da_fid.attrs.get(ATTRS.reference_frequency)
         if mhz is None:
             raise ValueError(
                 f"mhz must be provided or present in da.attrs[{ATTRS.reference_frequency!r}]."
             )
 
     if sw is None:
-        # Assuming the coordinate is in seconds
-        dt = float(da.coords[dim].values[1] - da.coords[dim].values[0])
+        dt = float(da_fid.coords[dim].values[1] - da_fid.coords[dim].values[0])
         sw = 1.0 / dt
 
     if deadtime is None:
-        deadtime = float(da.coords[dim].values[0])
+        deadtime = float(da_fid.coords[dim].values[0])
 
-    # 2. Flatten N-dimensional DataArray to 2D NumPy array (N_spectra x Time)
-    other_dims = [d for d in da.dims if d != dim]
-
-    if len(other_dims) > 0:
-        stacked_da = da.stack(spectrum=other_dims).transpose("spectrum", dim)
+    # 3. Flatten the N-dimensional FID to a 2D array (n_spectra x time).
+    other_dims = [d for d in da_fid.dims if d != dim]
+    if other_dims:
+        stacked_da = da_fid.stack(spectrum=other_dims).transpose("spectrum", dim)
         fid_arrs = stacked_da.values
         stacked_coords = stacked_da.coords["spectrum"]
     else:
-        fid_arrs = np.atleast_2d(da.values)
-
+        fid_arrs = np.atleast_2d(da_fid.values)
+        stacked_coords = None
     n_spectra, n_time = fid_arrs.shape
 
-    # 3. Smart Initialization: Find the best FID to initialize pyAMARES
-    if init_fid is not None:
-        template_fid = np.asarray(init_fid)
-    else:
-        # Vectorized SNR Calculation (matches pyAMARES.fidSNR logic)
-        signal_region = np.mean(np.abs(fid_arrs[:, 0:10]), axis=1)
-        noise_pts = max(10, n_time // 5)
-        noise_region = np.std(fid_arrs[:, -noise_pts:], axis=1)
+    # 4. Normalize by a single global factor so the optimizer's magnitude-derived
+    #    tolerance is well-behaved. One factor for the whole array — never per
+    #    spectrum, which would flatten a dynamic series.
+    global_scale = float(np.abs(fid_arrs).max())
+    if not np.isfinite(global_scale) or global_scale == 0.0:
+        global_scale = 1.0  # nothing to normalize; degenerate fits fall through to NaN
+    fid_norm = fid_arrs / global_scale
+    spectrum_max = np.abs(fid_arrs).max(axis=1)  # per-spectrum: 0 => no signal => NaN
 
+    # 5. Smart initialization: pick the highest-SNR (normalized) FID as the template.
+    if init_fid is not None:
+        template_fid = np.asarray(init_fid) / global_scale
+    else:
+        signal_region = np.mean(np.abs(fid_norm[:, 0:10]), axis=1)
+        noise_pts = max(10, n_time // 5)
+        noise_region = np.std(fid_norm[:, -noise_pts:], axis=1)
         with np.errstate(divide="ignore", invalid="ignore"):
             snr_array = np.where(noise_region == 0, 0, signal_region / noise_region)
+        best_idx = int(np.nanargmax(snr_array))
+        template_fid = fid_norm[best_idx]
+        if verbose:
+            print(
+                f"Auto-selected FID index {best_idx} for initialization "
+                f"(SNR: {snr_array[best_idx]:.2f})"
+            )
 
-        best_idx = np.nanargmax(snr_array)
-        template_fid = fid_arrs[best_idx]
-        print(
-            f"Auto-selected FID index {best_idx} for initialization "
-            f"(SNR: {snr_array[best_idx]:.2f})"
-        )
-
-    # 4. Setup the Shared pyAMARES State
-    # We suppress plotting and previewing to maintain functional purity
+    # 6. Setup the shared pyAMARES state (normalize_fid=False — we normalize ourselves
+    #    and rescale the amplitudes back, so results come out in the input units).
     shared_obj = initialize_FID(
         fid=template_fid,
         priorknowledgefile=str(prior_knowledge_file),
@@ -328,156 +401,104 @@ def fit_amares(
         preview=False,
     )
 
-    # 5. Execute Fitting natively via xmris
+    # 7. Fit every spectrum.
     if num_workers == 1:
-        # BYPASS multiprocessing entirely for testing/single-core execution
-        result_list = []
-        for i in tqdm(range(n_spectra), desc="Fitting Spectra (Single Core)"):
-            res = _fit_dataset_safe(
-                fid_arrs[i, :],
+        result_list = [
+            _fit_dataset_safe(
+                fid_norm[i, :],
                 FIDobj_shared=shared_obj,
                 initial_params=shared_obj.initialParams,
                 method=method,
                 initialize_with_lm=initialize_with_lm,
+                verbose=verbose,
             )
-            result_list.append(res)
+            for i in tqdm(range(n_spectra), desc="Fitting Spectra", disable=not verbose)
+        ]
     else:
-        # Use our optimized joblib executor
         result_list = _run_parallel_fitting_optimal(
-            fid_arrs=fid_arrs,
+            fid_arrs=fid_norm,
             FIDobj_shared=shared_obj,
             initial_params=shared_obj.initialParams,
             method=method,
             initialize_with_lm=initialize_with_lm,
             num_workers=num_workers,
+            verbose=verbose,
         )
 
-    # 6. Extract Parameters and Reconstruct Time-Domain Fits
-    metabolites = result_list[0].index.values
+    # 8. Extract parameters (NaN sentinel for failed fits) and reconstruct the model.
+    first_ok = next(
+        (df for df in result_list if df is not None and not df.isna().all().all()), None
+    )
+    metabolites = np.asarray(first_ok.index.values if first_ok is not None else shared_obj.peaklist)
     n_metab = len(metabolites)
 
-    # Allocate parameter arrays
-    amplitudes = np.zeros((n_spectra, n_metab))
-    chem_shifts = np.zeros((n_spectra, n_metab))
-    linewidths = np.zeros((n_spectra, n_metab))
-    phases = np.zeros((n_spectra, n_metab))
-    crlbs = np.zeros((n_spectra, n_metab))
-    snrs = np.zeros((n_spectra, n_metab))
+    params_out = {key: np.full((n_spectra, n_metab), np.nan) for key in _PYAMARES_COLS}
+    fit_norm = np.full((n_spectra, n_time), np.nan, dtype=complex)
 
-    # Allocate time-domain array
-    fit_data = np.zeros((n_spectra, n_time), dtype=complex)
-
-    # Calculate the time axis exactly as pyAMARES does it internally
     dwelltime = 1.0 / sw
     timeaxis = np.arange(0, dwelltime * n_time, dwelltime) + deadtime
 
     for i, df in enumerate(result_list):
-        if df is None or df.isna().all().all():
-            # Handle cases where the fit failed completely and returned NaNs
-            # The zeros allocated above will naturally persist for these voxels
+        # No signal to fit, a hard failure, or an all-NaN fit -> keep the NaN sentinel.
+        if spectrum_max[i] == 0 or df is None or df.isna().all().all():
             continue
-
-        amplitudes[i, :] = df["amplitude"].values
-        chem_shifts[i, :] = df["chem shift(ppm)"].values
-        linewidths[i, :] = df["LW(Hz)"].values
-        phases[i, :] = df["phase(deg)"].values
-        crlbs[i, :] = df["CRLB(%)"].values
-        if "SNR" in df.columns:
-            snrs[i, :] = df["SNR"].values
-
-        # Reconstruct the time-domain model from the resulting DataFrame
+        for key, col in _PYAMARES_COLS.items():
+            if col in df.columns:
+                params_out[key][i, :] = df[col].values
         params = result_pd_to_params(df, MHz=mhz)
-        fit_data[i, :] = uninterleave(multieq6(params, timeaxis))
+        fit_norm[i, :] = uninterleave(multieq6(params, timeaxis))
 
-    # 7. Construct the xarray Dataset
+    # 9. Rescale amplitude + reconstructed model back into the input units.
+    params_out[VARS.amplitude] *= global_scale
+    fit_arrs = fit_norm * global_scale
+
+    # 10. Assemble the output Dataset in the caller's representation.
     ds = xr.Dataset()
+    ds[VARS.original_data] = da  # the input, exactly as passed (FID or spectrum)
 
-    if len(other_dims) > 0:
-        # A) Assemble the Time-Domain Variables (Restore exact original order)
-        ds["raw_data"] = (
+    if other_dims:
+        fit_da = (
             xr.DataArray(
-                fid_arrs,
+                fit_arrs,
                 dims=["spectrum", dim],
-                coords={"spectrum": stacked_coords, dim: da.coords[dim]},
+                coords={"spectrum": stacked_coords, dim: da_fid.coords[dim]},
             )
             .unstack("spectrum")
-            .transpose(*da.dims)
+            .transpose(*da_fid.dims)
         )
+        param_dims = ["spectrum", DIMS.metabolite]
+        param_coords = {"spectrum": stacked_coords, DIMS.metabolite: metabolites}
+        out_param_dims = tuple(other_dims) + (DIMS.metabolite,)
 
-        ds["fit_data"] = (
-            xr.DataArray(
-                fit_data,
-                dims=["spectrum", dim],
-                coords={"spectrum": stacked_coords, dim: da.coords[dim]},
+        def _param_var(arr: np.ndarray) -> xr.DataArray:
+            return (
+                xr.DataArray(arr, dims=param_dims, coords=param_coords)
+                .unstack("spectrum")
+                .transpose(*out_param_dims)
             )
-            .unstack("spectrum")
-            .transpose(*da.dims)
-        )
-
-        # B) Assemble the Parameter Variables
-        param_coords = {"spectrum": stacked_coords, "Metabolite": metabolites}
-        param_dims = ["spectrum", "Metabolite"]
-
-        # Define the strict output dimension order (e.g., ["x", "y", "Metabolite"])
-        out_param_dims = tuple(other_dims) + ("Metabolite",)
-
-        ds["amplitude"] = (
-            xr.DataArray(amplitudes, dims=param_dims, coords=param_coords)
-            .unstack("spectrum")
-            .transpose(*out_param_dims)
-        )
-        ds["chem_shift"] = (
-            xr.DataArray(chem_shifts, dims=param_dims, coords=param_coords)
-            .unstack("spectrum")
-            .transpose(*out_param_dims)
-        )
-        ds["linewidth"] = (
-            xr.DataArray(linewidths, dims=param_dims, coords=param_coords)
-            .unstack("spectrum")
-            .transpose(*out_param_dims)
-        )
-        ds["phase"] = (
-            xr.DataArray(phases, dims=param_dims, coords=param_coords)
-            .unstack("spectrum")
-            .transpose(*out_param_dims)
-        )
-        ds["crlb"] = (
-            xr.DataArray(crlbs, dims=param_dims, coords=param_coords)
-            .unstack("spectrum")
-            .transpose(*out_param_dims)
-        )
-        ds["snr"] = (
-            xr.DataArray(snrs, dims=param_dims, coords=param_coords)
-            .unstack("spectrum")
-            .transpose(*out_param_dims)
-        )
-
     else:
-        # Handle the 1D case directly without unstacking
-        ds["raw_data"] = da
-        ds["fit_data"] = xr.DataArray(fit_data[0], dims=[dim], coords={dim: da.coords[dim]})
+        fit_da = xr.DataArray(fit_arrs[0], dims=[dim], coords={dim: da_fid.coords[dim]})
+        param_coords = {DIMS.metabolite: metabolites}
 
-        param_coords = {"Metabolite": metabolites}
-        ds["amplitude"] = xr.DataArray(amplitudes[0], dims=["Metabolite"], coords=param_coords)
-        ds["chem_shift"] = xr.DataArray(chem_shifts[0], dims=["Metabolite"], coords=param_coords)
-        ds["linewidth"] = xr.DataArray(linewidths[0], dims=["Metabolite"], coords=param_coords)
-        ds["phase"] = xr.DataArray(phases[0], dims=["Metabolite"], coords=param_coords)
-        ds["crlb"] = xr.DataArray(crlbs[0], dims=["Metabolite"], coords=param_coords)
-        ds["snr"] = xr.DataArray(snrs[0], dims=["Metabolite"], coords=param_coords)
+        def _param_var(arr: np.ndarray) -> xr.DataArray:
+            return xr.DataArray(arr[0], dims=[DIMS.metabolite], coords=param_coords)
 
-    # 8. Calculate Residuals
-    ds["residuals"] = ds["raw_data"] - ds["fit_data"]
+    # Restore the fit to the caller's representation (ppm in -> ppm out). The model
+    # carries the input attrs so the ppm leg (`to_ppm`) finds `reference_frequency`.
+    fit_da = fit_da.assign_attrs(dict(da.attrs))
+    if restore_state is not None:
+        fit_da = _restore_domain(fit_da, TIME_DIMS, restore_state)
+    fit_da.attrs = {}
 
-    # 9. Preserve Lineage & Add Fit Metadata
-    ds.attrs = da.attrs.copy()
-    ds.attrs.update(
-        {
-            "fit_method": method,
-            "prior_knowledge_file": str(prior_knowledge_file),
-            "amares_version": pyAMARES.__version__,
-        }
-    )
+    ds[VARS.fit] = fit_da
+    ds[VARS.residuals] = ds[VARS.original_data] - ds[VARS.fit]
 
+    for var, arr in params_out.items():
+        ds[var] = _param_var(arr)
+
+    # 11. Preserve lineage: input attrs + the one quantitative fitting parameter.
+    ds.attrs = dict(da.attrs)
+    ds.attrs[ATTRS.amares_amplitude_scale] = global_scale
     for coord in da.coords:
         if coord in ds.coords:
             ds.coords[coord].attrs.update(da.coords[coord].attrs)

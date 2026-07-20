@@ -212,7 +212,7 @@ ds_modern = fid_modern.xmr.fit_amares(
 assert np.all(np.isfinite(ds_modern["amplitude"].values)), (
     "modern reference_frequency fit produced non-finite amplitudes"
 )
-assert float(ds_modern["amplitude"].sel(Metabolite="PCr")) > 0.0
+assert float(ds_modern["amplitude"].sel(metabolite="PCr")) > 0.0
 ```
 
 :::{dropdown} Understanding the PyAMARES Warning
@@ -234,29 +234,29 @@ PyAMARES safely catches this and defaults the P matrix to an identity matrix. Th
 
 The returned `Dataset` is incredibly powerful. Instead of returning raw numbers, `xmris` neatly categorizes the fitting outputs into two sets of variables, mapped along their natural physical dimensions:
 
-1. **Time-Domain Signals (`Voxel`, `Time`)**: The arrays `raw_data`, `fit_data`, and `residuals`.
-2. **Quantified Parameters (`Voxel`, `Metabolite`)**: The tabular values such as `amplitude`, `chem_shift`, `linewidth`, `phase`, `crlb`, and `snr`.
+1. **Time-Domain Signals (`voxel`, `time`)**: The arrays `data`, `fit`, and `residuals`.
+2. **Quantified Parameters (`voxel`, `metabolite`)**: The tabular values such as `amplitude`, `chem_shift`, `linewidth`, `phase`, `crlb`, and `snr`.
 
 :::{dropdown} Deep Dive: DataArray vs. Dataset
 In the `xarray` ecosystem:
 * **`DataArray`**: A single, N-dimensional array with labeled dimensions and coordinates (like a single physical quantity).
 * **`Dataset`**: A dictionary-like container of multiple aligned `DataArray` objects that share dimensions.
 
-Because fitting yields both continuous time-domain signals (mapped to `Time`) and discrete quantified parameters (mapped to a new `Metabolite` dimension), we use a `Dataset` to hold everything perfectly aligned in one neat package!
+Because fitting yields both continuous time-domain signals (mapped to `Time`) and discrete quantified parameters (mapped to a new `metabolite` dimension), we use a `Dataset` to hold everything perfectly aligned in one neat package!
 
 Read more in the [official xarray documentation](https://docs.xarray.dev/en/stable/user-guide/data-structures.html#dataset).
 :::
 
-Because it maps the results to the newly created `Metabolite` dimension, you can easily query and plot quantitative maps without touching a Pandas DataFrame or slicing NumPy arrays. Let's verify our spatial concentration gradient by plotting the fitted amplitudes across the voxels.
+Because it maps the results to the newly created `metabolite` dimension, you can easily query and plot quantitative maps without touching a Pandas DataFrame or slicing NumPy arrays. Let's verify our spatial concentration gradient by plotting the fitted amplitudes across the voxels.
 
 ```{code-cell} ipython3
 fig, ax = plt.subplots(figsize=(6, 4))
 
 # Because everything is aligned, plotting parameter maps is trivial
-ds_fit.amplitude.sel(Metabolite="PCr").plot(
+ds_fit.amplitude.sel(metabolite="PCr").plot(
     ax=ax, marker="o", linestyle="none", label="Fitted PCr"
 )
-ds_fit.amplitude.sel(Metabolite="ATP").plot(
+ds_fit.amplitude.sel(metabolite="ATP").plot(
     ax=ax, marker="s", linestyle="none", label="Fitted ATP"
 )
 
@@ -309,7 +309,7 @@ df_results = pd.DataFrame(
         "SNR": last_voxel_ds.snr.values,
         "CRLB (%)": last_voxel_ds.crlb.values,
     },
-    index=last_voxel_ds.Metabolite.values,
+    index=last_voxel_ds.metabolite.values,
 )
 
 df_results.index.name = "Metabolite"
@@ -339,8 +339,8 @@ Because `xmris` retained the reconstructed time-domain data inside our `Dataset`
 
 ```{code-cell} ipython3
 # Convert Time-domain arrays to Frequency-domain spectra for the last voxel
-spec_raw = last_voxel_ds.raw_data.xmr.to_spectrum()
-spec_fit = last_voxel_ds.fit_data.xmr.to_spectrum()
+spec_raw = last_voxel_ds["data"].xmr.to_spectrum()
+spec_fit = last_voxel_ds["fit"].xmr.to_spectrum()
 spec_res = last_voxel_ds.residuals.xmr.to_spectrum()
 
 fig, ax = plt.subplots(figsize=(8, 5))
@@ -383,8 +383,8 @@ plt.show()
 # 1. Check Dataset generation and variables
 assert isinstance(ds_fit, xr.Dataset), "Output must be an xarray Dataset"
 expected_vars = [
-    "raw_data",
-    "fit_data",
+    "data",
+    "fit",
     "residuals",
     "amplitude",
     "chem_shift",
@@ -397,18 +397,18 @@ for v in expected_vars:
     assert v in ds_fit.data_vars, f"Variable {v} missing from Dataset"
 
 # 2. Check Dimensional Alignment
-assert ds_fit.amplitude.dims == ("voxel", "Metabolite"), (
+assert ds_fit.amplitude.dims == ("voxel", "metabolite"), (
     "Amplitude map dimensions are incorrect"
 )
-assert ds_fit.fit_data.dims == ("voxel", "time"), (
+assert ds_fit["fit"].dims == ("voxel", "time"), (
     "Reconstructed fit dimensions are incorrect"
 )
-assert len(ds_fit.coords["Metabolite"]) == 2, (
+assert len(ds_fit.coords["metabolite"]) == 2, (
     "Should have found exactly 2 metabolites (PCr, ATP)"
 )
 
 # 3. Check Fit Accuracy (Quantitative)
-fitted_pcr_amps = ds_fit.amplitude.sel(Metabolite="PCr").values
+fitted_pcr_amps = ds_fit.amplitude.sel(metabolite="PCr").values
 true_pcr_amps = np.array([10.0, 20.0, 30.0, 40.0, 50.0])
 np.testing.assert_allclose(
     fitted_pcr_amps,
@@ -417,7 +417,7 @@ np.testing.assert_allclose(
     err_msg="PCr amplitudes were not fitted correctly",
 )
 
-fitted_atp_amps = ds_fit.amplitude.sel(Metabolite="ATP").values
+fitted_atp_amps = ds_fit.amplitude.sel(metabolite="ATP").values
 true_atp_amps = np.array([5.0, 5.0, 5.0, 5.0, 5.0])
 np.testing.assert_allclose(
     fitted_atp_amps,
@@ -433,8 +433,8 @@ assert np.all((ds_fit.linewidth.values >= 5.0) & (ds_fit.linewidth.values <= 40.
 )
 
 # SNR should be highest for the voxel with the largest amplitude (Voxel 4)
-assert ds_fit.snr.sel(Metabolite="PCr").isel(voxel=4) > ds_fit.snr.sel(
-    Metabolite="PCr"
+assert ds_fit.snr.sel(metabolite="PCr").isel(voxel=4) > ds_fit.snr.sel(
+    metabolite="PCr"
 ).isel(voxel=0), "SNR mapping is incorrect"
 
 # CRLB should be valid and acceptable for this high SNR synthetic data
@@ -446,7 +446,7 @@ assert np.all(ds_fit.crlb.values <= 20.0), (
 )
 
 # 5. Check that residuals are mathematically correct and behave like noise
-recalculated_residuals = ds_fit.raw_data - ds_fit.fit_data
+recalculated_residuals = ds_fit["data"] - ds_fit["fit"]
 xr.testing.assert_allclose(ds_fit.residuals, recalculated_residuals)
 
 voxel_residual = ds_fit.residuals.isel(voxel=-1).values

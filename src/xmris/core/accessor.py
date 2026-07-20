@@ -738,10 +738,10 @@ class XmrisAccessor(
         sw: float | None = None,
         deadtime: float | None = None,
         method: str = "leastsq",
-        initialize_with_lm: bool = True,
+        initialize_with_lm: bool = False,
         num_workers: int = 4,
         init_fid: np.ndarray | None = None,
-        **kwargs,
+        verbose: bool = False,
     ) -> xr.Dataset:
         """
         Apply AMARES time-domain fitting to an N-dimensional FID.
@@ -757,32 +757,37 @@ class XmrisAccessor(
         prior_knowledge_file : str | Path
             Path to the CSV or XLSX file containing the prior knowledge constraints.
         dim : str, optional
-            The time dimension along which to fit, by default `DIMS.time`.
+            The time dimension along which to fit, by default ``DIMS.time``. A
+            complex spectrum is accepted too and converted to a FID for the fit.
         mhz : float, optional
             Spectrometer frequency in MHz. If None, read from
             ``attrs['reference_frequency']``.
         sw : float, optional
-            Spectral width in Hz. If None, attempts to calculate from `dim` coordinates.
+            Spectral width in Hz. If None, calculated from the `dim` coordinate spacing.
         deadtime : float, optional
-            Time delay before the first point in seconds. If None, defaults to 0.0.
+            Acquisition time origin in seconds. If None, taken from the first `dim`
+            coordinate value.
         method : {"leastsq", "least_squares"}, optional
             Fitting method. Defaults to 'leastsq' (Levenberg-Marquardt).
         initialize_with_lm : bool, optional
             Run an internal Levenberg-Marquardt initializer before fitting.
-            Defaults to True.
+            Defaults to False.
         num_workers : int, optional
             Number of parallel processes to spawn. Defaults to 4.
         init_fid : np.ndarray, optional
             A 1D complex array to use as the template for pyAMARES initialization.
             If None, the function automatically selects the spectrum with the highest SNR.
+        verbose : bool, optional
+            If True, sets logging level to INFO and prints progress. Default is False.
 
         Returns
         -------
         xr.Dataset
-            A dataset containing the original data, the fitted FIDs, the residuals,
+            A dataset containing the original data, the fitted model, the residuals,
             and the quantified parameters (amplitude, chem_shift, linewidth, phase,
-            CRLB, SNR) mapped across the original dimensions and the new 'Metabolite'
-            dimension.
+            CRLB, SNR) mapped across the original dimensions and the new ``metabolite``
+            dimension. Time-domain variables are returned in the input's domain
+            (ppm in -> ppm out).
 
         Raises
         ------
@@ -808,7 +813,7 @@ class XmrisAccessor(
             initialize_with_lm=initialize_with_lm,
             num_workers=num_workers,
             init_fid=init_fid,
-            **kwargs,
+            verbose=verbose,
         )
 
     # --- Vendor Specific ---

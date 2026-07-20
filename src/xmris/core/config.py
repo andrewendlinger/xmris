@@ -295,6 +295,18 @@ class XmrisAttributes(BaseVocabulary):
         description="The number of sparse solver iterations used to calculate the baseline.",
     )
 
+    # --- Fitting Parameters ---
+    amares_amplitude_scale = XmrisTerm(
+        "amares_amplitude_scale",
+        description=(
+            "The single global factor the FID was divided by before AMARES fitting and "
+            "multiplied back into the reported amplitudes afterwards. Fitting normalizes "
+            "internally so the optimizer's magnitude-derived stopping tolerance behaves at "
+            "any signal scale; this records the factor so the normalization is auditable."
+        ),
+        unit="a.u.",
+    )
+
 
 class XmrisDimensions(BaseVocabulary):
     """Official dimension names for xmris xarray objects (`.dims`)."""

@@ -1327,8 +1327,10 @@ class TestDomainRollout:
 
     The op-class table from the domain-contracts design: funnel ops land in
     their home domain, domain-preserving physics ops restore the input
-    representation, and converters/primitives/fitting stay undecorated with
-    explicit domain handling.
+    representation, and converters/primitives stay undecorated with explicit
+    domain handling. Fitting is domain-preserving too, but hand-rolls the round
+    trip (it returns a Dataset, which the decorator's restore cannot handle) — see
+    ``TestFittingDomain``.
     """
 
     def test_funnel_ops(self):
@@ -1347,8 +1349,12 @@ class TestDomainRollout:
             assert getattr(func, "__xmris_domain__", None) == (TIME_DIMS, True), func.__name__
 
     def test_undecorated_by_design(self):
-        """Converters, primitives, and fitting must NOT auto-convert."""
-        from xmris.fitting.amares import fit_amares
+        """Converters and primitives must NOT carry a domain decorator.
+
+        Fitting is deliberately absent: it is domain-preserving but hand-rolls the
+        round trip (Dataset return), so it carries no ``__xmris_domain__`` marker
+        yet still auto-converts — its behavior is pinned in ``TestFittingDomain``.
+        """
         from xmris.processing.fourier import fft, ifft
         from xmris.processing.phasing import phase
         from xmris.processing.referencing import to_hz, to_ppm
@@ -1362,7 +1368,6 @@ class TestDomainRollout:
             fft,
             ifft,
             phase,
-            fit_amares,
             remove_digital_filter,
             estimate_group_delay,
         )
@@ -1420,6 +1425,116 @@ class TestDomainRollout:
 # =============================================================================
 # 16. Runtime Options: strict mode (auto_convert=False)
 # =============================================================================
+
+
+class TestFittingDomain:
+    """Pin `fit_amares`'s domain-preserving behavior (the 2026 pivot).
+
+    Fitting runs in the time domain, but a spectrum is accepted and the
+    time-domain outputs (`data`/`fit`/`residuals`) are returned in the input's
+    representation (ppm in -> ppm out). Uses tiny 1-D synthetic data and
+    ``num_workers=1`` to stay fast. Requires the optional pyAMARES package.
+    """
+
+    _MHZ = 120.0
+    _SW = 10000.0
+
+    @pytest.fixture(autouse=True)
+    def _require_pyamares(self):
+        pytest.importorskip("pyAMARES")
+
+    @pytest.fixture
+    def pk_path(self, tmp_path):
+        """A minimal 2-peak (PCr/ATP) pyAMARES prior-knowledge CSV."""
+        content = (
+            "Index,PCr,ATP\n"
+            "Initial Values,,\n"
+            "amplitude,10.0,5.0\n"
+            "chemicalshift,0.0,-7.5\n"
+            "linewidth,15.0,20.0\n"
+            "phase,0,0\n"
+            "g,0,0\n"
+            "Bounds,,\n"
+            'amplitude,"(0, ","(0, "\n'
+            'chemicalshift,"(-0.5, 0.5)","(-8.0, -7.0)"\n'
+            'linewidth,"(5.0, 30.0)","(10.0, 40.0)"\n'
+            'phase,"(-180, 180)","(-180, 180)"\n'
+            'g,"(0, 1)","(0, 1)"\n'
+        )
+        path = tmp_path / "pk.csv"
+        path.write_text(content)
+        return path
+
+    @pytest.fixture
+    def fid(self):
+        """A clean 1-D 2-peak FID carrying reference_frequency + carrier_ppm."""
+        n = 512
+        dt = 1.0 / self._SW
+        t = np.arange(n) * dt
+        rng = np.random.default_rng(0)
+        sig = 10.0 * np.exp(-15.0 * np.pi * t) * np.exp(2j * np.pi * 0.0 * self._MHZ * t)
+        sig += 5.0 * np.exp(-20.0 * np.pi * t) * np.exp(2j * np.pi * -7.5 * self._MHZ * t)
+        sig = sig + rng.normal(0, 0.2, n) + 1j * rng.normal(0, 0.2, n)
+        return xr.DataArray(
+            sig,
+            dims=[DIMS.time],
+            coords={DIMS.time: t},
+            attrs={str(ATTRS.reference_frequency): self._MHZ, str(ATTRS.carrier_ppm): 0.0},
+        )
+
+    def _fit(self, da, pk_path):
+        return da.xmr.fit_amares(
+            prior_knowledge_file=pk_path, method="least_squares", num_workers=1
+        )
+
+    def test_fid_in_returns_time_domain(self, fid, pk_path):
+        """A FID fits directly; outputs stay time-domain and carry the vocab."""
+        ds = self._fit(fid, pk_path)
+        assert set(ds.data_vars) >= {VARS.original_data, VARS.fit, VARS.residuals}
+        assert DIMS.time in ds[VARS.fit].dims
+        assert DIMS.metabolite in ds.dims
+        assert np.all(np.isfinite(ds[VARS.amplitude].values))
+        assert ATTRS.amares_amplitude_scale in ds.attrs
+
+    def test_spectrum_in_returns_frequency(self, fid, pk_path):
+        """A Hz spectrum funnels to a FID for the fit and comes back as a spectrum."""
+        ds = self._fit(fid.xmr.to_spectrum(), pk_path)
+        assert DIMS.frequency in ds[VARS.fit].dims
+        assert DIMS.frequency in ds[VARS.original_data].dims
+        assert DIMS.time not in ds[VARS.fit].dims
+
+    def test_ppm_in_returns_ppm(self, fid, pk_path):
+        """A ppm spectrum is restored to ppm (the whole round trip runs)."""
+        ppm = fid.xmr.to_spectrum().xmr.to_ppm()
+        ds = self._fit(ppm, pk_path)
+        assert DIMS.chemical_shift in ds[VARS.fit].dims
+
+    def test_fid_and_spectrum_agree(self, fid, pk_path):
+        """Fitting a FID vs its spectrum yields the same parameters."""
+        a = self._fit(fid, pk_path)
+        b = self._fit(fid.xmr.to_spectrum(), pk_path)
+        np.testing.assert_allclose(a[VARS.amplitude].values, b[VARS.amplitude].values, rtol=1e-3)
+
+    def test_real_spectrum_refused(self, fid, pk_path):
+        """A real-valued spectrum has no FID behind it — refused, not fitted."""
+        real_spec = fid.xmr.to_spectrum().real
+        with pytest.raises(ValueError, match="real-valued"):
+            real_spec.xmr.fit_amares(prior_knowledge_file=pk_path, num_workers=1)
+
+    def test_strict_mode_refuses_with_recipe(self, fid, pk_path):
+        """Under auto_convert=False a spectrum fit raises the explicit to_fid recipe."""
+        from xmris import set_options
+
+        spec = fid.xmr.to_spectrum()
+        with set_options(auto_convert=False):
+            with pytest.raises(ValueError, match="to_fid"):
+                spec.xmr.fit_amares(prior_knowledge_file=pk_path, num_workers=1)
+
+    def test_no_domain_marker(self):
+        """Fitting hand-rolls the contract, so it carries no decorator marker."""
+        from xmris.fitting.amares import fit_amares
+
+        assert not hasattr(fit_amares, "__xmris_domain__")
 
 
 class TestSetOptions:
