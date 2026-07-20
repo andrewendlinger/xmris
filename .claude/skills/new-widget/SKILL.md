@@ -40,7 +40,7 @@ In `<name>.py` define:
 Rules that are easy to get wrong here:
 - **Wrap a real method** — a widget returns a widget, not a DataArray; its Close
   button must emit a reproducible `.xmr.<method>(...)` snippet. If that method
-  doesn't exist yet, add it first (use the `new-processing-method` skill).
+  doesn't exist yet, add it first (use the `xmr-method` skill).
 - **No name sniffing / no magic strings** — resolve the axis with
   `if dim is None: dim = _resolve_dim(da, SPECTRAL_DIMS)` then `_check_dims(da, dim, "<factory>")`;
   import `DIMS`/`ATTRS`/`COORDS`/`SPECTRAL_DIMS` from `xmris.core.config` when you need vocabulary.
