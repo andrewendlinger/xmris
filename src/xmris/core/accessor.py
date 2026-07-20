@@ -759,7 +759,8 @@ class XmrisAccessor(
         dim : str, optional
             The time dimension along which to fit, by default "time".
         mhz : float, optional
-            Spectrometer frequency in MHz. If None, attempts to read from attrs['MHz'].
+            Spectrometer frequency in MHz. If None, read from
+            ``attrs['reference_frequency']``.
         sw : float, optional
             Spectral width in Hz. If None, attempts to calculate from `dim` coordinates.
         deadtime : float, optional

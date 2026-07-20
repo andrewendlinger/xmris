@@ -11,9 +11,18 @@ class XmrisTerm(str):
 
     This allows xarray to treat it as a standard dimension/coordinate name,
     while allowing developers to access `.unit` and `.description` directly.
+    Instances are immutable: all metadata is fixed at construction time.
     """
 
-    def __new__(cls, value: str, description: str = "", unit: str = ""):
+    description: str
+    unit: str
+
+    def __new__(
+        cls,
+        value: str,
+        description: str = "",
+        unit: str = "",
+    ):
         """Create a new :class:`XmrisTerm` instance with metadata.
 
         Parameters
@@ -31,9 +40,29 @@ class XmrisTerm(str):
             A new string instance with ``description`` and ``unit`` attributes.
         """
         obj = str.__new__(cls, value)
-        obj.description = description
-        obj.unit = unit
+        # Instances are frozen (__setattr__ raises), so bypass it here.
+        object.__setattr__(obj, "description", description)
+        object.__setattr__(obj, "unit", unit)
         return obj
+
+    def __setattr__(self, name: str, value: object) -> None:
+        """Reject attribute mutation — terms are frozen at construction."""
+        raise AttributeError(
+            f"XmrisTerm is immutable: cannot set {name!r} on {str(self)!r}. "
+            "Define a new term in xmris.core.config instead."
+        )
+
+    def __delattr__(self, name: str) -> None:
+        """Reject attribute deletion — terms are frozen at construction."""
+        raise AttributeError(f"XmrisTerm is immutable: cannot delete {name!r} from {str(self)!r}.")
+
+    def __getnewargs_ex__(self) -> tuple[tuple[str], dict[str, object]]:
+        """Route pickle/copy through ``__new__`` so metadata survives round-trips.
+
+        Uses ``_ex_`` (not ``__getnewargs__``) so it doesn't override ``str``'s
+        own ``__getnewargs__`` signature — which mypy rejects.
+        """
+        return ((str(self),), {"description": self.description, "unit": self.unit})
 
     @property
     def long_name(self) -> str:
@@ -52,9 +81,29 @@ class BaseVocabulary:
     methods to fetch metadata for validation decorators.
     """
 
-    def _get_terms(self) -> dict:
+    def __init_subclass__(cls, **kwargs) -> None:
+        """Enforce canonical-value uniqueness at import time.
+
+        Within one vocabulary class, every canonical term value must be distinct —
+        a duplicate would make attribute lookups ambiguous. Cross-vocabulary
+        duplicates (e.g. ``time`` in both DIMS and COORDS) remain intentionally
+        allowed.
+        """
+        super().__init_subclass__(**kwargs)
+        seen: dict[str, str] = {}
+        for prop, term in cls._get_terms().items():
+            key = str(term)
+            if key in seen:
+                raise ValueError(
+                    f"{cls.__name__}: duplicate vocabulary key {key!r} — "
+                    f"{prop!r} collides with {seen[key]!r}."
+                )
+            seen[key] = prop
+
+    @classmethod
+    def _get_terms(cls) -> dict:
         """Help extract all XmrisTerm attributes from the class."""
-        return {key: val for key, val in vars(self.__class__).items() if isinstance(val, XmrisTerm)}
+        return {key: val for key, val in vars(cls).items() if isinstance(val, XmrisTerm)}
 
     def get_description(self, target_value: str) -> str:
         """
@@ -66,7 +115,7 @@ class BaseVocabulary:
         ----------
         target_value : str
             The actual string value of the attribute/dimension/coordinate
-            (e.g., "MHz", "time").
+            (e.g., "reference_frequency", "time").
 
         Returns
         -------
@@ -278,8 +327,16 @@ class XmrisDimensions(BaseVocabulary):
 
     component = XmrisTerm("component", description="Dimension separating real and imaginary parts.")
     # --- Standard Acquisition Dimensions ---
+    # Dimension names are uniformly singular.
     average = XmrisTerm(
         "average", description="Dimension for multiple signal acquisitions/averages."
+    )
+    repetition = XmrisTerm(
+        "repetition",
+        description=(
+            "Dimension for repeated acquisitions over time (dynamic series), "
+            "one entry per TR block."
+        ),
     )
     coil = XmrisTerm("coil", description="Dimension for multi-coil phased array data.")
     echo = XmrisTerm("echo", description="Dimension for multi-echo acquisitions.")

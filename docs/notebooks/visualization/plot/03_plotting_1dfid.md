@@ -126,7 +126,7 @@ da_dyn = xr.DataArray(
     data,
     dims=["repetition", "time"],
     coords={"repetition": rep_axis, "time": time_axis},
-    attrs={"MHz": mhz},
+    attrs={"reference_frequency": mhz},
 )
 
 # Assign proper units for plotting

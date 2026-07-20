@@ -43,6 +43,10 @@ or user pipelines depend on.
   class here exists solely as a structural integration test of the pipeline.
 """
 
+import copy
+import pickle
+import re
+
 import numpy as np
 import pytest
 import xarray as xr
@@ -55,6 +59,8 @@ from xmris.core.config import (
     SPECTRAL_DIMS,
     TIME_DIMS,
     VARS,
+    BaseVocabulary,
+    XmrisTerm,
 )
 from xmris.core.utils import _resolve_dim
 from xmris.core.validation import computes_in, ensures_domain, requires_attrs
@@ -288,6 +294,164 @@ class TestConfigMetadata:
         assert "<table" in html
         for term in vocab._get_terms().values():
             assert str(term) in html
+
+
+# =============================================================================
+# 3b. Configuration: Term Hardening (immutability, uniqueness)
+# =============================================================================
+
+
+class TestXmrisTermHardening:
+    """Vocabulary terms are frozen value objects whose metadata survives round-trips."""
+
+    def test_mutation_raises(self):
+        """Setting an attribute on a term must raise (frozen).
+
+        Uses a local term, not the shared ATTRS singleton: were the freeze to
+        regress, mutating the singleton here would corrupt it for every later test.
+        """
+        term = XmrisTerm("probe", description="d", unit="s")
+        with pytest.raises(AttributeError, match="immutable"):
+            term.unit = "Hz"
+
+    def test_deletion_raises(self):
+        """Deleting an attribute from a term must raise (frozen)."""
+        term = XmrisTerm("probe", description="d", unit="s")
+        with pytest.raises(AttributeError, match="immutable"):
+            del term.unit
+
+    @pytest.mark.parametrize("proto", range(pickle.HIGHEST_PROTOCOL + 1))
+    def test_pickle_roundtrip_preserves_metadata_and_freeze(self, proto):
+        """Pickle round-trips keep value, metadata, and immutability on every protocol."""
+        term = pickle.loads(pickle.dumps(ATTRS.reference_frequency, proto))
+        assert term == ATTRS.reference_frequency
+        assert term.description == ATTRS.reference_frequency.description
+        assert term.unit == "MHz"
+        with pytest.raises(AttributeError):
+            term.unit = "Hz"
+
+    def test_deepcopy_roundtrip(self):
+        """``copy.deepcopy`` keeps value, metadata, and immutability."""
+        term = copy.deepcopy(ATTRS.group_delay)
+        assert term == ATTRS.group_delay
+        assert term.unit == "samples"
+        with pytest.raises(AttributeError):
+            term.unit = "x"
+
+
+class TestVocabularyUniqueness:
+    """Duplicate canonical values inside one vocabulary fail at import time."""
+
+    def test_duplicate_canonical_value_raises(self):
+        """Two terms with the same canonical value must fail at class definition."""
+        with pytest.raises(ValueError, match="duplicate vocabulary key 'twin'"):
+
+            class _Broken(BaseVocabulary):
+                a = XmrisTerm("twin", description="d")
+                b = XmrisTerm("twin", description="d")
+
+    def test_well_formed_vocabulary_constructs(self):
+        """Distinct values construct without error."""
+
+        class _Fine(BaseVocabulary):
+            a = XmrisTerm("a", description="d")
+            b = XmrisTerm("b", description="d")
+
+        assert _Fine()._get_terms().keys() == {"a", "b"}
+
+
+class TestParseInputDims:
+    """Stack-dim auto-detect uses the singular vocabulary dims."""
+
+    @staticmethod
+    def _da(dims: tuple[str, ...]) -> xr.DataArray:
+        return xr.DataArray(np.zeros((2,) * len(dims)), dims=list(dims))
+
+    @pytest.mark.parametrize("stack", ["average", "repetition"])
+    def test_detects_stack_dim(self, stack):
+        """Auto-detect finds the acquisition axis (was AttributeError on DIMS.averages).
+
+        ``coil`` is placed FIRST so it is ``remaining_dims[0]`` (the positional
+        fallback). Only correct name-matching returns ``stack``; a broken match
+        would fall back to ``coil`` and fail the assertion.
+        """
+        from xmris.visualization.plot._input_parsing import parse_input_dims_timeseries
+
+        da = self._da((DIMS.chemical_shift, DIMS.coil, stack))
+        x_dim, stack_dim = parse_input_dims_timeseries(da)
+        assert x_dim == DIMS.chemical_shift
+        assert stack_dim == stack
+
+    def test_average_preferred_over_repetition(self):
+        """Historical preference order (average before repetition) is preserved."""
+        from xmris.visualization.plot._input_parsing import parse_input_dims_timeseries
+
+        da = self._da((DIMS.chemical_shift, DIMS.repetition, DIMS.average))
+        assert parse_input_dims_timeseries(da)[1] == DIMS.average
+
+    def test_single_remaining_dim_is_stack(self):
+        """With exactly one non-spectral dim, it becomes the stack axis."""
+        from xmris.visualization.plot._input_parsing import parse_input_dims_timeseries
+
+        da = self._da((DIMS.chemical_shift, DIMS.coil))
+        assert parse_input_dims_timeseries(da) == (DIMS.chemical_shift, DIMS.coil)
+
+    def test_frequency_used_as_x_axis(self):
+        """When chemical_shift is absent, frequency is the x-axis."""
+        from xmris.visualization.plot._input_parsing import parse_input_dims_timeseries
+
+        da = self._da((DIMS.frequency, DIMS.coil))
+        assert parse_input_dims_timeseries(da) == (DIMS.frequency, DIMS.coil)
+
+    def test_one_dimensional_raises(self):
+        """A 1-D spectral array has no stack axis and must raise."""
+        from xmris.visualization.plot._input_parsing import parse_input_dims_timeseries
+
+        da = self._da((DIMS.chemical_shift,))
+        with pytest.raises(ValueError, match="at least two dimensions"):
+            parse_input_dims_timeseries(da)
+
+    def test_no_spectral_axis_raises(self):
+        """Without chemical_shift or frequency, the x-axis cannot be resolved."""
+        from xmris.visualization.plot._input_parsing import parse_input_dims_timeseries
+
+        da = self._da((DIMS.coil, DIMS.echo))
+        with pytest.raises(ValueError, match="resolve x-axis"):
+            parse_input_dims_timeseries(da)
+
+
+class TestBrukerVocabularyDims:
+    """The Bruker loader emits singular vocabulary dim names (no plural magic strings)."""
+
+    _PV_PARAMS = {
+        "PVM_SpecMatrix": 8,
+        "PVM_EncNReceivers": 2,
+        "PVM_NAverages": 3,
+        "PVM_NRepetitions": 4,
+        "PVM_SpecSWH": 10000.0,
+        "PVM_RepetitionTime": 1000.0,
+        "PVM_FrqRef": 120.3,
+        "PVM_FrqWorkPpm": 0.0,
+        "groupDelay": 0.0,
+    }
+
+    def test_reshape_emits_singular_dims(self):
+        """``reshape_bruker_raw`` labels axes with the singular vocabulary terms."""
+        from xmris.vendor.bruker import reshape_bruker_raw
+
+        raw = np.zeros(8 * 2 * 3 * 4, dtype=complex)
+        _, dims = reshape_bruker_raw(raw, self._PV_PARAMS)
+        assert dims == [DIMS.time, DIMS.coil, DIMS.average, DIMS.repetition]
+
+    def test_build_fid_writes_tr_coordinate(self):
+        """The TR coordinate is written for the canonical repetition dim."""
+        from xmris.vendor.bruker import build_fid
+
+        data = np.zeros((8, 4), dtype=complex)
+        da = build_fid(data, [DIMS.time, DIMS.repetition], self._PV_PARAMS)
+        assert DIMS.repetition in da.coords
+        np.testing.assert_allclose(da.coords[DIMS.repetition].values, np.arange(1, 5) * 1.0)
+        assert da.coords[DIMS.repetition].attrs["units"] == "s"
 
 
 # =============================================================================
@@ -1381,7 +1545,7 @@ class TestSetOptions:
 
 
 class TestGroupDelayAttr:
-    """The ``group_delay`` attr rename keeps reading legacy ``bruker_group_delay`` keys."""
+    """``group_delay='header'`` reads the canonical ``group_delay`` attr."""
 
     @staticmethod
     def _fid_with_attr(key: str, value: float) -> xr.DataArray:
@@ -1394,30 +1558,21 @@ class TestGroupDelayAttr:
             attrs={key: value},
         )
 
-    def test_header_reads_legacy_key(self):
-        """``group_delay='header'`` falls back to the legacy ``bruker_group_delay`` attr."""
+    def test_header_reads_canonical_key(self):
+        """``group_delay='header'`` reads the canonical ``group_delay`` attr."""
         from xmris.vendor.bruker import remove_digital_filter
 
-        da = self._fid_with_attr("bruker_group_delay", 40.0)
+        da = self._fid_with_attr(ATTRS.group_delay, 40.0)
         out = remove_digital_filter(da, group_delay="header")
         assert out.attrs[ATTRS.group_delay_removed] == 40.0
 
-    def test_header_prefers_canonical_key(self):
-        """The canonical ``group_delay`` key wins when both keys are present."""
+    def test_header_missing_attr_raises(self):
+        """``group_delay='header'`` raises a guiding error when the attr is absent."""
         from xmris.vendor.bruker import remove_digital_filter
 
-        da = self._fid_with_attr("bruker_group_delay", 40.0)
-        da.attrs[ATTRS.group_delay] = 50.0
-        out = remove_digital_filter(da, group_delay="header")
-        assert out.attrs[ATTRS.group_delay_removed] == 50.0
-
-    def test_read_helper_prefers_canonical_and_falls_back(self):
-        """``_read_group_delay_attr`` prefers the new key, falls back, else None."""
-        from xmris.vendor.bruker import _read_group_delay_attr
-
-        assert _read_group_delay_attr(self._fid_with_attr("bruker_group_delay", 76.125)) == 76.125
-        assert _read_group_delay_attr(self._fid_with_attr(ATTRS.group_delay, 84.0)) == 84.0
-        assert _read_group_delay_attr(self._fid_with_attr("unrelated", 1.0)) is None
+        da = self._fid_with_attr("unrelated", 1.0)
+        with pytest.raises(ValueError, match=re.escape(ATTRS.group_delay)):
+            remove_digital_filter(da, group_delay="header")
 
 
 class TestEstimateGroupDelayRobustness:

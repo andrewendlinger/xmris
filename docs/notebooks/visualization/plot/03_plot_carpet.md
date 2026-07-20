@@ -20,7 +20,7 @@ In `xmris`, this visualization is built around the `CarpetConfig` object, which 
 Before plotting, your `xarray.DataArray` must meet the following criteria:
 * **Dimensionality:** Must be at least 2D. 
 * **X-Axis (Horizontal):** The accessor automatically searches for `chemical_shift` or `frequency`. 
-* **Y-Axis (Vertical):** The accessor automatically assigns the remaining dimension to the y-axis (e.g., `kinetic_time` or `averages`).
+* **Y-Axis (Vertical):** The accessor automatically assigns the remaining dimension to the y-axis (e.g., `kinetic_time`, `average`, or `repetition`).
 
 ## 2. Generating Synthetic Data
 

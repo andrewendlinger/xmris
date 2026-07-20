@@ -150,7 +150,7 @@ da_mrsi = xr.DataArray(
     data,
     dims=["voxel", "time"],
     coords={"voxel": np.arange(n_voxels), "time": time},
-    attrs={"MHz": mhz, "sw": sw},
+    attrs={"reference_frequency": mhz, "sw": sw},
 )
 
 # Plot the generated spectra
