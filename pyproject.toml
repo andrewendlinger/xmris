@@ -36,15 +36,13 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# AMARES fitting via pyAMARES. Optional so that a bare `pip install xmris` stays
-# clean: without pyamares there is no `hlsvdpro` (which ships no arm64 wheel and
-# no sdist -> unbuildable on Apple Silicon) and no numpy<2 ceiling forced on
-# users who never fit. The numpy/pandas caps below are pyAMARES's real limits;
-# official pyAMARES under-declares them (no upper bound), so xmris asserts them
-# here. Once an official pyamares that carries the hlsvdpro platform marker lands
-# on PyPI, drop the [tool.uv.sources] git pin below and this group is unchanged.
+# AMARES fitting via `pyamares-xmris` — a BSD repackage of pyAMARES on PyPI (import
+# name still `pyAMARES`) that adds the `hlsvdpro` platform marker so it installs on
+# Apple Silicon (hlsvdpro ships no arm64 wheel or sdist) plus the numpy<2 / pandas<2.2
+# caps pyAMARES needs. Optional so a bare `pip install xmris` stays clean on every
+# platform. The caps are restated here so xmris owns them regardless of the provider.
 fitting = [
-    "pyamares>=0.3.33",
+    "pyamares-xmris>=0.3.33",
     "joblib>=1.5.3", # parallel fit dispatch (fitting-only)
     "numpy<2.0",
     "pandas<2.2",
@@ -62,17 +60,16 @@ test-gen = "xmris._scripts:generate_test_notebooks"
 test = "xmris._scripts:run_tests"
 
 # ==============================================================================
-# 2. BUILD SYSTEM & PACKAGE SOURCES
+# 2. BUILD SYSTEM
 # ==============================================================================
 [build-system]
 requires = ["uv_build>=0.10.0,<0.12.0"]
 build-backend = "uv_build"
 
-[tool.uv.sources]
-# Use the compatible branch of pyAMARES until upstream fixes are released.
-# To develop locally, comment out 'git' and uncomment 'path'.
-pyamares = { git = "https://github.com/andrewendlinger/pyAMARES", branch = "xmris-compatible" }
-# pyamares = { path = "../pyAMARES", editable = true }
+# `pyamares-xmris` resolves from PyPI, so no [tool.uv.sources] redirect is needed.
+# For local pyAMARES development, add one pointing at a checkout, e.g.
+#   [tool.uv.sources]
+#   pyamares-xmris = { path = "../pyAMARES", editable = true }
 
 # ==============================================================================
 # 3. DEVELOPMENT DEPENDENCIES

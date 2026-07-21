@@ -89,7 +89,7 @@ anything reaches PyPI.
 :::
 
 ```{warning}
-The `v*` tag triggers the `publish` job in `ci-publish.yml`. It uses `uv build --no-sources` to strip local Git forks (e.g. the `pyamares` patch) so PyPI users get standard dependencies. Upload uses PyPI Trusted Publishing (OIDC) — no passwords required.
+The `v*` tag triggers the `publish` job in `ci-publish.yml`. It uses `uv build --no-sources` to strip any local `[tool.uv.sources]` redirects so PyPI users get registry dependencies (the `fitting` extra resolves `pyamares-xmris` straight from PyPI). Upload uses PyPI Trusted Publishing (OIDC) — no passwords required.
 ```
 
 ---
