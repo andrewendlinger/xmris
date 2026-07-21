@@ -1,6 +1,9 @@
 import contextlib
+import logging
 import os
+import sys
 import tempfile
+import warnings
 from collections.abc import Iterator, Mapping
 from copy import deepcopy
 from datetime import datetime
@@ -18,6 +21,7 @@ from pyAMARES import (
     uninterleave,
 )
 from pyAMARES.kernel.lmfit import fitAMARES as pyamares_fitAMARES
+from pyAMARES.libs import logger as _pa_logger
 from pyAMARES.libs.logger import set_log_level
 from tqdm.auto import tqdm
 
@@ -31,6 +35,47 @@ from xmris.core.validation import (
     _strict_domain_error,
 )
 from xmris.fitting.prior_knowledge import build_prior_knowledge
+
+# --- Logging & verbosity (BUG-010) -------------------------------------------
+# pyAMARES emits noise on four channels; `verbose=False` must silence all of them,
+# and it must hold inside joblib workers (which re-import this module fresh), not
+# only the main process. So verbosity is (re)applied per fit call rather than once
+# — replacing the in-process stdout redirect that used to force `num_workers=1`.
+
+logger = logging.getLogger("xmris.fitting")
+if not logger.handlers:  # give xmris its own stdout handler, as pyAMARES does
+    _handler = logging.StreamHandler(sys.stdout)
+    _handler.setFormatter(logging.Formatter("[xmris | %(levelname)s] %(message)s"))
+    logger.addHandler(_handler)
+    logger.propagate = False
+
+
+def _set_verbosity(verbose: bool) -> None:
+    """Set the pyAMARES + xmris fitting log levels for the current process."""
+    level = "info" if verbose else "error"
+    # pyAMARES creates some loggers lazily *during* a fit; setting the module
+    # default makes those honor the level too, not only loggers that already exist.
+    _pa_logger.DEFAULT_LOG_LEVEL = level
+    set_log_level(level, verbose=False)
+    logger.setLevel(logging.INFO if verbose else logging.ERROR)
+
+
+@contextlib.contextmanager
+def _muted_warnings(verbose: bool):
+    """Mute the routine warnings a fit emits unless ``verbose``.
+
+    The scipy ``xtol``/``ftol`` UserWarning (from our magnitude-normalized
+    tolerance) and the pyAMARES ``fid.py`` divide-by-zero RuntimeWarning (an
+    exactly-zero spectrum) are expected here and would otherwise flood a batch fit.
+    """
+    if verbose:
+        yield
+        return
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", UserWarning)
+        warnings.simplefilter("ignore", RuntimeWarning)
+        yield
+
 
 # pyAMARES result-table column labels (its stateful API speaks these, not the config
 # vocabulary). Kept local so the mapping to VARS lives in exactly one place.
@@ -106,30 +151,33 @@ def _fit_dataset_safe(
         chemical shift, phase, CRLB, SNR) for the current dataset. If the fit
         fails, returns a structurally identical DataFrame filled with NaNs.
     """
-    set_log_level("info" if verbose else "error", verbose=False)
+    # Re-apply verbosity here so it also holds in joblib worker processes.
+    _set_verbosity(verbose)
     try:
-        FIDobj_current = deepcopy(FIDobj_shared)
-        FIDobj_current.fid = fid_current
+        with _muted_warnings(verbose):
+            FIDobj_current = deepcopy(FIDobj_shared)
+            FIDobj_current.fid = fid_current
 
-        out = pyamares_fitAMARES(
-            fid_parameters=FIDobj_current,
-            fitting_parameters=initial_params,
-            method=method,
-            initialize_with_lm=initialize_with_lm,
-            ifplot=False,
-            inplace=True,
-        )
+            out = pyamares_fitAMARES(
+                fid_parameters=FIDobj_current,
+                fitting_parameters=initial_params,
+                method=method,
+                initialize_with_lm=initialize_with_lm,
+                ifplot=False,
+                inplace=True,
+            )
 
-        result_table = FIDobj_current.result_multiplets
+            result_table = FIDobj_current.result_multiplets
 
-        # Explicit memory cleanup in the worker process
-        del FIDobj_current
-        del out
+            # Explicit memory cleanup in the worker process
+            del FIDobj_current
+            del out
 
-        return result_table
+            return result_table
 
     except Exception as e:
-        print(f"Warning: AMARES fit failed on a voxel. Returning NaNs. Error: {e}")
+        # Silent unless verbose — the NaN sentinel is the signal to check (isnan).
+        logger.warning("AMARES fit failed on a voxel; returning NaNs. Error: %s", e)
         if hasattr(FIDobj_shared, "peaklist"):
             cols = [
                 "amplitude",
@@ -235,12 +283,12 @@ def _run_parallel_fitting_optimal(
             result_array[i] = res
             pbar.update(1)
 
-    if verbose:
-        timeafter = datetime.now()
-        print(
-            f"Fitting {n_spectra} spectra with {num_workers} workers took "
-            f"{(timeafter - timebefore).total_seconds():.2f} seconds."
-        )
+    logger.info(
+        "Fitting %d spectra with %d workers took %.2f seconds.",
+        n_spectra,
+        num_workers,
+        (datetime.now() - timebefore).total_seconds(),
+    )
 
     return result_array
 
@@ -395,7 +443,7 @@ def fit_amares(
         the quantified parameters (amplitude, chem_shift, linewidth, phase, CRLB, SNR)
         mapped across the original dimensions and the new ``metabolite`` dimension.
     """
-    set_log_level("info" if verbose else "error", verbose=False)
+    _set_verbosity(verbose)
 
     # 1. Domain handling: obtain a FID to fit and remember how to restore the input.
     da_fid, dim, restore_state = _resolve_fit_domain(da, dim)
@@ -446,11 +494,11 @@ def fit_amares(
             snr_array = np.where(noise_region == 0, 0, signal_region / noise_region)
         best_idx = int(np.nanargmax(snr_array))
         template_fid = fid_norm[best_idx]
-        if verbose:
-            print(
-                f"Auto-selected FID index {best_idx} for initialization "
-                f"(SNR: {snr_array[best_idx]:.2f})"
-            )
+        logger.info(
+            "Auto-selected FID index %d for initialization (SNR: %.2f)",
+            best_idx,
+            snr_array[best_idx],
+        )
 
     # 6. Setup the shared pyAMARES state (normalize_fid=False — we normalize ourselves
     #    and rescale the amplitudes back, so results come out in the input units).

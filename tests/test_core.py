@@ -44,11 +44,13 @@ or user pipelines depend on.
 """
 
 import copy
+import logging
 import pickle
 import re
 import subprocess
 import sys
 import textwrap
+import warnings
 
 import numpy as np
 import pytest
@@ -1753,6 +1755,76 @@ class TestFittingDomain:
         from xmris.fitting.amares import fit_amares
 
         assert not hasattr(fit_amares, "__xmris_domain__")
+
+
+class TestFittingVerbosity:
+    """Pin BUG-010: `verbose=False` silences pyAMARES, and it holds in workers.
+
+    pyAMARES emits on four channels (stdout prints, tqdm, warnings, its own
+    loggers). Verbosity is (re)applied per fit call — inside `_fit_dataset_safe`,
+    which runs in every joblib worker — so silence holds at any `num_workers`,
+    not only in-process.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _require_pyamares(self):
+        pytest.importorskip("pyAMARES")
+
+    @pytest.fixture(autouse=True)
+    def _restore_quiet(self):
+        """Leave the loggers quiet after each test regardless of what it set."""
+        yield
+        from xmris.fitting.amares import _set_verbosity
+
+        _set_verbosity(False)
+
+    def test_set_verbosity_levels(self):
+        """Log levels track `verbose` — including pyAMARES's lazily-made loggers."""
+        from pyAMARES.libs import logger as pa_logger
+
+        from xmris.fitting.amares import _set_verbosity, logger
+
+        _set_verbosity(False)
+        assert logger.level == logging.ERROR
+        assert pa_logger.DEFAULT_LOG_LEVEL == "error"
+
+        _set_verbosity(True)
+        assert logger.level == logging.INFO
+        assert pa_logger.DEFAULT_LOG_LEVEL == "info"
+
+    def test_muted_warnings(self):
+        """The routine scipy/pyAMARES warnings are muted unless verbose."""
+        from xmris.fitting.amares import _muted_warnings
+
+        with warnings.catch_warnings(record=True) as rec:
+            warnings.simplefilter("always")
+            with _muted_warnings(False):
+                warnings.warn("scipy xtol", UserWarning)
+                warnings.warn("divide by zero", RuntimeWarning)
+            assert rec == []  # both suppressed
+            with _muted_warnings(True):
+                warnings.warn("shown", UserWarning)
+            assert len(rec) == 1  # passed through when verbose
+
+    def test_fit_silent_when_not_verbose(self):
+        """A fit that trips the divide-by-zero warning leaks nothing at verbose=False."""
+        mhz, sw, n = 120.0, 10000.0, 256
+        t = np.arange(n) / sw
+        sig = 10.0 * np.exp(-15.0 * np.pi * t) * np.exp(2j * np.pi * 0.0 * mhz * t)
+        fid = xr.DataArray(
+            sig,
+            dims=["time"],
+            coords={"time": t},
+            attrs={"reference_frequency": mhz, "carrier_ppm": 0.0},
+        )
+        # A zero voxel trips pyAMARES's fid.py divide-by-zero RuntimeWarning in-process.
+        stack = xr.concat([fid, xr.zeros_like(fid)], dim="voxel").assign_attrs(fid.attrs)
+        pk = {"PCr": {"amplitude": 10.0, "chem_shift": 0.0, "linewidth": 15.0}}
+        with warnings.catch_warnings(record=True) as rec:
+            warnings.simplefilter("always")
+            ds = stack.xmr.fit_amares(prior_knowledge=pk, num_workers=1, verbose=False)
+        assert rec == [], f"verbose=False leaked: {[str(w.message) for w in rec]}"
+        assert np.all(np.isfinite(ds[VARS.amplitude].isel(voxel=0).values))
 
 
 class TestFittingPackaging:
