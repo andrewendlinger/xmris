@@ -40,6 +40,7 @@ HEADER_RE = re.compile(r"^(#{1,6})\s+\S")
 TARGET_RE = re.compile(r"^\(.+\)=$")
 IPYNB_LINK_RE = re.compile(r"\]\([^)]*\.ipynb[^)]*\)")
 CONFIG_SINGLETON_RE = re.compile(r"\b(ATTRS|DIMS|COORDS|VARS)\.")
+INLINE_COMMENT_RE = re.compile(r"<!--.*?-->", re.S)
 
 
 class Page:
@@ -54,6 +55,7 @@ class Page:
         self.frontmatter = self._frontmatter()
         self.headers: list[tuple[int, int, str]] = []  # (lineno, depth, text)
         self.cells: list[tuple[int, str, str]] = []  # (lineno, info, body)
+        self.prose: list[tuple[int, str]] = []  # (lineno, line) outside every fence
         self._scan()
 
     def _frontmatter(self) -> str:
@@ -86,6 +88,7 @@ class Page:
             if fence is not None:
                 body.append(line)
                 continue
+            self.prose.append((i, line))
             hm = HEADER_RE.match(line)
             if hm:
                 self.headers.append((i, len(hm.group(1)), line.lstrip("#").strip()))
@@ -98,9 +101,20 @@ class Page:
                 return i
         return None
 
+    def target_line(self, lineno: int) -> int | None:
+        """Index of the explicit ``(target)=`` attached to this header, if any.
+
+        MyST binds a target to the *next block*, so blank lines between the two
+        are legal -- scan back past them rather than checking one line.
+        """
+        i = lineno - 1
+        while i >= 0 and not self.lines[i].strip():
+            i -= 1
+        return i if i >= 0 and TARGET_RE.match(self.lines[i].strip()) else None
+
     def has_target_above(self, lineno: int) -> bool:
-        """Report whether an explicit ``(target)=`` sits on the preceding line."""
-        return lineno > 0 and bool(TARGET_RE.match(self.lines[lineno - 1].strip()))
+        """Report whether an explicit ``(target)=`` precedes the header."""
+        return self.target_line(lineno) is not None
 
 
 def toc_files(root: Path) -> set[str]:
@@ -138,7 +152,8 @@ def check(page: Page, toc: set[str]) -> tuple[list[str], list[str]]:
         for lineno, _, text in h1s[1:]:
             err(lineno, f"second H1 {text!r} -- exactly one per page")
         lineno = h1s[0][0]
-        expected = lineno - 1 if page.has_target_above(lineno) else lineno
+        tgt = page.target_line(lineno)
+        expected = tgt if tgt is not None else lineno
         if first is not None and expected != first:
             err(lineno, "content precedes the H1 -- the title will render twice")
 
@@ -153,28 +168,18 @@ def check(page: Page, toc: set[str]) -> tuple[list[str], list[str]]:
     # myst.yml excludes notebooks/**/*.ipynb, so these resolve to null -- and
     # the build emits no warning.
     # Commented-out links never render, so they are dead weight rather than a
-    # broken page -- and HTML comments span lines, so track the block.
-    infence = False
-    fence = ""
+    # broken page. Inline comments close on their own line; block comments span
+    # lines, so carry the state. Fences are already excluded -- page.prose is
+    # what _scan saw outside every one of them.
     incomment = False
-    for i, line in enumerate(page.lines):
-        m = FENCE_RE.match(line)
-        if m and not incomment:
-            tok = m.group(1)[0] * 3
-            if not infence:
-                infence, fence = True, tok
-            elif line.strip().startswith(fence):
-                infence = False
-            continue
-        if infence:
-            continue
+    for i, raw in page.prose:
+        line = INLINE_COMMENT_RE.sub("", raw)
         if incomment:
-            if "-->" in line:
-                incomment = False
-            continue
-        if "<!--" in line and "-->" not in line:
-            incomment = True
-            continue
+            if "-->" not in line:
+                continue
+            incomment, line = False, line.split("-->", 1)[1]
+        if "<!--" in line:
+            incomment, line = True, line.split("<!--", 1)[0]
         if IPYNB_LINK_RE.search(line):
             err(i, "links a .ipynb -- excluded from the build, so the link is dead")
 
@@ -216,10 +221,22 @@ def check(page: Page, toc: set[str]) -> tuple[list[str], list[str]]:
     return errors, warnings
 
 
-def collect(args: list[str]) -> list[Path]:
+def relative_to_root(path: Path, root: Path) -> Path:
+    """Re-express a path relative to the repo root.
+
+    Genre is decided by path prefix, so an absolute path would otherwise fall
+    through to genre "other" and silently skip the genre-specific checks.
+    """
+    try:
+        return path.resolve().relative_to(root.resolve())
+    except ValueError:
+        return path
+
+
+def collect(args: list[str], root: Path) -> list[Path]:
     """Resolve CLI paths, defaulting to every hand-authored page under docs/."""
     if args:
-        return [Path(a) for a in args]
+        return [relative_to_root(Path(a), root) for a in args]
     return sorted(
         p for p in Path("docs").rglob("*.md") if not any(part in SKIP_DIRS for part in p.parts)
     )
@@ -233,7 +250,7 @@ def main(argv: list[str]) -> int:
         return 2
 
     toc = toc_files(root)
-    pages = collect(argv)
+    pages = collect(argv, root)
     all_errors: list[str] = []
     all_warnings: list[str] = []
     for path in pages:
