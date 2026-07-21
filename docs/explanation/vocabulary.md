@@ -1,3 +1,14 @@
+---
+jupytext:
+  text_representation:
+    extension: .md
+    format_name: myst
+kernelspec:
+  display_name: Python 3 (xmris)
+  language: python
+  name: python3
+---
+
 (vocabulary)=
 # The Controlled Vocabulary
 
