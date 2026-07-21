@@ -4,7 +4,7 @@ jupytext:
     extension: .md
     format_name: myst
 kernelspec:
-  display_name: .venv
+  display_name: Python 3 (xmris)
   language: python
   name: python3
 ---
@@ -159,27 +159,32 @@ If there is no processing method to reproduce, add that method first (see the
 ### Resolve dimensions from the vocabulary — no name sniffing
 
 Do **not** guess the axis with substring checks like `"ppm" in dim`. Resolve it
-from the vocabulary, then validate — which branch you take depends on the domain
-the widget operates in:
+from the vocabulary, then validate. **Pick the one branch matching your widget's
+domain — these are alternatives, not steps.**
+
+A **spectral** widget (`phase`, `scroller`) resolves across the multi-label
+spectral domain, which is what `_resolve_dim` exists for:
 
 ```python
-# Spectral widget (phase, scroller): frequency / chemical_shift
 if dim is None:
-    dim = _resolve_dim(da, SPECTRAL_DIMS)
-
-# Time-domain widget (apodizer): the input is an FID, so the spectral
-# resolver does not apply — fall back to the canonical time dimension.
-if dim is None:
-    dim = DIMS.time
-
+    dim = _resolve_dim(da, SPECTRAL_DIMS)   # frequency / chemical_shift
 _check_dims(da, dim, "my_widget")
 ```
 
-`_resolve_dim` handles the multi-label spectral domain and raises a helpful error
-for non-standard axis names; a single-label domain needs no resolver, just the
-constant. Either way the factory exposes `dim: str | None = None` as an escape
-hatch — that `None` is a widget convention, not the domain-decorator
-biconditional that governs library functions.
+A **time-domain** widget (`apodizer`) receives an FID, which has no spectral axis
+at all — running the resolver on one raises before it can find anything. Use the
+canonical time dimension instead:
+
+```python
+if dim is None:
+    dim = DIMS.time
+_check_dims(da, dim, "my_widget")
+```
+
+`_resolve_dim` raises a helpful error for non-standard axis names; a single-label
+domain needs no resolver, just the constant. Either way the factory exposes
+`dim: str | None = None` as an escape hatch — that `None` is a widget convention,
+not the domain-decorator biconditional that governs library functions.
 
 Derive axis labels from the coordinate's **lineage metadata**, not a hardcoded
 string. The shared helper does this, including the fallback when the metadata is
