@@ -34,14 +34,30 @@ from xmris.fitting.prior_knowledge import build_prior_knowledge
 
 # pyAMARES result-table column labels (its stateful API speaks these, not the config
 # vocabulary). Kept local so the mapping to VARS lives in exactly one place.
-_PYAMARES_COLS = {
+
+# Named per-metabolite value variables: VARS name -> pyAMARES value column.
+_VALUE_COLS = {
     VARS.amplitude: "amplitude",
     VARS.chem_shift: "chem shift(ppm)",
     VARS.linewidth: "LW(Hz)",
     VARS.phase: "phase(deg)",
-    VARS.crlb: "CRLB(%)",
     VARS.snr: "SNR",
 }
+
+# Per-parameter uncertainties, gathered along the `parameter` dim as `crlb`/`sd`
+# variables: parameter -> (sd column, CRLB% column). Only these four parameters
+# have a named value var to pair with (g is typically fixed and unreported).
+# Amplitude's columns are unqualified in pyAMARES and `CRLB(cs%) ` carries a
+# trailing space, so every label is pinned here explicitly.
+_UNCERTAINTY_COLS = {
+    VARS.amplitude: ("sd", "CRLB(%)"),
+    VARS.chem_shift: ("sd(ppm)", "CRLB(cs%) "),
+    VARS.linewidth: ("sd(Hz)", "CRLB(LW%)"),
+    VARS.phase: ("sd(deg)", "CRLB(phase%)"),
+}
+
+# The `parameter` coordinate values, in a fixed order.
+_PARAMETERS = list(_UNCERTAINTY_COLS)
 
 
 def _fit_dataset_safe(
@@ -482,7 +498,10 @@ def fit_amares(
     metabolites = np.asarray(first_ok.index.values if first_ok is not None else shared_obj.peaklist)
     n_metab = len(metabolites)
 
-    params_out = {key: np.full((n_spectra, n_metab), np.nan) for key in _PYAMARES_COLS}
+    value_out = {key: np.full((n_spectra, n_metab), np.nan) for key in _VALUE_COLS}
+    n_param = len(_PARAMETERS)
+    crlb_out = np.full((n_spectra, n_metab, n_param), np.nan)
+    sd_out = np.full((n_spectra, n_metab, n_param), np.nan)
     fit_norm = np.full((n_spectra, n_time), np.nan, dtype=complex)
 
     dwelltime = 1.0 / sw
@@ -492,14 +511,23 @@ def fit_amares(
         # No signal to fit, a hard failure, or an all-NaN fit -> keep the NaN sentinel.
         if spectrum_max[i] == 0 or df is None or df.isna().all().all():
             continue
-        for key, col in _PYAMARES_COLS.items():
+        for key, col in _VALUE_COLS.items():
             if col in df.columns:
-                params_out[key][i, :] = df[col].values
+                value_out[key][i, :] = df[col].values
+        for p, param in enumerate(_PARAMETERS):
+            sd_col, crlb_col = _UNCERTAINTY_COLS[param]
+            if sd_col in df.columns:
+                sd_out[i, :, p] = df[sd_col].values
+            if crlb_col in df.columns:
+                crlb_out[i, :, p] = df[crlb_col].values
         params = result_pd_to_params(df, MHz=mhz)
         fit_norm[i, :] = uninterleave(multieq6(params, timeaxis))
 
-    # 9. Rescale amplitude + reconstructed model back into the input units.
-    params_out[VARS.amplitude] *= global_scale
+    # 9. Rescale amplitude + reconstructed model back into the input units. The
+    #    amplitude *sd* scales with it; CRLB is relative (%), and the other
+    #    parameters' uncertainties are independent of amplitude scale.
+    value_out[VARS.amplitude] *= global_scale
+    sd_out[:, :, _PARAMETERS.index(VARS.amplitude)] *= global_scale
     fit_arrs = fit_norm * global_scale
 
     # 10. Assemble the output Dataset in the caller's representation.
@@ -526,12 +554,30 @@ def fit_amares(
                 .unstack("spectrum")
                 .transpose(*out_param_dims)
             )
+
+        def _uncertainty_var(arr: np.ndarray) -> xr.DataArray:
+            return (
+                xr.DataArray(
+                    arr,
+                    dims=[*param_dims, DIMS.parameter],
+                    coords={**param_coords, DIMS.parameter: _PARAMETERS},
+                )
+                .unstack("spectrum")
+                .transpose(*out_param_dims, DIMS.parameter)
+            )
     else:
         fit_da = xr.DataArray(fit_arrs[0], dims=[dim], coords={dim: da_fid.coords[dim]})
         param_coords = {DIMS.metabolite: metabolites}
 
         def _param_var(arr: np.ndarray) -> xr.DataArray:
             return xr.DataArray(arr[0], dims=[DIMS.metabolite], coords=param_coords)
+
+        def _uncertainty_var(arr: np.ndarray) -> xr.DataArray:
+            return xr.DataArray(
+                arr[0],
+                dims=[DIMS.metabolite, DIMS.parameter],
+                coords={DIMS.metabolite: metabolites, DIMS.parameter: _PARAMETERS},
+            )
 
     # Restore the fit to the caller's representation (ppm in -> ppm out). The model
     # carries the input attrs so the ppm leg (`to_ppm`) finds `reference_frequency`.
@@ -543,8 +589,10 @@ def fit_amares(
     ds[VARS.fit] = fit_da
     ds[VARS.residuals] = ds[VARS.original_data] - ds[VARS.fit]
 
-    for var, arr in params_out.items():
+    for var, arr in value_out.items():
         ds[var] = _param_var(arr)
+    ds[VARS.crlb] = _uncertainty_var(crlb_out)
+    ds[VARS.sd] = _uncertainty_var(sd_out)
 
     # 11. Preserve lineage: input attrs + the one quantitative fitting parameter.
     ds.attrs = dict(da.attrs)

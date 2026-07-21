@@ -1720,6 +1720,34 @@ class TestFittingDomain:
         with pytest.raises(FileNotFoundError, match="not found"):
             fid.xmr.fit_amares(prior_knowledge="/no/such/pk.csv", num_workers=1)
 
+    # --- per-parameter uncertainties: Shape B (workstream D) ---
+
+    def test_uncertainties_span_parameter_dim(self, fid, pk_path):
+        """crlb/sd carry a per-parameter axis; values stay named data vars."""
+        ds = self._fit(fid, pk_path)
+        assert ds[VARS.crlb].dims == (DIMS.metabolite, DIMS.parameter)
+        assert ds[VARS.sd].dims == (DIMS.metabolite, DIMS.parameter)
+        assert list(ds[DIMS.parameter].values) == [
+            VARS.amplitude,
+            VARS.chem_shift,
+            VARS.linewidth,
+            VARS.phase,
+        ]
+        assert ds[VARS.amplitude].dims == (DIMS.metabolite,)  # value stays named
+
+    def test_amplitude_sd_scales_crlb_invariant(self, fid, pk_path):
+        """Amplitude sd tracks the signal scale (absolute); CRLB% (relative) does not."""
+        base = self._fit(fid, pk_path)
+        scaled = self._fit((fid * 100.0).assign_attrs(fid.attrs), pk_path)
+        amp = dict(parameter=VARS.amplitude)
+        ratio = (scaled[VARS.sd].sel(**amp) / base[VARS.sd].sel(**amp)).values
+        np.testing.assert_allclose(ratio, 100.0, rtol=1e-3)
+        np.testing.assert_allclose(
+            scaled[VARS.crlb].sel(**amp).values,
+            base[VARS.crlb].sel(**amp).values,
+            rtol=1e-3,
+        )
+
     def test_no_domain_marker(self):
         """Fitting hand-rolls the contract, so it carries no decorator marker."""
         from xmris.fitting.amares import fit_amares

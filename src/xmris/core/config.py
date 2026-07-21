@@ -337,6 +337,15 @@ class XmrisDimensions(BaseVocabulary):
         "metabolite", description="Dimension representing quantified metabolites."
     )
 
+    parameter = XmrisTerm(
+        "parameter",
+        description=(
+            "Dimension indexing the fitted parameters (amplitude, chem_shift, "
+            "linewidth, phase) that the per-parameter uncertainty variables "
+            "(`crlb`, `sd`) span."
+        ),
+    )
+
     component = XmrisTerm("component", description="Dimension separating real and imaginary parts.")
     # --- Standard Acquisition Dimensions ---
     # Dimension names are uniformly singular.
@@ -412,7 +421,21 @@ class XmrisDataVars(BaseVocabulary):
     phase = XmrisTerm("phase", description="Fitted phase.", unit="degrees")
 
     crlb = XmrisTerm(
-        "crlb", description="Cramer-Rao Lower Bound (fitting error estimation).", unit="%"
+        "crlb",
+        description=(
+            "Cramer-Rao Lower Bound (relative fitting uncertainty), per fitted "
+            "parameter along the `parameter` dimension."
+        ),
+        unit="%",
+    )
+
+    sd = XmrisTerm(
+        "sd",
+        description=(
+            "Standard deviation (1-sigma uncertainty) of a fitted parameter, along "
+            "the `parameter` dimension. Its unit follows the parameter it describes "
+            "(a.u. / ppm / Hz / degrees)."
+        ),
     )
 
     snr = XmrisTerm("snr", description="Signal-to-Noise Ratio.")

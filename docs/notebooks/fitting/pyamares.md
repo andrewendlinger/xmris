@@ -241,7 +241,8 @@ PyAMARES safely catches this and defaults the P matrix to an identity matrix. Th
 The returned `Dataset` is incredibly powerful. Instead of returning raw numbers, `xmris` neatly categorizes the fitting outputs into two sets of variables, mapped along their natural physical dimensions:
 
 1. **Time-Domain Signals (`voxel`, `time`)**: The arrays `data`, `fit`, and `residuals`.
-2. **Quantified Parameters (`voxel`, `metabolite`)**: The tabular values such as `amplitude`, `chem_shift`, `linewidth`, `phase`, `crlb`, and `snr`.
+2. **Quantified Parameters (`voxel`, `metabolite`)**: The fitted values `amplitude`, `chem_shift`, `linewidth`, `phase`, plus `snr`.
+3. **Per-Parameter Uncertainties (`voxel`, `metabolite`, `parameter`)**: `crlb` (relative %) and `sd` (absolute), each spanning a `parameter` axis so one variable carries the uncertainty of every fitted parameter.
 
 :::{dropdown} Deep Dive: DataArray vs. Dataset
 In the `xarray` ecosystem:
@@ -298,6 +299,8 @@ In quantitative MRS, simply looking at a plot is not enough to confirm a success
 
 A common rule of thumb is that **CRLB ≤ 20% indicates a reliable fit**.
 
+`crlb` and `sd` are reported for *every* fitted parameter, along a `parameter` dimension — so `ds_fit.crlb.sel(parameter="amplitude")` is the amplitude CRLB, `.sel(parameter="linewidth")` the linewidth's, and `ds_fit.crlb.max("parameter")` the worst case per voxel. The amplitude CRLB is the usual quantitation-quality metric, so that's the one we tabulate.
+
 Let's extract the exact fitting parameters for our final voxel (`Voxel=4`) from the `Dataset` and display them as a Pandas DataFrame. We will apply a custom style to highlight rows with acceptable CRLB values in green, mimicking the native behavior of `pyAMARES`.
 
 ```{code-cell} ipython3
@@ -313,7 +316,8 @@ df_results = pd.DataFrame(
         "Linewidth (Hz)": last_voxel_ds.linewidth.values,
         "Phase (deg)": last_voxel_ds.phase.values,
         "SNR": last_voxel_ds.snr.values,
-        "CRLB (%)": last_voxel_ds.crlb.values,
+        "Amp SD": last_voxel_ds.sd.sel(parameter="amplitude").values,
+        "CRLB (%)": last_voxel_ds.crlb.sel(parameter="amplitude").values,
     },
     index=last_voxel_ds.metabolite.values,
 )
@@ -397,6 +401,7 @@ expected_vars = [
     "linewidth",
     "phase",
     "crlb",
+    "sd",
     "snr",
 ]
 for v in expected_vars:
@@ -406,6 +411,11 @@ for v in expected_vars:
 assert ds_fit.amplitude.dims == ("voxel", "metabolite"), (
     "Amplitude map dimensions are incorrect"
 )
+# crlb/sd carry the per-parameter axis; values stay named (Shape B)
+assert ds_fit.crlb.dims == ("voxel", "metabolite", "parameter"), (
+    "crlb should span the parameter dimension"
+)
+assert list(ds_fit.parameter.values) == ["amplitude", "chem_shift", "linewidth", "phase"]
 assert ds_fit["fit"].dims == ("voxel", "time"), (
     "Reconstructed fit dimensions are incorrect"
 )
@@ -443,12 +453,14 @@ assert ds_fit.snr.sel(metabolite="PCr").isel(voxel=4) > ds_fit.snr.sel(
     metabolite="PCr"
 ).isel(voxel=0), "SNR mapping is incorrect"
 
-# CRLB should be valid and acceptable for this high SNR synthetic data
-assert not np.isnan(ds_fit.crlb.values).any(), (
-    "CRLB contains NaNs, indicating an ill-conditioned fit matrix"
+# Amplitude CRLB (the quantitation-quality metric) should be valid and acceptable
+# for this high-SNR synthetic data.
+amp_crlb = ds_fit.crlb.sel(parameter="amplitude")
+assert not np.isnan(amp_crlb.values).any(), (
+    "Amplitude CRLB contains NaNs, indicating an ill-conditioned fit matrix"
 )
-assert np.all(ds_fit.crlb.values <= 20.0), (
-    "CRLB values exceeded 20% on clean synthetic data"
+assert np.all(amp_crlb.values <= 20.0), (
+    "Amplitude CRLB exceeded 20% on clean synthetic data"
 )
 
 # 5. Check that residuals are mathematically correct and behave like noise
