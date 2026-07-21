@@ -1759,6 +1759,32 @@ class TestFittingDomain:
         free = fid.xmr.fit_amares(prior_knowledge=pk_path, num_workers=1, g_global=False)
         assert np.all(np.isfinite(free[VARS.amplitude].values))
 
+    def test_carrier_enables_absolute_ppm(self, pk_path):
+        """A nonzero carrier_ppm lets prior knowledge use absolute/literature ppm."""
+        from xmris.fitting.simulation import simulate_fid
+
+        # Carrier at 2.0 ppm; peaks given at ABSOLUTE 0.0 and -7.5 ppm. dampings are
+        # linewidth * pi, so 15/20 Hz linewidths match the pk_path fixture bounds.
+        fid = simulate_fid(
+            amplitudes=[10.0, 5.0],
+            chemical_shifts=[0.0, -7.5],
+            reference_frequency=self._MHZ,
+            carrier_ppm=2.0,
+            spectral_width=self._SW,
+            n_points=1024,
+            dampings=[15.0 * np.pi, 20.0 * np.pi],
+            target_snr=200,
+            seed=0,
+        )
+        # carrier auto-read from carrier_ppm=2.0 -> absolute shifts recovered.
+        ds = fid.xmr.fit_amares(prior_knowledge=pk_path, num_workers=1)
+        np.testing.assert_allclose(ds[VARS.chem_shift].values, [0.0, -7.5], atol=0.1)
+        np.testing.assert_allclose(ds[VARS.amplitude].values, [10.0, 5.0], rtol=0.05)
+
+        # carrier=0 override reads carrier-relative -> the abs-ppm peaks miss (pinned).
+        rel = fid.xmr.fit_amares(prior_knowledge=pk_path, num_workers=1, carrier=0.0)
+        assert not np.allclose(rel[VARS.chem_shift].values, [0.0, -7.5], atol=0.1)
+
     def test_no_domain_marker(self):
         """Fitting hand-rolls the contract, so it carries no decorator marker."""
         from xmris.fitting.amares import fit_amares

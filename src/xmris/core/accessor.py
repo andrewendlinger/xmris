@@ -740,6 +740,7 @@ class XmrisAccessor(
         mhz: float | None = None,
         sw: float | None = None,
         deadtime: float | None = None,
+        carrier: float | None = None,
         g_global: float | bool = 0.0,
         method: str = "leastsq",
         initialize_with_lm: bool = False,
@@ -775,6 +776,10 @@ class XmrisAccessor(
         deadtime : float, optional
             Acquisition time origin in seconds. If None, taken from the first `dim`
             coordinate value.
+        carrier : float, optional
+            Transmitter carrier position on the absolute ppm scale, letting
+            prior-knowledge and reported shifts be absolute/literature ppm. If None,
+            taken from ``da.attrs['carrier_ppm']`` (default 0.0 = carrier-relative).
         g_global : float or bool, optional
             Global lineshape held for every peak: 0.0 = Lorentzian (default),
             1.0 = Gaussian, in between = pseudo-Voigt. Pass ``False`` to let each
@@ -820,6 +825,7 @@ class XmrisAccessor(
             mhz=mhz,
             sw=sw,
             deadtime=deadtime,
+            carrier=carrier,
             g_global=g_global,
             method=method,
             initialize_with_lm=initialize_with_lm,

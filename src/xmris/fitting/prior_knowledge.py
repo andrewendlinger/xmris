@@ -148,8 +148,9 @@ def build_prior_knowledge(
     ----------
     peaks : Mapping[str, Mapping[str, Any]]
         Peaks keyed by name (letters only). Each value maps parameters to values:
-        the required ``"amplitude"`` (a.u.), ``"chem_shift"`` (ppm, carrier-relative)
-        and ``"linewidth"`` (Hz); the optional ``"phase"`` (degrees, default 0) and
+        the required ``"amplitude"`` (a.u.), ``"chem_shift"`` (ppm — absolute
+        literature ppm when ``fit_amares`` is given a ``carrier``, else relative to
+        it) and ``"linewidth"`` (Hz); the optional ``"phase"`` (degrees, default 0) and
         ``"g"`` (lineshape 0=Lorentzian..1=Gaussian, default 0); and optional
         ``"<name>_bounds"`` companions holding a ``(lower, upper)`` tuple (``None``
         opens a side). Phase is always bounded ``(-180, 180)`` unless overridden.

@@ -375,6 +375,7 @@ def fit_amares(
     mhz: float | None = None,
     sw: float | None = None,
     deadtime: float | None = None,
+    carrier: float | None = None,
     g_global: float | bool = 0.0,
     method: str = "leastsq",
     initialize_with_lm: bool = False,
@@ -424,6 +425,11 @@ def fit_amares(
     deadtime : float, optional
         Acquisition time origin in seconds. If None, taken from the first `dim`
         coordinate value (the single source of truth for the time axis).
+    carrier : float, optional
+        Transmitter carrier position on the absolute ppm scale. Prior-knowledge and
+        reported chemical shifts are then read and returned as absolute/literature
+        ppm (e.g. PCr at 0, γ-ATP at -2.5). If None, taken from
+        ``da.attrs['carrier_ppm']`` (default 0.0 — shifts are carrier-relative).
     g_global : float or bool, optional
         Global lineshape held for every peak: 0.0 = pure Lorentzian (default),
         1.0 = pure Gaussian, in between = pseudo-Voigt. Pass ``False`` instead to
@@ -467,6 +473,11 @@ def fit_amares(
 
     if deadtime is None:
         deadtime = float(da_fid.coords[dim].values[0])
+
+    # Carrier position on the absolute ppm scale — lets prior-knowledge shifts be
+    # given in literature/absolute ppm rather than relative to the transmitter.
+    if carrier is None:
+        carrier = float(da_fid.attrs.get(ATTRS.carrier_ppm, 0.0))
 
     # 3. Flatten the N-dimensional FID to a 2D array (n_spectra x time).
     other_dims = [d for d in da_fid.dims if d != dim]
@@ -516,6 +527,10 @@ def fit_amares(
             MHz=mhz,
             sw=sw,
             deadtime=deadtime,
+            # Shift the prior knowledge (shared across every fit) to carrier-relative
+            # so literature/absolute-ppm shifts align with the data. pyAMARES's own
+            # `carrier` shifts only the template FID, which we overwrite per spectrum.
+            ppm_offset=-carrier,
             g_global=g_global,
             normalize_fid=False,
             preview=False,
@@ -583,6 +598,11 @@ def fit_amares(
     value_out[VARS.amplitude] *= global_scale
     sd_out[:, :, _PARAMETERS.index(VARS.amplitude)] *= global_scale
     fit_arrs = fit_norm * global_scale
+
+    # Undo the carrier shift on the reported shifts: the fit ran carrier-relative
+    # (per `ppm_offset` above), so add the carrier back to report absolute ppm. The
+    # reconstructed model is already in the data's frame and needs no shift.
+    value_out[VARS.chem_shift] += carrier
 
     # 10. Assemble the output Dataset in the caller's representation.
     ds = xr.Dataset()
