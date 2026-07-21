@@ -740,6 +740,7 @@ class XmrisAccessor(
         mhz: float | None = None,
         sw: float | None = None,
         deadtime: float | None = None,
+        g_global: float | bool = 0.0,
         method: str = "leastsq",
         initialize_with_lm: bool = False,
         num_workers: int = 4,
@@ -774,6 +775,10 @@ class XmrisAccessor(
         deadtime : float, optional
             Acquisition time origin in seconds. If None, taken from the first `dim`
             coordinate value.
+        g_global : float or bool, optional
+            Global lineshape held for every peak: 0.0 = Lorentzian (default),
+            1.0 = Gaussian, in between = pseudo-Voigt. Pass ``False`` to let each
+            peak's ``g`` vary, fitted from the prior-knowledge value.
         method : {"leastsq", "least_squares"}, optional
             Fitting method. Defaults to 'leastsq' (Levenberg-Marquardt).
         initialize_with_lm : bool, optional
@@ -815,6 +820,7 @@ class XmrisAccessor(
             mhz=mhz,
             sw=sw,
             deadtime=deadtime,
+            g_global=g_global,
             method=method,
             initialize_with_lm=initialize_with_lm,
             num_workers=num_workers,

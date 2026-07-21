@@ -1750,6 +1750,15 @@ class TestFittingDomain:
             rtol=1e-3,
         )
 
+    def test_g_global_forwarded(self, fid, pk_path):
+        """g_global reaches pyAMARES: a Gaussian lineshape changes the fit."""
+        lor = fid.xmr.fit_amares(prior_knowledge=pk_path, num_workers=1, g_global=0.0)
+        gau = fid.xmr.fit_amares(prior_knowledge=pk_path, num_workers=1, g_global=1.0)
+        assert not np.allclose(lor[VARS.amplitude].values, gau[VARS.amplitude].values, rtol=1e-3)
+        # `False` (fit each peak's g) is accepted and yields a valid fit.
+        free = fid.xmr.fit_amares(prior_knowledge=pk_path, num_workers=1, g_global=False)
+        assert np.all(np.isfinite(free[VARS.amplitude].values))
+
     def test_no_domain_marker(self):
         """Fitting hand-rolls the contract, so it carries no decorator marker."""
         from xmris.fitting.amares import fit_amares

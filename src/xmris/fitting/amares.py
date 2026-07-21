@@ -375,6 +375,7 @@ def fit_amares(
     mhz: float | None = None,
     sw: float | None = None,
     deadtime: float | None = None,
+    g_global: float | bool = 0.0,
     method: str = "leastsq",
     initialize_with_lm: bool = False,
     num_workers: int = 4,
@@ -423,6 +424,10 @@ def fit_amares(
     deadtime : float, optional
         Acquisition time origin in seconds. If None, taken from the first `dim`
         coordinate value (the single source of truth for the time axis).
+    g_global : float or bool, optional
+        Global lineshape held for every peak: 0.0 = pure Lorentzian (default),
+        1.0 = pure Gaussian, in between = pseudo-Voigt. Pass ``False`` instead to
+        let each peak's ``g`` vary, fitted from the prior-knowledge value.
     method : {"leastsq", "least_squares"}, optional
         Fitting method. Defaults to 'leastsq' (Levenberg-Marquardt).
     initialize_with_lm : bool, optional
@@ -511,6 +516,7 @@ def fit_amares(
             MHz=mhz,
             sw=sw,
             deadtime=deadtime,
+            g_global=g_global,
             normalize_fid=False,
             preview=False,
         )
