@@ -305,6 +305,27 @@ def docs_all() -> None:
     docs_notebooks()
 
 
+def _is_executable_page(md: Path) -> bool:
+    """
+    Report whether a MyST page carries the jupytext kernelspec nbmake needs.
+
+    Parameters
+    ----------
+    md : Path
+        The Markdown page to inspect.
+
+    Returns
+    -------
+    bool
+        True when the page opens with frontmatter declaring a ``kernelspec``.
+    """
+    text = md.read_text(encoding="utf-8")
+    if not text.startswith("---"):
+        return False
+    frontmatter = text.partition("---")[2].partition("\n---")[0]
+    return "kernelspec:" in frontmatter
+
+
 def generate_test_notebooks() -> Path:
     """
     Convert MyST Markdown notebooks to Jupyter Notebooks for testing.
@@ -350,10 +371,11 @@ def generate_test_notebooks() -> Path:
         (md, prefix / md.relative_to(root))
         for root, prefix in sources
         for md in root.rglob("*.md")
-        if root is source_dir or md.read_text().startswith("---")
+        if root is source_dir or _is_executable_page(md)
     ]
     if not md_files:
-        print(f"⚠️  Warning: No .md files found in {source_dir!s}")
+        roots = ", ".join(str(root) for root, _ in sources)
+        print(f"⚠️  Warning: No .md files found in {roots}")
         return test_dir
 
     # Wrap the md_files list in tqdm to generate a clean progress bar
