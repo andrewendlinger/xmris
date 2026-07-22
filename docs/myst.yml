@@ -151,6 +151,8 @@ project:
     # 7. Dev Diary — newest entry first
     - title: Dev Diary
       children:
+        - file: diary/2026-07-22-authoring-skills.md
+          title: The authoring skills
         - file: diary/2026-07-20-dev-diary.md
           title: A dev diary for xmris
 
