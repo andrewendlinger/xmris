@@ -352,30 +352,30 @@ def generate_test_notebooks() -> Path:
         print(f"❌ Error: Source notebook directory not found at: {source_dir!s}")
         sys.exit(1)
 
-    # Explainers under docs/explanation/ are executable notebooks too, so they
-    # join the suite. They keep their own subtree; notebooks/ stays flattened so
-    # existing test paths (autogen_notebooks/<category>/<name>.ipynb) still hold.
-    explanation_dir = project_root / "docs" / "explanation"
-    sources: list[tuple[Path, Path]] = [(source_dir, Path())]
-    if explanation_dir.exists():
-        sources.append((explanation_dir, Path("explanation")))
-
     print(f"🧹 Clearing old test notebooks in '{test_dir.name}'...")
     if test_dir.exists():
         shutil.rmtree(test_dir)
     test_dir.mkdir(parents=True, exist_ok=True)
 
-    # Only pages carrying a jupytext kernelspec can be executed by nbmake; a
-    # frontmatter-less explainer converts to a notebook with no kernel to start.
-    md_files = [
-        (md, prefix / md.relative_to(root))
-        for root, prefix in sources
-        for md in root.rglob("*.md")
-        if root is source_dir or _is_executable_page(md)
-    ]
+    # Tutorials under docs/notebooks/ are the test suite: take every one, so a
+    # notebook that lost its kernelspec fails loud in nbmake rather than silently
+    # dropping out. The tree stays flattened so existing test paths
+    # (autogen_notebooks/<category>/<name>.ipynb) still hold.
+    md_files = [(md, md.relative_to(source_dir)) for md in source_dir.rglob("*.md")]
+
+    # Explainers under docs/explanation/ join the suite too, but only once they
+    # carry a jupytext kernelspec -- a frontmatter-less explainer would convert
+    # to a notebook with no kernel to start. They keep their own subtree.
+    explanation_dir = project_root / "docs" / "explanation"
+    if explanation_dir.exists():
+        md_files += [
+            (md, Path("explanation") / md.relative_to(explanation_dir))
+            for md in explanation_dir.rglob("*.md")
+            if _is_executable_page(md)
+        ]
+
     if not md_files:
-        roots = ", ".join(str(root) for root, _ in sources)
-        print(f"⚠️  Warning: No .md files found in {roots}")
+        print(f"⚠️  Warning: No .md files found in {source_dir!s}")
         return test_dir
 
     # Wrap the md_files list in tqdm to generate a clean progress bar

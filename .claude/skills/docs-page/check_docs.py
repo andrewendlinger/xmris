@@ -24,12 +24,13 @@ import sys
 from pathlib import Path
 
 # --- genre ------------------------------------------------------------------
-# Location is genre. Diary entries belong to the `dev-diary` skill and
-# api_reference/ is generated + gitignored, so neither is checked here.
+# Location is genre: the directory segment under docs/ names it. Diary entries
+# belong to the `dev-diary` skill and api_reference/ is generated + gitignored,
+# so neither is checked here.
 GENRES = {
-    "docs/notebooks": "tutorial",
-    "docs/explanation": "explainer",
-    "docs/contributing": "guide",
+    "notebooks": "tutorial",
+    "explanation": "explainer",
+    "contributing": "guide",
 }
 SKIP_DIRS = ("_build", "api_reference", "diary")
 
@@ -40,7 +41,7 @@ HEADER_RE = re.compile(r"^(#{1,6})\s+\S")
 TARGET_RE = re.compile(r"^\(.+\)=$")
 IPYNB_LINK_RE = re.compile(r"\]\([^)]*\.ipynb[^)]*\)")
 CONFIG_SINGLETON_RE = re.compile(r"\b(ATTRS|DIMS|COORDS|VARS)\.")
-INLINE_COMMENT_RE = re.compile(r"<!--.*?-->", re.S)
+INLINE_COMMENT_RE = re.compile(r"<!--.*?-->")  # applied per line, so no DOTALL
 
 
 class Page:
@@ -49,9 +50,10 @@ class Page:
     def __init__(self, path: Path) -> None:
         self.path = path
         self.lines = path.read_text().split("\n")
-        self.genre = next(
-            (g for prefix, g in GENRES.items() if str(path).startswith(prefix)), "other"
-        )
+        # Match the genre dir as a path *segment*, not a string prefix: keeps
+        # `notebooks_old/` from reading as `notebooks/` and survives Windows
+        # separators. Same idiom as the SKIP_DIRS filter in collect().
+        self.genre = next((g for seg, g in GENRES.items() if seg in path.parts), "other")
         self.frontmatter = self._frontmatter()
         self.headers: list[tuple[int, int, str]] = []  # (lineno, depth, text)
         self.cells: list[tuple[int, str, str]] = []  # (lineno, info, body)
@@ -66,19 +68,21 @@ class Page:
                 return "\n".join(self.lines[1:i])
         return ""
 
+    @property
+    def _body_start(self) -> int:
+        """Index of the first line past the closing frontmatter ``---``."""
+        return self.frontmatter.count("\n") + 3 if self.frontmatter else 0
+
     def _scan(self) -> None:
-        start = 0
-        if self.frontmatter:
-            start = self.frontmatter.count("\n") + 3  # past the closing ---
         fence: str | None = None
         info = ""
         body: list[str] = []
         cell_start = 0
-        for i in range(start, len(self.lines)):
+        for i in range(self._body_start, len(self.lines)):
             line = self.lines[i]
             m = FENCE_RE.match(line)
             if m:
-                tok = m.group(1)[0] * 3
+                tok = m.group(1)[:3]
                 if fence is None:
                     fence, info, body, cell_start = tok, line.strip().lstrip("`~"), [], i
                 elif line.strip().startswith(fence):
@@ -95,8 +99,7 @@ class Page:
 
     def first_content_line(self) -> int | None:
         """Index of the first non-blank, non-frontmatter line."""
-        start = self.frontmatter.count("\n") + 3 if self.frontmatter else 0
-        for i in range(start, len(self.lines)):
+        for i in range(self._body_start, len(self.lines)):
             if self.lines[i].strip():
                 return i
         return None
@@ -111,10 +114,6 @@ class Page:
         while i >= 0 and not self.lines[i].strip():
             i -= 1
         return i if i >= 0 and TARGET_RE.match(self.lines[i].strip()) else None
-
-    def has_target_above(self, lineno: int) -> bool:
-        """Report whether an explicit ``(target)=`` precedes the header."""
-        return self.target_line(lineno) is not None
 
 
 def toc_files(root: Path) -> set[str]:
@@ -161,7 +160,7 @@ def check(page: Page, toc: set[str]) -> tuple[list[str], list[str]]:
     # Auto-generated slugs are numbered by document position (id-1-, id-2-),
     # so inserting one section silently renumbers every anchor below it.
     for lineno, _, text in page.headers:
-        if not page.has_target_above(lineno):
+        if page.target_line(lineno) is None:
             err(lineno, f"header {text!r} has no explicit (target)= above it")
 
     # --- dead .ipynb links --------------------------------------------------
@@ -213,10 +212,14 @@ def check(page: Page, toc: set[str]) -> tuple[list[str], list[str]]:
         if "remove-cell" not in body and CONFIG_SINGLETON_RE.search(body):
             warn(lineno, "config singleton in a visible cell -- readers see plain strings")
 
-    if page.genre == "tutorial" and not testonly:
+    # Both tutorials and explainers are executed by nbmake (test-gen walks
+    # docs/notebooks/ and docs/explanation/), so either one that runs code
+    # without asserting is a doc masquerading as a test.
+    if page.genre in ("tutorial", "explainer") and not testonly:
         code = [b for _, i, b in page.cells if i.startswith("{code-cell}")]
         if code and not any(re.search(r"^\s*(assert |np\.testing\.assert)", b, re.M) for b in code):
-            warnings.append(f"{rel}:1: tutorial runs code but asserts nothing -- a doc, not a test")
+            what = f"{page.genre} runs code but asserts nothing -- a doc, not a test"
+            warnings.append(f"{rel}:1: {what}")
 
     return errors, warnings
 
