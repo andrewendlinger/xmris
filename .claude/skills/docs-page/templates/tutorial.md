@@ -139,5 +139,5 @@ Static docs have no kernel, so live widgets need the export pattern from
    `export_widget_static(widget_factory, *args, **kwargs)` — that renders the interactive canvas
    on the site.
 
-Mind the ~2.5 MB iframe payload limit (`debug=True` to inspect) and the `xmris-close-btn` CSS-class
-rule for kernel-dependent buttons. Screenshots live in `assets/notebook-assets/`.
+Mind the ~2.5 MB iframe payload limit (`debug=True` to inspect) and the `remove-me-close-btn`
+CSS-class rule for kernel-dependent buttons. Screenshots live in `assets/notebook-assets/`.
