@@ -111,7 +111,7 @@ def _resolve_bounds(
     out: dict[str, tuple[float | None, float | None]] = {}
     cs_bounds = spec.get(f"{VARS.chem_shift}_bounds")
     out[VARS.chem_shift] = (
-        (float(cs_bounds[0]), float(cs_bounds[1]))
+        (_as_bound(cs_bounds[0]), _as_bound(cs_bounds[1]))
         if cs_bounds is not None
         else (chem_shift - shift_window, chem_shift + shift_window)
     )
@@ -131,6 +131,16 @@ def _resolve_bounds(
 def _as_bound(value: Any) -> float | None:
     """Coerce a bound endpoint, letting ``None`` mean 'open'."""
     return None if value is None else float(value)
+
+
+def _num(value: Any, default: float) -> float:
+    """Coerce an optional numeric init value, letting ``None`` mean 'use the default'.
+
+    An explicit ``None`` is treated exactly like an absent key — a plain
+    ``float(value)`` would raise ``TypeError`` on ``None``, and ``value or default``
+    would wrongly override a legitimate ``0.0``.
+    """
+    return float(default if value is None else value)
 
 
 def build_prior_knowledge(
@@ -211,12 +221,12 @@ def build_prior_knowledge(
         init[VARS.amplitude].append(float(spec[VARS.amplitude]))
         init[VARS.chem_shift].append(chem_shift)
         init[VARS.linewidth].append(float(spec[VARS.linewidth]))
-        init[_G].append(float(spec.get(_G, 0.0)))
+        init[_G].append(_num(spec.get(_G), 0.0))
         # A bare anchor name in the phase cell becomes an lmfit tie; else a number.
         if tie_phase_to is not None and name != tie_phase_to:
             init[VARS.phase].append(tie_phase_to)
         else:
-            init[VARS.phase].append(float(spec.get(VARS.phase, 0.0)))
+            init[VARS.phase].append(_num(spec.get(VARS.phase), 0.0))
 
         peak_bounds = _resolve_bounds(name, spec, chem_shift, shift_window)
         for row in _PK_ROWS:

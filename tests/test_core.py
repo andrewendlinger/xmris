@@ -1555,6 +1555,31 @@ class TestPriorKnowledgeBuilder:
         with pytest.raises(ValueError, match="not one of the peaks"):
             build_prior_knowledge(self._SPEC, tie_phase_to="Xx")
 
+    def test_none_bound_endpoint_opens_side(self):
+        """A None endpoint in `<name>_bounds` opens that side — same as the other params."""
+        text = build_prior_knowledge(
+            {
+                "PCr": {
+                    "amplitude": 1,
+                    "chem_shift": 0,
+                    "linewidth": 1,
+                    "chem_shift_bounds": (None, 1.0),
+                }
+            }
+        )
+        cs_bounds = [ln for ln in text.splitlines() if ln.startswith("chemicalshift,")][1]
+        assert ", 1.0)" in cs_bounds and "None" not in cs_bounds
+
+    def test_explicit_none_init_defaults(self):
+        """An explicit None phase/g is treated like an absent key (0.0), not a TypeError."""
+        _, init, _ = self._sections(
+            build_prior_knowledge(
+                {"PCr": {"amplitude": 1, "chem_shift": 0, "linewidth": 1, "phase": None, "g": None}}
+            )
+        )
+        assert init["phase"] == ["0.0"]
+        assert init["g"] == ["0.0"]
+
 
 # =============================================================================
 # 16. Runtime Options: strict mode (auto_convert=False)
@@ -1791,6 +1816,67 @@ class TestFittingDomain:
 
         assert not hasattr(fit_amares, "__xmris_domain__")
 
+    # --- hardening fixes (2026-07 review) ---
+
+    def test_fractional_dwelltime_reconstruction(self, pk_path):
+        """A (sw, n) whose `dwelltime * n` rounds up reconstructs length-exactly.
+
+        `np.arange(0, dwelltime * n, dwelltime)` yields n+1 samples here (sw=3001.2,
+        n=60), which pre-fix broadcast-crashed the model assignment.
+        """
+        sw, n = 3001.2, 60
+        t = np.arange(n) / sw
+        sig = 10.0 * np.exp(-15.0 * np.pi * t) * np.exp(2j * np.pi * 0.0 * self._MHZ * t)
+        sig += 5.0 * np.exp(-20.0 * np.pi * t) * np.exp(2j * np.pi * -7.5 * self._MHZ * t)
+        fid = xr.DataArray(
+            sig,
+            dims=[DIMS.time],
+            coords={DIMS.time: t},
+            attrs={str(ATTRS.reference_frequency): self._MHZ, str(ATTRS.carrier_ppm): 0.0},
+        )
+        ds = fid.xmr.fit_amares(prior_knowledge=pk_path, method="least_squares", num_workers=1)
+        assert ds[VARS.fit].sizes[DIMS.time] == n  # length-exact; pre-fix raised ValueError
+
+    def test_fit_keeps_referencing_attrs(self, fid, pk_path):
+        """fit/residuals keep `reference_frequency`, so they convert like `data` (ppm-in)."""
+        ds = self._fit(fid.xmr.to_spectrum().xmr.to_ppm(), pk_path)
+        for var in (VARS.fit, VARS.residuals):
+            assert ATTRS.reference_frequency in ds[var].attrs
+        ds[VARS.fit].xmr.to_hz()  # ppm -> Hz needs the calibration; must not raise
+
+    def test_stack_dim_name_collision(self, fid, pk_path):
+        """An input dim literally named 'spectrum' fits without a stack-name collision."""
+        stack = xr.concat([fid, fid], dim="spectrum").assign_attrs(fid.attrs)
+        ds = stack.xmr.fit_amares(prior_knowledge=pk_path, method="least_squares", num_workers=1)
+        assert ds[VARS.amplitude].sizes["spectrum"] == 2
+
+    def test_coord_long_names(self, fid, pk_path):
+        """The new metabolite/parameter coords carry their vocab long_name (Commandment 7)."""
+        ds = self._fit(fid, pk_path)
+        assert ds[DIMS.metabolite].attrs.get("long_name") == "Metabolite"
+        assert ds[DIMS.parameter].attrs.get("long_name") == "Parameter"
+
+    def test_dataframe_prior_knowledge(self, fid, pk_path):
+        """A labels-as-index DataFrame fits; a RangeIndex frame is refused clearly."""
+        import io
+
+        import pandas as pd
+
+        csv = build_prior_knowledge(self._DICT_PK)
+        df_index = pd.read_csv(io.StringIO(csv), index_col=0)  # canonical: labels as index
+        ds = fid.xmr.fit_amares(prior_knowledge=df_index, method="least_squares", num_workers=1)
+        assert np.all(np.isfinite(ds[VARS.amplitude].values))
+        df_range = pd.read_csv(io.StringIO(csv))  # RangeIndex — labels in a column
+        with pytest.raises(ValueError, match="row labels as its index"):
+            fid.xmr.fit_amares(prior_knowledge=df_range, num_workers=1)
+
+    def test_all_nan_signal_no_crash(self, fid, pk_path):
+        """An all-NaN (fully masked) input degrades to NaN, not an `nanargmax` crash."""
+        nan_fid = xr.full_like(fid, np.nan)
+        stack = xr.concat([nan_fid, nan_fid], dim="voxel").assign_attrs(fid.attrs)
+        ds = stack.xmr.fit_amares(prior_knowledge=pk_path, num_workers=1)  # must not raise
+        assert np.all(np.isnan(ds[VARS.amplitude].values))
+
 
 class TestFittingVerbosity:
     """Pin BUG-010: `verbose=False` silences pyAMARES, and it holds in workers.
@@ -1828,18 +1914,24 @@ class TestFittingVerbosity:
         assert pa_logger.DEFAULT_LOG_LEVEL == "info"
 
     def test_muted_warnings(self):
-        """The routine scipy/pyAMARES warnings are muted unless verbose."""
+        """Only the known nuisances are muted; genuinely-new warnings still surface.
+
+        The filters are message + module targeted, so a novel warning is NOT swallowed
+        by the default quiet path (the old blanket ``simplefilter`` would have eaten
+        it). Muting of the real scipy/pyAMARES messages is pinned end-to-end by
+        ``test_fit_silent_when_not_verbose``.
+        """
         from xmris.fitting.amares import _muted_warnings
 
         with warnings.catch_warnings(record=True) as rec:
             warnings.simplefilter("always")
             with _muted_warnings(False):
-                warnings.warn("scipy xtol", UserWarning)
-                warnings.warn("divide by zero", RuntimeWarning)
-            assert rec == []  # both suppressed
+                warnings.warn("something genuinely new happened", RuntimeWarning)
+                warnings.warn("a novel user warning", UserWarning)
+            assert len(rec) == 2  # neither novel warning was blanket-muted
             with _muted_warnings(True):
-                warnings.warn("shown", UserWarning)
-            assert len(rec) == 1  # passed through when verbose
+                warnings.warn("shown when verbose", UserWarning)
+            assert len(rec) == 3  # verbose passes everything through
 
     def test_fit_silent_when_not_verbose(self):
         """A fit that trips the divide-by-zero warning leaks nothing at verbose=False."""

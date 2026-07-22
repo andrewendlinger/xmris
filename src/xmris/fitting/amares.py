@@ -27,11 +27,12 @@ from tqdm.auto import tqdm
 
 from xmris.core.config import ATTRS, DIMS, SPECTRAL_DIMS, TIME_DIMS, VARS
 from xmris.core.options import OPTIONS
-from xmris.core.utils import _check_dims
+from xmris.core.utils import _check_dims, as_variable
 from xmris.core.validation import (
     _coerce_to_domain,
     _domain_of,
     _restore_domain,
+    _RestoreState,
     _strict_domain_error,
 )
 from xmris.fitting.prior_knowledge import build_prior_knowledge
@@ -72,8 +73,21 @@ def _muted_warnings(verbose: bool):
         yield
         return
     with warnings.catch_warnings():
-        warnings.simplefilter("ignore", UserWarning)
-        warnings.simplefilter("ignore", RuntimeWarning)
+        # Target the exact expected messages by regex + module, so genuinely-new
+        # warnings (overflow, invalid-value, deprecations) still surface even in the
+        # default quiet path — instead of muting the whole categories.
+        warnings.filterwarnings(
+            "ignore",
+            message=r"Setting `[xf]tol` below the machine epsilon",
+            category=UserWarning,
+            module=r"scipy\.optimize\._lsq\.least_squares",
+        )
+        warnings.filterwarnings(
+            "ignore",
+            message=r"divide by zero encountered in scalar divide",
+            category=RuntimeWarning,
+            module=r"pyAMARES\.kernel\.fid",
+        )
         yield
 
 
@@ -119,9 +133,9 @@ def _fit_dataset_safe(
     This internal helper function performs the fitting of a single spectrum. It
     deep copies the shared FID object to avoid race conditions and state corruption
     during multiprocessing. If the fitting process raises an exception (e.g., due
-    to non-convergence or bad data), it catches the error and returns a DataFrame
-    populated with NaNs. This ensures that downstream array concatenations in
-    N-dimensional datasets do not fail due to mismatched shapes or `None` types.
+    to non-convergence or bad data), it catches the error and returns ``None``; the
+    caller treats a ``None`` result exactly like an all-NaN or zero-signal fit (the
+    NaN sentinel), so downstream assembly stays uniform.
 
     Parameters
     ----------
@@ -146,10 +160,10 @@ def _fit_dataset_safe(
 
     Returns
     -------
-    pandas.DataFrame
+    pandas.DataFrame or None
         A DataFrame containing the fitting results (e.g., amplitude, linewidth,
         chemical shift, phase, CRLB, SNR) for the current dataset. If the fit
-        fails, returns a structurally identical DataFrame filled with NaNs.
+        fails, returns ``None`` (the caller's NaN sentinel).
     """
     # Re-apply verbosity here so it also holds in joblib worker processes.
     _set_verbosity(verbose)
@@ -176,30 +190,10 @@ def _fit_dataset_safe(
             return result_table
 
     except Exception as e:
-        # Silent unless verbose — the NaN sentinel is the signal to check (isnan).
-        logger.warning("AMARES fit failed on a voxel; returning NaNs. Error: %s", e)
-        if hasattr(FIDobj_shared, "peaklist"):
-            cols = [
-                "amplitude",
-                "sd",
-                "CRLB(%)",
-                "chem shift(ppm)",
-                "sd(ppm)",
-                "CRLB(cs%) ",
-                "LW(Hz)",
-                "sd(Hz)",
-                "CRLB(LW%)",
-                "phase(deg)",
-                "sd(deg)",
-                "CRLB(phase%)",
-                "g",
-                "g_sd",
-                "g (%)",
-                "SNR",
-            ]
-            dummy_df = pd.DataFrame(np.nan, index=FIDobj_shared.peaklist, columns=cols)
-            dummy_df.index.name = "name"
-            return dummy_df
+        # Silent unless verbose — the None sentinel is the signal to check. The
+        # caller treats None, an all-NaN frame, and a zero-signal voxel identically,
+        # so there is no need to fabricate an all-NaN result table here.
+        logger.warning("AMARES fit failed on a voxel; returning None. Error: %s", e)
         return None
 
 
@@ -293,7 +287,9 @@ def _run_parallel_fitting_optimal(
     return result_array
 
 
-def _resolve_fit_domain(da: xr.DataArray, dim: str) -> tuple[xr.DataArray, str, tuple | None]:
+def _resolve_fit_domain(
+    da: xr.DataArray, dim: str
+) -> tuple[xr.DataArray, str, _RestoreState | None]:
     """Return a time-domain FID to fit, its time dim, and how to restore the input.
 
     AMARES fits in the time domain. This funnels the caller's data there while
@@ -340,13 +336,26 @@ def _resolve_pk_file(
 
     pyAMARES's parser takes only a CSV/XLSX *path*, so an in-memory spec is written
     to a temporary CSV (removed on exit). A dict is validated and built via
-    :func:`build_prior_knowledge`; a DataFrame (already in pyAMARES's positional
-    layout) is serialized as-is; a path is checked for existence and used directly.
+    :func:`build_prior_knowledge`; a DataFrame with the pyAMARES row labels as its
+    index (columns = peak names, as ``pd.read_csv(path, index_col=0)`` yields) is
+    serialized as-is; a path is checked for existence and used directly.
     """
     text: str | None = None
     if isinstance(prior_knowledge, Mapping):
         text = build_prior_knowledge(prior_knowledge)
     elif isinstance(prior_knowledge, pd.DataFrame):
+        # pyAMARES reads the file with `pd.read_csv(index_col=0)`, so the row labels
+        # must be the DataFrame index (columns = peak names). Reject a mis-shaped
+        # frame loudly instead of letting `to_csv()` silently mangle the layout (a
+        # RangeIndex frame would prepend a spurious 0,1,2,... column).
+        required = {"amplitude", "chemicalshift", "linewidth"}
+        if not required.issubset(set(map(str, prior_knowledge.index))):
+            raise ValueError(
+                "prior_knowledge DataFrame must have pyAMARES's row labels as its "
+                "index (columns = peak names), e.g. `pd.read_csv(path, index_col=0)`. "
+                "Did you read the CSV without index_col=0? Pass the path directly, or "
+                "build the spec with xmris.fitting.build_prior_knowledge."
+            )
         text = prior_knowledge.to_csv()
 
     if text is None:
@@ -479,12 +488,17 @@ def fit_amares(
     if carrier is None:
         carrier = float(da_fid.attrs.get(ATTRS.carrier_ppm, 0.0))
 
-    # 3. Flatten the N-dimensional FID to a 2D array (n_spectra x time).
+    # 3. Flatten the N-dimensional FID to a 2D array (n_spectra x time). The stack
+    #    dim is transient (unstacked away before output); pick a name that cannot
+    #    collide with an input dim literally called "spectrum".
+    stack_dim = "spectrum"
+    while stack_dim in da_fid.dims:
+        stack_dim = "_" + stack_dim
     other_dims = [d for d in da_fid.dims if d != dim]
     if other_dims:
-        stacked_da = da_fid.stack(spectrum=other_dims).transpose("spectrum", dim)
+        stacked_da = da_fid.stack({stack_dim: other_dims}).transpose(stack_dim, dim)
         fid_arrs = stacked_da.values
-        stacked_coords = stacked_da.coords["spectrum"]
+        stacked_coords = stacked_da.coords[stack_dim]
     else:
         fid_arrs = np.atleast_2d(da_fid.values)
         stacked_coords = None
@@ -508,7 +522,10 @@ def fit_amares(
         noise_region = np.std(fid_norm[:, -noise_pts:], axis=1)
         with np.errstate(divide="ignore", invalid="ignore"):
             snr_array = np.where(noise_region == 0, 0, signal_region / noise_region)
-        best_idx = int(np.nanargmax(snr_array))
+        # An all-NaN SNR (e.g. every spectrum's signal region is masked/NaN) would
+        # make np.nanargmax raise; fall back to spectrum 0 so the fit still degrades
+        # to the NaN sentinel rather than crashing before any fitting.
+        best_idx = 0 if np.all(np.isnan(snr_array)) else int(np.nanargmax(snr_array))
         template_fid = fid_norm[best_idx]
         logger.info(
             "Auto-selected FID index %d for initialization (SNR: %.2f)",
@@ -564,6 +581,14 @@ def fit_amares(
     first_ok = next(
         (df for df in result_list if df is not None and not df.isna().all().all()), None
     )
+    if first_ok is None and np.any(spectrum_max > 0):
+        # Every spectrum that had signal failed to fit — escalate above the per-voxel
+        # warnings (quiet by default) so a fully-failed batch is never silently NaN.
+        logger.error(
+            "All %d AMARES fits failed; returning an all-NaN Dataset. "
+            "Re-run with verbose=True to see the per-voxel errors.",
+            n_spectra,
+        )
     metabolites = np.asarray(first_ok.index.values if first_ok is not None else shared_obj.peaklist)
     n_metab = len(metabolites)
 
@@ -574,12 +599,18 @@ def fit_amares(
     fit_norm = np.full((n_spectra, n_time), np.nan, dtype=complex)
 
     dwelltime = 1.0 / sw
-    timeaxis = np.arange(0, dwelltime * n_time, dwelltime) + deadtime
+    # Length-exact axis: `np.arange(0, dwelltime * n_time, dwelltime)` can round to
+    # n_time +/- 1 samples for some (sw, n_time), which would broadcast-crash the
+    # reconstruction assignment below.
+    timeaxis = deadtime + np.arange(n_time) * dwelltime
 
     for i, df in enumerate(result_list):
         # No signal to fit, a hard failure, or an all-NaN fit -> keep the NaN sentinel.
         if spectrum_max[i] == 0 or df is None or df.isna().all().all():
             continue
+        # Align rows to the canonical metabolite order so per-spectrum values can
+        # never be positionally mis-mapped if pyAMARES returns rows in another order.
+        df = df.reindex(metabolites)
         for key, col in _VALUE_COLS.items():
             if col in df.columns:
                 value_out[key][i, :] = df[col].values
@@ -608,24 +639,29 @@ def fit_amares(
     ds = xr.Dataset()
     ds[VARS.original_data] = da  # the input, exactly as passed (FID or spectrum)
 
+    # Build the new coordinates via `as_variable` so they carry their vocab metadata
+    # (long_name), per Commandment 7.
+    metab_coord = as_variable(DIMS.metabolite, DIMS.metabolite, metabolites)
+    param_coord = as_variable(DIMS.parameter, DIMS.parameter, np.asarray(_PARAMETERS))
+
     if other_dims:
         fit_da = (
             xr.DataArray(
                 fit_arrs,
-                dims=["spectrum", dim],
-                coords={"spectrum": stacked_coords, dim: da_fid.coords[dim]},
+                dims=[stack_dim, dim],
+                coords={stack_dim: stacked_coords, dim: da_fid.coords[dim]},
             )
-            .unstack("spectrum")
+            .unstack(stack_dim)
             .transpose(*da_fid.dims)
         )
-        param_dims = ["spectrum", DIMS.metabolite]
-        param_coords = {"spectrum": stacked_coords, DIMS.metabolite: metabolites}
+        param_dims = [stack_dim, DIMS.metabolite]
+        param_coords = {stack_dim: stacked_coords, DIMS.metabolite: metab_coord}
         out_param_dims = tuple(other_dims) + (DIMS.metabolite,)
 
         def _param_var(arr: np.ndarray) -> xr.DataArray:
             return (
                 xr.DataArray(arr, dims=param_dims, coords=param_coords)
-                .unstack("spectrum")
+                .unstack(stack_dim)
                 .transpose(*out_param_dims)
             )
 
@@ -634,14 +670,14 @@ def fit_amares(
                 xr.DataArray(
                     arr,
                     dims=[*param_dims, DIMS.parameter],
-                    coords={**param_coords, DIMS.parameter: _PARAMETERS},
+                    coords={**param_coords, DIMS.parameter: param_coord},
                 )
-                .unstack("spectrum")
+                .unstack(stack_dim)
                 .transpose(*out_param_dims, DIMS.parameter)
             )
     else:
         fit_da = xr.DataArray(fit_arrs[0], dims=[dim], coords={dim: da_fid.coords[dim]})
-        param_coords = {DIMS.metabolite: metabolites}
+        param_coords = {DIMS.metabolite: metab_coord}
 
         def _param_var(arr: np.ndarray) -> xr.DataArray:
             return xr.DataArray(arr[0], dims=[DIMS.metabolite], coords=param_coords)
@@ -650,7 +686,7 @@ def fit_amares(
             return xr.DataArray(
                 arr[0],
                 dims=[DIMS.metabolite, DIMS.parameter],
-                coords={DIMS.metabolite: metabolites, DIMS.parameter: _PARAMETERS},
+                coords={DIMS.metabolite: metab_coord, DIMS.parameter: param_coord},
             )
 
     # Restore the fit to the caller's representation (ppm in -> ppm out). The model
@@ -658,10 +694,19 @@ def fit_amares(
     fit_da = fit_da.assign_attrs(dict(da.attrs))
     if restore_state is not None:
         fit_da = _restore_domain(fit_da, TIME_DIMS, restore_state)
-    fit_da.attrs = {}
+    # Keep only the physical calibration needed to interpret the fit's own axis (so
+    # `ds["fit"].xmr.to_ppm()`/`to_fid()` work like `ds["data"]`); drop stale input
+    # processing lineage (phase_p0, apodization_lb, ...) that the synthetic model
+    # does not carry.
+    _calib = {
+        k: da.attrs[k] for k in (ATTRS.reference_frequency, ATTRS.carrier_ppm) if k in da.attrs
+    }
+    fit_da.attrs = _calib
 
     ds[VARS.fit] = fit_da
-    ds[VARS.residuals] = ds[VARS.original_data] - ds[VARS.fit]
+    # xarray drops attrs on binary ops; re-attach the calibration on the RHS so the
+    # residuals are interpretable in their own domain too.
+    ds[VARS.residuals] = (ds[VARS.original_data] - ds[VARS.fit]).assign_attrs(_calib)
 
     for var, arr in value_out.items():
         ds[var] = _param_var(arr)

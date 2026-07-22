@@ -811,12 +811,9 @@ class XmrisAccessor(
         ImportError
             If the `pyAMARES` package is not installed.
         """
-        try:
-            from xmris.fitting.amares import fit_amares as _internal_fit_amares
-        except ImportError as e:
-            from xmris.fitting import MISSING_FITTING_DEP_MSG
-
-            raise ImportError(MISSING_FITTING_DEP_MSG) from e
+        # Routed through the package resolver, whose __getattr__ raises the friendly
+        # MISSING_FITTING_DEP_MSG ImportError when the optional pyAMARES dep is absent.
+        from xmris.fitting import fit_amares as _internal_fit_amares
 
         return _internal_fit_amares(
             self._obj,
