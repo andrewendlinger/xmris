@@ -14,7 +14,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Documentation style
 
-These four rules govern everything under `docs/` — explanation articles, notebooks, diary entries, and edits to any of them. This section is their single source of truth; the `dev-diary` and `docs-page` skills apply them, they don't restate them. *Exception: guides under `docs/contributing/` are exempt from the motivated-narrative rule — a numbered list of commands is the right shape for a setup page.*
+These four rules govern everything under `docs/` — explanation articles, tutorials, diary entries, and edits to any of them. This section is their single source of truth; the `dev-diary` and `docs-page` skills route here for the rules and restate only the one exception that binds their own genre. *Exception: guides under `docs/contributing/` are exempt from the motivated-narrative rule — a numbered list of commands is the right shape for a setup page.*
 
 - **Motivated narrative, never a FAQ.** One driving question the reader already has, with every decision arriving as the answer to a tension they just felt. A cold "Why X?" heading makes a sound decision read as an assertion to accept. Concise and conversational; deep or tangential rationale goes in a `:::{dropdown}`, off the main line of reasoning.
 - **One home per concept.** Consolidate in whichever direction fits — "where does this belong?" beats "who had it first." Editing and thinning existing pages is expected work, not scope creep. Say what you moved in the PR body. *Exception: `docs/diary/` entries are dated records, not homes — two entries may touch one concept without either owning it.*
@@ -45,7 +45,7 @@ Ruff: line length 100, NumPy docstring convention. Public functions need fully-t
 ## Testing strategy
 
 - Architecture/config invariants: standard pytest in `tests/test_core.py`.
-- Math/science behavior: MyST `.md` notebooks in `docs/notebooks/` **are** the tests. `uv run test` converts them to `.ipynb` under `tests/autogen_notebooks/` (gitignored) and runs them via nbmake.
+- Math/science behavior: MyST `.md` notebooks **are** the tests. `uv run test` converts them to `.ipynb` under `tests/autogen_notebooks/` (gitignored) and runs them via nbmake. `test-gen` walks `docs/notebooks/` (tutorials) **and** `docs/explanation/` (explainers that carry a jupytext kernelspec, landing under `autogen_notebooks/explanation/`) — so a live claim in an explainer is executed and asserted like any tutorial cell.
   - Tag pure-assert cells `# %% tags=["remove-cell"]` so nbmake executes them but the rendered docs hide them.
   - Files prefixed `testonly_` are test-only (never rendered).
 

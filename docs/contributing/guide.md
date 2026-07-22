@@ -8,6 +8,8 @@ To keep the codebase clean and the documentation pristine, we follow a modern "d
 
 > **Canonical rules:** For the authoritative architecture rules (the "8 Commandments") and current code templates, see [`ai_context.md`](./ai_context.md). Where this guide differs from that document, `ai_context.md` wins.
 
+> **Working with Claude Code?** Most of this workflow is encoded in four authoring skills under `.claude/skills/` — `xmr-method`, `xmr-widget`, `docs-page`, and `dev-diary`. See [The authoring skills](../diary/2026-07-22-authoring-skills.md) for what each does and which canonical doc it defers to.
+
 ### Step 1: Write the Standalone Function
 
 Functions live in specific, nested domain modules (e.g., `xmris.processing.fid`, `xmris.vendor.bruker`). **Respect the physical domain:** if an operation is a frequency-domain manipulation, it belongs in `xmris.processing.phase` or `fourier`, not mixed into time-domain FID scripts.
@@ -46,7 +48,7 @@ Expose your function through the `.xmr` namespace in `src/xmris/core/accessor.py
 
 ### Step 3: Create the Tutorial-Test (Jupytext)
 
-We don't use standard `test_*.py` files. Your tutorials *are* the test suite. Create a Jupytext notebook in `docs/notebooks/<area>/` (`md:myst` format). We edit `.md`/`.ipynb` interchangeably (kept in sync by Jupytext) but commit only the `.md` file.
+We don't use standard `test_*.py` files. Your tutorials *are* the test suite. Create a Jupytext notebook in `docs/notebooks/<area>/` (`md:myst` format). We edit `.md`/`.ipynb` interchangeably (kept in sync by Jupytext) but commit only the `.md` file. (Concept explainers under `docs/explanation/` are executable too — if one carries a kernelspec, `uv run test` runs its cells, so its live claims must assert like any tutorial.)
 
 1. **Explain & Demonstrate:** Explain the math/physics and show the function in action with `matplotlib`.
 2. **Verify Math & Metadata:** Use `assert` statements to prove the math is correct, but **also assert that dimensions, coordinates, and attributes were preserved.**
@@ -59,6 +61,7 @@ We don't use standard `test_*.py` files. Your tutorials *are* the test suite. Cr
 1. **API Docs:** Run `uv run docs-api`. This triggers `quartodoc` to scrape your new function's docstring into the API Reference.
 2. **Navigation:** Add your new tutorial to the `nav` section in `myst.yml`.
 3. **Verify Build:** Run `myst build --html` inside `docs/` — a one-shot render check, and the same command CI runs. (`uv run docs` serves a live preview for browsing and never exits, so it is not a build check.)
+4. **Check house rules:** Run `uv run python .claude/skills/docs-page/check_docs.py docs/<path>/<page>.md`. It catches what the build stays silent about — a missing `(target)=`, a dead `.ipynb` link, a drifted kernel name, a page absent from the TOC.
 
 
 ### Step 5: Tests
