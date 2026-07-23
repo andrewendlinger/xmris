@@ -6,11 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Architecture — read before writing library code
 
-@docs/contributing/ai_context.md defines the strict architectural rules (the "8 Commandments") and code templates. Follow it for any code under `src/xmris/`. Key points:
-
-- Use the config singletons `ATTRS`/`DIMS`/`COORDS`/`VARS` from `xmris.core.config` — never hardcode dim/attr strings inside the package. This applies to library internals only; user-facing examples may use plain strings like `"time"`.
-- Do NOT use the legacy `xmris.config` `DEFAULTS` in new code — it is a deprecated shim (importing it emits a `DeprecationWarning`). `core.config` is the single source of truth.
-- If a new function needs a dim/coord/attr not already in the vocabulary, add it to `config.py` and explicitly flag the new term to the user.
+@docs/contributing/contract.md is the Architecture Contract — the numbered Commandments every change under `src/xmris/` must obey, each with its enforcement and live exemplars. Follow it for any library code; where another page differs, the contract wins.
 
 ## Documentation style
 
@@ -21,7 +17,7 @@ These four rules govern everything under `docs/` — explanation articles, tutor
 - **Every article stands alone.** Readers arrive from search and deep links, not by walking the TOC. Each page must read start to finish on its own, so cross-reference rather than depend silently, and keep the orienting recap when you thin a page. Declare a hard prerequisite in a `seealso` at the top.
 - **The MyST palette carries the argument.** Mermaid, admonitions, dropdowns, tables, LaTeX, executable `code-cell`s — reach for the one that does real work (a decision tree drawn as a flowchart is checkable at a glance; the same tree in prose is not). Nothing decorative. Stay inside the palette the docs already use.
 
-Reader-facing prose uses plain strings (`"time"`, `"frequency"`), per the library-internals-only rule above. `ATTRS`/`DIMS`/`COORDS` appear only in passages explicitly addressed to contributors, or inside hidden test cells.
+Reader-facing prose uses plain strings (`"time"`, `"frequency"`), per Commandment 4's library-internals-only rule. `ATTRS`/`DIMS`/`COORDS` appear only in passages explicitly addressed to contributors, or inside hidden test cells.
 
 ## Significant changes get a diary entry
 

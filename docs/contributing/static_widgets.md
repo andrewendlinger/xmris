@@ -16,10 +16,10 @@ kernelspec:
 browser-based UI components (phase correction, spectra scrolling, apodization)
 directly inside Jupyter Notebooks. This page is the **canonical reference for
 authoring widgets** — the `xmr-widget` skill defers to it, the same way the
-`xmr-method` skill defers to [AI Context](./ai_context.md).
+`xmr-method` skill defers to [The Architecture Contract](./contract.md).
 
 Widgets sit in the visualization layer but must still respect the project's
-["8 Commandments"](./ai_context.md). This document adds the widget-specific
+[Commandments](./contract.md). This document adds the widget-specific
 conventions on top.
 
 (contribute-widget-skill)=

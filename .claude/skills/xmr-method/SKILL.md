@@ -13,8 +13,8 @@ contracts, a fix to the math. Both paths use the same rules; jump to
 
 Two documents own the rules, and this skill routes to them rather than restating:
 
-- **`docs/contributing/ai_context.md`** — the 8 Commandments, `_check_dims`, `as_variable`, and the
-  annotated `example_func` template. All of it applies.
+- **`docs/contributing/contract.md`** — the Architecture Contract: the Commandments, `_check_dims`,
+  `as_variable`, and the real exemplars (`apodize_exp`, `to_ppm`) quoted live. All of it applies.
 - **`docs/explanation/domains.md`** — which decorator your function gets. It carries the full
   taxonomy and a mermaid decision tree (§ *For contributors: declaring a function's domain*). Read
   it before choosing; do not guess from the table below.

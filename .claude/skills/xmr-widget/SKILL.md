@@ -17,8 +17,8 @@ to it rather than restating. It owns the anatomy (§1, with full `.py`, `.js` an
 skeletons), the authoring conventions (§2), the docs-rendering pattern (§3), the size limits (§4),
 and testing (§5). Read it before writing anything.
 
-`docs/contributing/ai_context.md` — the 8 Commandments — still applies underneath, with one
-deliberate exception noted below.
+`docs/contributing/contract.md` — the Architecture Contract's Commandments — still applies
+underneath, with one deliberate exception noted below.
 
 ## 1. What routes here
 

@@ -48,8 +48,8 @@ uv run <command>
   every command actually runs before committing — a guide is judged entirely on whether its steps
   work.
 - **Point at the canonical source instead of restating it.** `guide.md` already does this well:
-  *"For the authoritative architecture rules … see `ai_context.md`. Where this guide differs, 
-  `ai_context.md` wins."* Duplicated rules drift; a pointer cannot.
+  *"Where any contributor page differs from The Architecture Contract (`contract.md`), that page
+  wins."* Duplicated rules drift; a pointer cannot.
 - **Say what a step is for.** One clause of motivation per step is not narrative, it is the
   difference between a runnable list and a cargo cult.
 - A troubleshooting table beats scattered warnings — it is the shape a reader scans when stuck.

@@ -1,7 +1,8 @@
 # Template: a transform, end to end
 
-`docs/contributing/ai_context.md` owns the annotated `example_func` skeleton — the validation
-order, `_check_dims`, `as_variable`, the lineage rule. **Read that first; it is not repeated here.**
+`docs/contributing/contract.md` owns the rules — the numbered Commandments, `_check_dims`,
+`as_variable`, the lineage rule — and quotes the real exemplars (`apodize_exp`, `to_ppm`) live
+from the source. **Read that first; it is not repeated here.**
 
 This file carries what it doesn't: which decorator stack to copy, the accessor delegator, and the
 export step.
@@ -71,8 +72,8 @@ enforces this automatically — it is the one rule you cannot get wrong silently
 
 ## 2. Write the accessor delegator
 
-The method is a **thin forwarder** — no logic, ever. Two docstring styles are in use; both are
-fine, so match the mixin you are landing in.
+The method is a **thin forwarder** — no logic, ever (Commandment 9). Two docstring styles are in
+use; both are fine, so match the mixin you are landing in.
 
 Terse, for self-evident signatures (`src/xmris/core/accessor.py:343`):
 

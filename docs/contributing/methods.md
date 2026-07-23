@@ -7,8 +7,8 @@ touching the free function, its accessor delegator, the package exports, and a n
 proves the math. The rules that hold all of that together are not restated here; they live where
 they can be enforced:
 
-- [**AI Context**](./ai_context.md) — the eight Commandments, `_check_dims`, `as_variable`, and the
-  annotated `example_func` template. All of it applies.
+- [**The Architecture Contract**](./contract.md) — the Commandments, `_check_dims`, `as_variable`,
+  and the real exemplars quoted live from the source. All of it applies.
 - [**The Two Domains**](../explanation/domains.md) — which decorator a function gets (funnel,
   domain-preserving, or none), with the decision tree.
 - [**The Controlled Vocabulary**](../explanation/vocabulary.md) — why you never hardcode `"time"`,

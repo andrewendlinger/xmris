@@ -163,6 +163,8 @@ project:
       children:
         - file: contributing/guide.md
           title: Contributing
+        - file: contributing/contract.md
+          title: The Architecture Contract
         - file: contributing/setup.md
           title: Environment Setup
         - title: Workflows
@@ -177,8 +179,6 @@ project:
               title: Write a dev-diary entry
             - file: contributing/publishing.md
               title: Publishing
-        - file: contributing/ai_context.md
-          title: AI Context
 
 site:
   template: book-theme

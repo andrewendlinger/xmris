@@ -5,7 +5,7 @@
 
 Every change to xmris has to clear the same stack of contracts at once. A new function for examples has to honour
 
-- [eight Commandments](../contributing/ai_context.md)
+- [eight Commandments](../contributing/contract.md)
 - the right [domain decorator](../explanation/domains.md)
 - the canonical [config vocabulary](../explanation/vocabulary.md).
 

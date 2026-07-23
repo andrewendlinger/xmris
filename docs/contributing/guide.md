@@ -10,8 +10,8 @@ change you are making**. Find your row and follow the page it points to:
 
 | You are adding… | Start here | It defers to |
 |---|---|---|
-| A library function — transform, loader, or fit | [Add a processing method](#contribute-methods) | [AI Context](./ai_context.md), [The Two Domains](../explanation/domains.md) |
-| An interactive widget — a UI over the maths | [Add a widget](#contribute-widget) | [AI Context](./ai_context.md) |
+| A library function — transform, loader, or fit | [Add a processing method](#contribute-methods) | [The Architecture Contract](./contract.md), [The Two Domains](../explanation/domains.md) |
+| An interactive widget — a UI over the maths | [Add a widget](#contribute-widget) | [The Architecture Contract](./contract.md) |
 | A docs page — tutorial, explainer, or guide | [Write a docs page](#contribute-docs) | Documentation style |
 | The record of a significant decision | [Write a dev-diary entry](#contribute-dev-diary) | [A dev diary for xmris](#diary-about) |
 
@@ -26,7 +26,7 @@ flowchart LR
     C2["Widget"] --> W["xmr-widget"]
     C3["Docs page"] --> P["docs-page"]
     C4["Decision record"] --> V["dev-diary"]
-    M --> A["AI Context — 8 Commandments"]
+    M --> A["Architecture Contract — the Commandments"]
     W --> A
     P --> H["Documentation style"]
     V --> H
@@ -48,5 +48,5 @@ that owns it, obeying the same "one home per concept" rule these docs preach.
 2. Make your change following the page for its kind, above.
 3. [**Publish**](#contribute-release) — only when you are cutting a release.
 
-Where any contributor page differs from [`ai_context.md`](./ai_context.md), that document wins: it
-is the authoritative architecture contract, and the skills defer to it too.
+Where any contributor page differs from [The Architecture Contract](./contract.md), that page
+wins: it is the authoritative rule set, and the skills defer to it too.

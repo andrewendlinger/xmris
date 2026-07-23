@@ -153,6 +153,6 @@ does the job. (Full deliberation: [issue #65](https://github.com/andrewendlinger
 ## Adding a word
 
 Extending xmris and need a name that isn't there yet? Add it to `xmris.core.config` — never reach for
-a bare string in package code (see the [contributor guide](../contributing/ai_context.md)). One new
+a bare string in package code (see [The Architecture Contract](../contributing/contract.md)). One new
 `XmrisTerm`, and the whole package can speak the new word — with the freeze and the uniqueness check
 keeping it honest from the moment it exists.
