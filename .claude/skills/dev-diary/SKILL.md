@@ -13,6 +13,11 @@ It is not a reference page. Its two passes serve two readers who never meet:
 | **1** | first commit on the branch, straight from the approved plan | **the user, now** — reviewing on the rendered site | one screen: problem → decision → shape → what's assumed |
 | **2** | last commit on the branch | whoever asks *"why is it like this?"* later | same entry, corrected, plus what actually changed |
 
+The `Dev Diary` group also has **one evergreen page** — `docs/diary/about.md` ("A dev diary for
+xmris") — that tells readers *what the diary is*. It is **not** an entry: no `Last edited` line, no
+assumptions block, no reconciliation, and it stays pinned at the **top** of the group. This skill
+governs the dated entries **below** it; touch `about.md` only when the diary's own workflow changes.
+
 Pass 1 exists because the plan file is precise but heavy — right for executing, wrong for approving.
 **Never restate the plan's steps.** If the entry reads like a second plan, it has failed.
 
@@ -81,17 +86,21 @@ sketching the call site you *wish* existed, which is design work in its own righ
 
 | Job in the argument | Feature |
 |---|---|
-| Pass state (planned / built) | `{note}` status banner — **required**, first block on the page |
+| When the entry was last touched | a muted `Last edited:` line — **required**, directly under the H1 |
 | The decision, in one sentence | `{important}` |
 | The shape: states, or a choice a contributor faces | `{mermaid}` |
+| The call site you wish existed (pass 1) | a static `python` block — a small user story |
 | A contract surface | markdown table |
 | Guardrail, one-way door, footgun | `{warning}` |
 | An approach *we* rejected | `:::{dropdown} Why not <X>?` |
 | An approach *the reader* would try | paired ❌ / ✅ blocks, on the main line |
 | Unproven claim (pass 1 only) | `:::{attention} Assumptions to verify` |
 
-The status banner is not decoration: skills are re-read cold, so it is how a later invocation knows
-which pass it is in.
+There is no rendered "planned / built" banner. A cold re-invocation tells the passes apart
+structurally: an open `:::{attention} Assumptions` block means pass 1 is still outstanding; its
+absence, together with a `## What changed from the plan` section, means pass 2 has landed. The exact
+`Last edited` span — kept muted with an inline style, because MyST's `[text]{.class}` shorthand does
+**not** parse here — lives in `templates/entry.md`.
 
 Mermaid escaping rules live in `docs-page`'s `templates/patterns.md` — quote every label, `<br>`
 not `\n`, monospace `<span>` for code inside labels. Copy an existing diagram rather than
@@ -112,7 +121,7 @@ Split by **who** rejected it:
 Re-read the entry **against the merged code**, not from memory. Commit as
 `docs: reconcile diary entry for <topic>`. Not re-asked — accepting pass 1 commits to it.
 
-1. Flip the status banner to `built`, linking the merged PRs.
+1. Update the `Last edited` line to the reconcile date, appending the merged PR numbers.
 2. **Correct drifted prose in place** so the article never misleads.
 3. Empty and **delete** the assumptions block — each item either folded into prose (it held) or
    promoted to a bullet in step 4 (it broke).
@@ -152,20 +161,23 @@ pass 2 as usual, and note the mid-flight start in the PR body.
 
 ## 6. Register and link
 
-- **TOC entry in `docs/myst.yml`** under the `Dev Diary` group, at the **top** of `children`
-  (newest first — the TOC is hand-maintained). A page missing from the TOC never renders.
+- **TOC entry in `docs/myst.yml`** under the `Dev Diary` group: **append it at the bottom** of
+  `children`, below the pinned `about.md` intro and any earlier entries (chronological, oldest
+  first — the TOC is hand-maintained). A page missing from the TOC never renders.
 - Link any explainer the entry produced with a relative `.md` path; never link `.ipynb`.
 - Link the entry from the PR body. It is the summary — do not restate it there.
 
 ## Checklist
 
+<!-- excerpt:start -->
 - [ ] Trigger named and the choice **put to the user**
 - [ ] Entry is the branch's first commit (or mid-flight start noted in the PR body)
 - [ ] One screen: ≤500 words, no restated plan steps, driving question named in the PR body
-- [ ] Status banner present; assumptions in a **rendered** block; rejections in dropdowns
+- [ ] `Last edited` line present; assumptions in a **rendered** block; rejections in dropdowns
 - [ ] User told to run `uv run docs`, with the page named
 - [ ] Pass 2 committed last, read against the code — error strings, diagram branches, guardrail
       scopes and snippets all verified against `src/`
 - [ ] `git grep -nF "{attention} Assumption" -- 'docs/diary/*.md'` is empty
 - [ ] `## What changed from the plan` present and honest
-- [ ] TOC entry at the top of the `Dev Diary` group
+- [ ] TOC entry appended at the bottom of the `Dev Diary` group (below the pinned intro)
+<!-- excerpt:end -->

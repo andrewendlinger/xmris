@@ -9,7 +9,8 @@ kernelspec:
   name: python3
 ---
 
-# Building & Documenting Interactive Widgets
+(contribute-widget)=
+# Add a widget
 
 `xmris` uses [AnyWidget](https://anywidget.dev/) to provide interactive,
 browser-based UI components (phase correction, spectra scrolling, apodization)
@@ -20,6 +21,19 @@ authoring widgets** — the `xmr-widget` skill defers to it, the same way the
 Widgets sit in the visualization layer but must still respect the project's
 ["8 Commandments"](./ai_context.md). This document adds the widget-specific
 conventions on top.
+
+(contribute-widget-skill)=
+## Working with Claude Code
+
+The **`xmr-widget`** skill drives this page for Claude Code users. Its checklist:
+
+```{literalinclude} ../../.claude/skills/xmr-widget/SKILL.md
+:language: markdown
+:start-after: <!-- excerpt:start -->
+:end-before: <!-- excerpt:end -->
+:caption: Quote from the [xmr-widget/SKILL.md](https://github.com/andrewendlinger/xmris/blob/main/.claude/skills/xmr-widget/SKILL.md)
+:class: skill-quote
+```
 
 (widget-anatomy)=
 ## 1. Anatomy of a widget
@@ -139,6 +153,7 @@ export function render({ model, el }) {
 These are the rules a new widget must follow. The first three are what set
 widgets apart from the copy-paste heuristics in the older code.
 
+(widget-reproducibility)=
 ### Reproducibility: return the widget, wrap a real method
 
 Widgets are the **one deliberate exception** to "xarray in, xarray out": a
@@ -156,6 +171,7 @@ existing `.xmr` method** so its output is reproducible:
 If there is no processing method to reproduce, add that method first (see the
 `xmr-method` skill) — a widget is a UI over real math, never a home for new math.
 
+(widget-resolve-dims)=
 ### Resolve dimensions from the vocabulary — no name sniffing
 
 Do **not** guess the axis with substring checks like `"ppm" in dim`. Resolve it
@@ -195,6 +211,7 @@ coord = da.coords[dim]
 label = _spectral_axis_label(dim, coord)   # xmris.core.utils
 ```
 
+(widget-close-button)=
 ### The Close-button rule (static-docs safety)
 
 The static docs have no Python backend, so any button that needs a live kernel
@@ -213,6 +230,7 @@ closeBtn.className = "nmr-btn nmr-btn-outline remove-me-close-btn";
 Need to hide extra elements? Pass `hide_selectors=["#save-tooltip", ".menu"]` to
 `export_widget_static`.
 
+(widget-other-conventions)=
 ### Other conventions
 
 - **CSS namespace:** style everything with the `nmr-*` prefix (`nmr-viewer`,
@@ -312,6 +330,7 @@ export_widget_static(
 If a widget's arrays are too large, slice or downsample the `DataArray` before
 exporting.
 
+(widget-testing)=
 ## 5. Documenting & testing
 
 Each widget ships with a MyST notebook under

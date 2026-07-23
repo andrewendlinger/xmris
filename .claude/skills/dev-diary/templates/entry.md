@@ -12,8 +12,7 @@ nothing for this change get dropped — an entry with an empty guardrail section
 (diary-<slug>)=
 # <Title — a claim or a question, not a topic label>
 
-:::{note} Status: planned — branch `<branch-name>`
-:::
+<span style="color: gray; font-size: 0.9em;">Last edited: YYYY-MM-DD</span>
 
 <One paragraph. The concrete problem, felt as a tension the reader already has. Not an
 abstraction, not a summary of the plan. This is the driving question in prose form.>
@@ -28,6 +27,12 @@ abstraction, not a summary of the plan. This is the driving question in prose fo
 <A mermaid diagram or a table wherever it beats prose. The plan file owns the implementation
 steps; repeating them here produces a second plan. Budget: one screen, ≤500 words of prose,
 at most one diagram and one table.>
+
+```python
+# Optional but encouraged: the call site you wish existed — a small user story, not a spec.
+# Pass-1 code is illustrative (the API may not exist yet); drop the block if it earns nothing.
+spectrum = fid.xmr.to_spectrum().xmr.new_thing(...)
+```
 
 :::{dropdown} Why not <the alternative we dropped>?
 <Two or three sentences. What it would have bought, what it cost, why the cost won.>
@@ -46,7 +51,8 @@ at most one diagram and one table.>
 The 500-word budget is a **pass-1** figure. Pass 2 legitimately exceeds it: corrections plus the
 closing section are what the entry is for.
 
-- Banner → `:::{note} Status: built — #101, #104` (link the merged PRs).
+- `Last edited` line → the reconcile date with the merged PR numbers appended
+  (`Last edited: 2026-01-15 · #101, #104`).
 - Drifted prose corrected **in place**, so the article never misleads.
 - The `{attention}` block **deleted**: each item folded into prose (it held) or promoted to a
   bullet below (it broke).

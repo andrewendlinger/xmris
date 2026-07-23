@@ -148,27 +148,35 @@ project:
             - file: api_reference/core.validation.md
               title: Validation
 
-    # 7. Dev Diary — newest entry first
+    # 7. Dev Diary — intro pinned first, dated entries chronological below it
     - title: Dev Diary
       children:
+        - file: diary/about.md
+          title: A dev diary for xmris
         - file: diary/2026-07-22-authoring-skills.md
           title: The authoring skills
-        - file: diary/2026-07-20-dev-diary.md
-          title: A dev diary for xmris
 
-    # 8. Contribute
+    # 8. Contribute — organised by kind of change
     - title: Contribute
       children:
         - file: contributing/guide.md
-          title: Contributing Guide
+          title: Contributing
         - file: contributing/setup.md
           title: Environment Setup
-        - file: contributing/publishing.md
-          title: Publishing
-        - file: contributing/static_widgets.md
-          title: Adding widgets to docs
+        - title: Skills
+          children:
+            - file: contributing/methods.md
+              title: Add a processing method
+            - file: contributing/static_widgets.md
+              title: Add a widget
+            - file: contributing/docs_pages.md
+              title: Write a docs page
+            - file: contributing/dev_diary.md
+              title: Write a dev-diary entry
         - file: contributing/ai_context.md
           title: AI Context
+        - file: contributing/publishing.md
+          title: Publishing
 
 site:
   template: book-theme
@@ -177,6 +185,7 @@ site:
     logo: assets/logo.svg
     logo_dark: assets/logo_dark.svg
     favicon: assets/favicon.ico
+    style: assets/custom.css
 
   nav:
     - title: Home

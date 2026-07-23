@@ -98,8 +98,12 @@ uv run pytest "tests/autogen_notebooks/explanation/<name>.ipynb" -n0 --no-cov
 page is skipped rather than failing with no kernel to start.
 
 **Guide** cells are executed by the docs build only — `cd docs && uv run myst build --html
---execute` locally, the same command `deploy.yml` runs on every PR. (`uv run docs` and `myst start`
-serve a live preview and never exit; they are for reading the site, not for checking it.)
+--execute` locally, the same command `deploy.yml` runs on every PR. A guide that pulls in an
+external file (the per-skill Contribute pages quote each `SKILL.md` this way — a `literalinclude`
+with `:filename:` as the label and `:class: skill-quote`) is re-read on every build, so the quoted
+content is always current; a missing or renamed path surfaces as a ⛔️ error and hard-fails
+`myst build --strict`. (`uv run docs` and `myst start` serve a live preview
+and never exit; they are for reading the site, not for checking it.)
 
 Two pathspec traps, both of which produced wrong answers while auditing this repo:
 
@@ -109,6 +113,7 @@ Two pathspec traps, both of which produced wrong answers while auditing this rep
 
 ## Checklist
 
+<!-- excerpt:start -->
 - [ ] Genre identified; the matching template and `patterns.md` read
 - [ ] Frontmatter exact, `display_name: Python 3 (xmris)`
 - [ ] `(target)=` + single H1 is the very first content; a target above every header
@@ -117,3 +122,4 @@ Two pathspec traps, both of which produced wrong answers while auditing this rep
 - [ ] `check_docs.py` passes on the page (0 errors)
 - [ ] Tutorial only: single-notebook nbmake run is green
 - [ ] Only the `.md` staged
+<!-- excerpt:end -->

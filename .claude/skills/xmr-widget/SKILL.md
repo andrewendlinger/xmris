@@ -175,6 +175,7 @@ Summarize the widget, the `.xmr` method its snippet reproduces, **every new `con
 
 ## Checklist
 
+<!-- excerpt:start -->
 - [ ] `static_widgets.md` read; `phase/` copied rather than hand-written
 - [ ] Folder, class and factory names chosen deliberately
 - [ ] `dim` resolved by domain — `_resolve_dim(da, SPECTRAL_DIMS)` or `DIMS.time` — then `_check_dims`
@@ -184,3 +185,4 @@ Summarize the widget, the `.xmr` method its snippet reproduces, **every new `con
 - [ ] Factory re-exported; accessor method mirrors it exactly; `myst.yml` TOC entry added
 - [ ] Notebook written via `docs-page`, with a `remove-cell` block asserting the emitted snippet
 - [ ] Notebook, ruff, mypy green — and the architecture suite still passes
+<!-- excerpt:end -->

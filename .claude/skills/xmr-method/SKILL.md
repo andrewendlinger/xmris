@@ -154,6 +154,7 @@ explicitly), which test lists you edited, and where its notebook test lives.
 
 ## Checklist
 
+<!-- excerpt:start -->
 - [ ] Kind routed; `domains.md` consulted for the decorator (or its deliberate absence)
 - [ ] Correct module — `referencing.py` for axis referencing, `utils.py` for complex layout
 - [ ] `dim` default is a config constant, or `None` iff multi-label domain
@@ -163,3 +164,4 @@ explicitly), which test lists you edited, and where its notebook test lives.
 - [ ] The three test lists updated (`templates/tests.md`) — plus the module list if new module
 - [ ] Notebook written via the `docs-page` skill
 - [ ] Architecture tests, ruff, mypy, and the notebook all green
+<!-- excerpt:end -->

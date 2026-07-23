@@ -29,6 +29,8 @@ If a change adds vocabulary or a contract, picks between ≥2 viable approaches,
 
 Pass 1 is the change's **master overview**: the plan file is right for executing and too heavy for approving, so the entry is what gets read on the rendered site (`uv run docs`) before work starts. It never restates the plan's steps. The skill always asks before writing anything — never decide that autonomously.
 
+The `Dev Diary` section opens with one evergreen intro (`docs/diary/about.md`, pinned first) that explains what the diary *is*; dated entries follow it chronologically and carry a muted `Last edited` line rather than a status banner.
+
 ## Environment & commands
 
 Package manager is `uv` — never use pip. Add deps with `uv add <pkg>`; sync with `uv sync --all-extras --dev`.
