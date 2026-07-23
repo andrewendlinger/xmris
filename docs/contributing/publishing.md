@@ -1,11 +1,17 @@
+(contribute-release)=
 # Publishing and Deployment Workflow
 
 `xmris` strictly separates **CI (testing)** from **CD (publishing)** to avoid the "bump version → push → CI fails → bump again" cycle. Never bump the version until all tests pass.
 
 We use `uv` for dependency management and GitHub Actions for testing across Python 3.10–3.13 on Ubuntu, Windows, and macOS.
 
+:::{note}
+**For Claude Code users:** the user-triggered [`release` skill](https://github.com/andrewendlinger/xmris/blob/main/.claude/skills/release/SKILL.md) is the operational checklist for this workflow. Like the other skills, it carries no rules of its own — it routes back to this page for the reasoning behind each step.
+:::
+
 ---
 
+(release-daily)=
 ## ① Daily Development
 
 Work on `main`. Every push triggers **Fast CI** (`ci-fast.yml`) — a smoke test on Ubuntu with Python 3.10 and 3.13.
@@ -17,6 +23,7 @@ Every push to `main` also triggers the **Documentation** workflow (`deploy.yml`)
 
 ---
 
+(release-prep)=
 ## ② Release Preparation
 
 When `main` is stable, create a release branch:
@@ -28,6 +35,7 @@ git push origin release/v0.2.0
 
 This triggers the **Full CD Pipeline** (`ci-publish.yml`) — a 12-job matrix covering all OS and Python combinations.
 
+(release-tests-fail)=
 ### If tests fail
 
 Do not bump the version. Fix directly on the release branch and push:
@@ -44,6 +52,7 @@ The full matrix re-runs automatically. Repeat until green.
 
 ---
 
+(release-tag-publish)=
 ## ③ Tag & Publish
 
 Once the matrix is fully green, bump, tag, and ship:
@@ -61,6 +70,7 @@ The `v*` tag triggers the `publish` job in `ci-publish.yml`. It uses `uv build -
 
 ---
 
+(release-cleanup)=
 ## ④ Cleanup
 
 Merge the release branch back into `main` and delete it:
@@ -76,10 +86,12 @@ The Git tag remains as the permanent release marker.
 
 ---
 
+(release-docs-deploy)=
 ## ⑤ Documentation Deployment
 
 Documentation is built and deployed **automatically on every push to `main`** via the `deploy.yml` workflow. There is no manual step required.
 
+(release-docs-how)=
 ### How it works
 
 | Step | Action |
@@ -100,9 +112,10 @@ The workflow uses `concurrency: group: 'pages'` with `cancel-in-progress: false`
 
 ---
 
+(release-diagram)=
 ## Workflow Diagram
 
-```mermaid
+```{mermaid}
 flowchart TD
     subgraph dev ["① Daily Development"]
         A[Code on main branch] -->|push to main| B[Fast CI · ci-fast.yml<br>Ubuntu · Py 3.10 & 3.13]

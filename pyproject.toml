@@ -40,8 +40,8 @@ Documentation = "https://andrewendlinger.github.io/xmris/"
 
 [project.scripts]
 docs-api = "xmris._scripts:docs_api"                    # Update API references
-docs-notebooks = "xmris._scripts:docs_notebooks"        # Sync/Build tutorials
-docs = "xmris._scripts:docs_all"                        # Build full documentation
+docs-notebooks = "xmris._scripts:docs_notebooks"        # Serve tutorials — blocking
+docs = "xmris._scripts:docs_all"                        # API refs, then serve site — blocking
 test-gen = "xmris._scripts:generate_test_notebooks"
 test = "xmris._scripts:run_tests"
 

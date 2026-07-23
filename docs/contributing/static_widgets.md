@@ -4,22 +4,36 @@ jupytext:
     extension: .md
     format_name: myst
 kernelspec:
-  display_name: .venv
+  display_name: Python 3 (xmris)
   language: python
   name: python3
 ---
 
-# Building & Documenting Interactive Widgets
+(contribute-widget)=
+# Add a widget
 
 `xmris` uses [AnyWidget](https://anywidget.dev/) to provide interactive,
 browser-based UI components (phase correction, spectra scrolling, apodization)
 directly inside Jupyter Notebooks. This page is the **canonical reference for
-authoring widgets** — the `new-widget` skill defers to it, the same way the
-processing skill defers to [AI Context](./ai_context.md).
+authoring widgets** — the `xmr-widget` skill defers to it, the same way the
+`xmr-method` skill defers to [The Architecture Contract](./contract.md).
 
 Widgets sit in the visualization layer but must still respect the project's
-["8 Commandments"](./ai_context.md). This document adds the widget-specific
+[Commandments](./contract.md). This document adds the widget-specific
 conventions on top.
+
+(contribute-widget-skill)=
+## Working with Claude Code
+
+The **`xmr-widget`** skill drives this page for Claude Code users. Its checklist:
+
+```{literalinclude} ../../.claude/skills/xmr-widget/SKILL.md
+:language: markdown
+:start-after: <!-- excerpt:start -->
+:end-before: <!-- excerpt:end -->
+:caption: Quote from the [xmr-widget/SKILL.md](https://github.com/andrewendlinger/xmris/blob/main/.claude/skills/xmr-widget/SKILL.md)
+:class: skill-quote
+```
 
 (widget-anatomy)=
 ## 1. Anatomy of a widget
@@ -136,9 +150,10 @@ export function render({ model, el }) {
 (widget-conventions)=
 ## 2. Authoring conventions
 
-These are the rules a `new-widget` must follow. The first three are what set
+These are the rules a new widget must follow. The first three are what set
 widgets apart from the copy-paste heuristics in the older code.
 
+(widget-reproducibility)=
 ### Reproducibility: return the widget, wrap a real method
 
 Widgets are the **one deliberate exception** to "xarray in, xarray out": a
@@ -154,29 +169,49 @@ existing `.xmr` method** so its output is reproducible:
 | `scroll_spectra` | `.isel({dim: idx})` |
 
 If there is no processing method to reproduce, add that method first (see the
-processing skill) — a widget is a UI over real math, never a home for new math.
+`xmr-method` skill) — a widget is a UI over real math, never a home for new math.
 
+(widget-resolve-dims)=
 ### Resolve dimensions from the vocabulary — no name sniffing
 
-Do **not** guess the spectral axis with substring checks like `"ppm" in dim`.
-Use the shared resolver and validator, and take an explicit `dim` override:
+Do **not** guess the axis with substring checks like `"ppm" in dim`. Resolve it
+from the vocabulary, then validate. **Pick the one branch matching your widget's
+domain — these are alternatives, not steps.**
+
+A **spectral** widget (`phase`, `scroller`) resolves across the multi-label
+spectral domain, which is what `_resolve_dim` exists for:
 
 ```python
 if dim is None:
-    dim = _resolve_dim(da, SPECTRAL_DIMS)   # canonical: frequency / chemical_shift
+    dim = _resolve_dim(da, SPECTRAL_DIMS)   # frequency / chemical_shift
 _check_dims(da, dim, "my_widget")
 ```
 
-`_resolve_dim` raises a helpful error for non-standard axis names, which
-is why the factory always exposes `dim: str | None = None` as an escape hatch.
+A **time-domain** widget (`apodizer`) receives an FID, which has no spectral axis
+at all — running the resolver on one raises before it can find anything. Use the
+canonical time dimension instead:
+
+```python
+if dim is None:
+    dim = DIMS.time
+_check_dims(da, dim, "my_widget")
+```
+
+`_resolve_dim` raises a helpful error for non-standard axis names; a single-label
+domain needs no resolver, just the constant. Either way the factory exposes
+`dim: str | None = None` as an escape hatch — that `None` is a widget convention,
+not the domain-decorator biconditional that governs library functions.
+
 Derive axis labels from the coordinate's **lineage metadata**, not a hardcoded
-string:
+string. The shared helper does this, including the fallback when the metadata is
+absent — call it rather than reassembling the f-string:
 
 ```python
 coord = da.coords[dim]
-label = f"{coord.attrs['long_name']} [{coord.attrs['units']}]"
+label = _spectral_axis_label(dim, coord)   # xmris.core.utils
 ```
 
+(widget-close-button)=
 ### The Close-button rule (static-docs safety)
 
 The static docs have no Python backend, so any button that needs a live kernel
@@ -195,6 +230,7 @@ closeBtn.className = "nmr-btn nmr-btn-outline remove-me-close-btn";
 Need to hide extra elements? Pass `hide_selectors=["#save-tooltip", ".menu"]` to
 `export_widget_static`.
 
+(widget-other-conventions)=
 ### Other conventions
 
 - **CSS namespace:** style everything with the `nmr-*` prefix (`nmr-viewer`,
@@ -294,11 +330,12 @@ export_widget_static(
 If a widget's arrays are too large, slice or downsample the `DataArray` before
 exporting.
 
+(widget-testing)=
 ## 5. Documenting & testing
 
 Each widget ships with a MyST notebook under
 `docs/notebooks/visualization/widget/` and a `myst.yml` TOC entry. The notebook
-*is* the test (nbmake executes it). Use the **`new-doc-notebook` skill** for the
+*is* the test (nbmake executes it). Use the **`docs-page` skill** for the
 notebook structure; the widget-specific pieces it must include are the
 live/static two-cell pattern above, and a hidden `remove-cell` assertion block
 that runs the reproducible snippet the widget emits and proves the resulting

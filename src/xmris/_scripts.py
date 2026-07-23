@@ -4,6 +4,7 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
 from typing import Any
 
@@ -270,12 +271,19 @@ def docs_api() -> None:
 
 def docs_notebooks() -> None:
     """
-    Launch the MyST preview server to process and serve notebooks and Markdown.
+    Launch the MyST preview server, supervising it across transient crashes.
+
+    ``myst start`` occasionally dies *after* serving happily for a while — an
+    upstream node/myst fault, unrelated to our config. Rather than report that
+    as a fatal "failed to start", relaunch it a few times. Only a *fast* exit,
+    one that never really came up, is treated as a genuine start failure and
+    fails fast so a real config error is not hidden behind an endless restart
+    loop.
 
     Raises
     ------
     SystemExit
-        If the `myst start` subprocess fails abruptly.
+        If the server never comes up, or keeps crashing past the retry cap.
     """
     docs_dir = _get_docs_dir()
 
@@ -283,14 +291,46 @@ def docs_notebooks() -> None:
     print("MYST".center(80, " "))
     print("-" * 80)
     print("🚀 Launching MyST preview server...")
-    try:
-        # Run myst from within the docs directory
-        subprocess.run(["myst", "start", "--execute"], check=True, cwd=docs_dir)
-    except KeyboardInterrupt:
-        print("\n👋 Preview server stopped.")
-    except subprocess.CalledProcessError:
-        print("❌ Error: Failed to start the MyST server.")
-        sys.exit(1)
+
+    max_restarts = 3
+    # A run shorter than this never really served, so treat it as a start
+    # failure (fail fast) rather than a crash worth relaunching.
+    min_healthy_seconds = 15.0
+    # Return codes that mean "the user stopped it", not "it crashed".
+    stop_codes = (-2, -15, 130, 143)
+
+    restarts = 0
+    while True:
+        started = time.monotonic()
+        try:
+            # Run myst from within the docs directory
+            subprocess.run(["myst", "start", "--execute"], check=True, cwd=docs_dir)
+            return  # clean exit — myst was told to stop
+        except KeyboardInterrupt:
+            print("\n👋 Preview server stopped.")
+            return
+        except subprocess.CalledProcessError as exc:
+            # Ctrl-C can surface here rather than as KeyboardInterrupt, depending
+            # on how the signal reaches the child; don't relaunch a user stop.
+            if exc.returncode in stop_codes:
+                print("\n👋 Preview server stopped.")
+                return
+
+            uptime = time.monotonic() - started
+            if uptime < min_healthy_seconds:
+                print("❌ Error: Failed to start the MyST server.")
+                sys.exit(1)
+
+            restarts += 1
+            if restarts > max_restarts:
+                print(f"❌ MyST crashed {restarts} times — giving up.")
+                sys.exit(1)
+
+            print(
+                f"⚠️  MyST crashed after {uptime:.0f}s (upstream node/myst fault) — "
+                f"restarting ({restarts}/{max_restarts})..."
+            )
+            time.sleep(2.0)
 
 
 def docs_all() -> None:
@@ -305,7 +345,28 @@ def docs_all() -> None:
     docs_notebooks()
 
 
-def generate_test_notebooks() -> Path:
+def _is_executable_page(md: Path) -> bool:
+    """
+    Report whether a MyST page carries the jupytext kernelspec nbmake needs.
+
+    Parameters
+    ----------
+    md : Path
+        The Markdown page to inspect.
+
+    Returns
+    -------
+    bool
+        True when the page opens with frontmatter declaring a ``kernelspec``.
+    """
+    text = md.read_text(encoding="utf-8")
+    if not text.startswith("---"):
+        return False
+    frontmatter = text.partition("---")[2].partition("\n---")[0]
+    return "kernelspec:" in frontmatter
+
+
+def generate_test_notebooks() -> None:
     """
     Convert MyST Markdown notebooks to Jupyter Notebooks for testing.
 
@@ -313,10 +374,8 @@ def generate_test_notebooks() -> Path:
     working-directory bugs. It also clears any previously generated test notebooks
     to prevent testing stale files.
 
-    Returns
-    -------
-    Path
-        The absolute path to the directory containing the generated test notebooks.
+    Returns nothing: it is wired directly to the ``test-gen`` console script, and a
+    non-``None`` return would be handed to ``sys.exit`` and reported as a failure.
 
     Raises
     ------
@@ -336,14 +395,29 @@ def generate_test_notebooks() -> Path:
         shutil.rmtree(test_dir)
     test_dir.mkdir(parents=True, exist_ok=True)
 
-    md_files = list(source_dir.rglob("*.md"))
+    # Tutorials under docs/notebooks/ are the test suite: take every one, so a
+    # notebook that lost its kernelspec fails loud in nbmake rather than silently
+    # dropping out. The tree stays flattened so existing test paths
+    # (autogen_notebooks/<category>/<name>.ipynb) still hold.
+    md_files = [(md, md.relative_to(source_dir)) for md in source_dir.rglob("*.md")]
+
+    # Explainers under docs/explanation/ join the suite too, but only once they
+    # carry a jupytext kernelspec -- a frontmatter-less explainer would convert
+    # to a notebook with no kernel to start. They keep their own subtree.
+    explanation_dir = project_root / "docs" / "explanation"
+    if explanation_dir.exists():
+        md_files += [
+            (md, Path("explanation") / md.relative_to(explanation_dir))
+            for md in explanation_dir.rglob("*.md")
+            if _is_executable_page(md)
+        ]
+
     if not md_files:
         print(f"⚠️  Warning: No .md files found in {source_dir!s}")
-        return test_dir
+        return
 
     # Wrap the md_files list in tqdm to generate a clean progress bar
-    for md_file in tqdm(md_files, desc="Converting MyST to .ipynb", unit="file"):
-        rel_path = md_file.relative_to(source_dir)
+    for md_file, rel_path in tqdm(md_files, desc="Converting MyST to .ipynb", unit="file"):
         out_file = test_dir / rel_path.with_suffix(".ipynb")
         out_file.parent.mkdir(parents=True, exist_ok=True)
 
@@ -360,7 +434,6 @@ def generate_test_notebooks() -> Path:
             sys.exit(1)
 
     print("✅ Notebook generation complete!")
-    return test_dir
 
 
 def run_tests() -> None:

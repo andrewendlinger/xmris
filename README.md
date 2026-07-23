@@ -95,12 +95,13 @@ uv run test
 ```
 
 
-4. Build the [MyST](https://mystmd.org) based documentation :
+4. Preview the [MyST](https://mystmd.org) documentation locally — a live server that never exits:
 ```bash
 uv run docs
-
 ```
-More information can be found in the documentation [here](https://andrewendlinger.github.io/xmris/contribute/)
+For a one-shot render check instead (the same command CI runs), use `myst build --html` from `docs/`.
+
+More information can be found in the [contributing guide](https://andrewendlinger.github.io/xmris/guide).
 
 
 ---

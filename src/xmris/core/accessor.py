@@ -733,7 +733,7 @@ class XmrisAccessor(
     def fit_amares(
         self,
         prior_knowledge_file: str | Path,
-        dim: str = "time",
+        dim: str = DIMS.time,
         mhz: float | None = None,
         sw: float | None = None,
         deadtime: float | None = None,
@@ -757,7 +757,7 @@ class XmrisAccessor(
         prior_knowledge_file : str | Path
             Path to the CSV or XLSX file containing the prior knowledge constraints.
         dim : str, optional
-            The time dimension along which to fit, by default "time".
+            The time dimension along which to fit, by default `DIMS.time`.
         mhz : float, optional
             Spectrometer frequency in MHz. If None, read from
             ``attrs['reference_frequency']``.

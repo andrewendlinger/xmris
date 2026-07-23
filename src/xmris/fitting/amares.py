@@ -19,7 +19,8 @@ from pyAMARES.kernel.lmfit import fitAMARES as pyamares_fitAMARES
 from pyAMARES.libs.logger import set_log_level
 from tqdm.auto import tqdm
 
-from xmris.core.config import ATTRS
+from xmris.core.config import ATTRS, DIMS
+from xmris.core.utils import _check_dims
 
 
 def _fit_dataset_safe(
@@ -209,7 +210,7 @@ def _run_parallel_fitting_optimal(
 def fit_amares(
     da: xr.DataArray,
     prior_knowledge_file: str | Path,
-    dim: str = "time",
+    dim: str = DIMS.time,
     mhz: float | None = None,
     sw: float | None = None,
     deadtime: float | None = None,
@@ -237,7 +238,7 @@ def fit_amares(
     prior_knowledge_file : str | Path
         Path to the CSV or XLSX file containing the prior knowledge constraints.
     dim : str, optional
-        The time dimension along which to fit, by default "time".
+        The time dimension along which to fit, by default `DIMS.time`.
     mhz : float, optional
         Spectrometer frequency in MHz. If None, read from
         ``da.attrs['reference_frequency']``.
@@ -266,8 +267,7 @@ def fit_amares(
     """
     set_log_level("info" if verbose else "error", verbose=False)
 
-    if dim not in da.dims:
-        raise ValueError(f"Dimension '{dim}' missing in DataArray.")
+    _check_dims(da, dim, "fit_amares")
 
     # 1. Extract/Infer Physical Parameters
     if mhz is None:
