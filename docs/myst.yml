@@ -155,6 +155,8 @@ project:
           title: A dev diary for xmris
         - file: diary/2026-07-22-authoring-skills.md
           title: The authoring skills
+        - file: diary/2026-07-23-architecture-contract.md
+          title: The Architecture Contract
 
     # 8. Contribute — organised by kind of change
     - title: Contribute
