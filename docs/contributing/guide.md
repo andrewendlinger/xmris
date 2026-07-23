@@ -33,11 +33,11 @@ flowchart LR
 ```
 
 :::{note}
-**For Claude Code users:** the four skills under
+**For Claude Code users:** four of the skills under
 [`.claude/skills/`](https://github.com/andrewendlinger/xmris/tree/main/.claude/skills) fire on the
-matching change. They
-contain no rules of their own — each routes to the one canonical doc that owns them, obeying the
-same "one home per concept" rule these docs preach.
+matching change above; a fifth, user-triggered `release` skill drives [cutting a
+release](#contribute-release). None carries rules of its own — each routes to the one canonical doc
+that owns it, obeying the same "one home per concept" rule these docs preach.
 :::
 
 (contribute-home-first)=
@@ -46,7 +46,7 @@ same "one home per concept" rule these docs preach.
 1. [**Set up your environment**](./setup.md) — clone the repo, run `uv sync --all-extras --dev`, and
    confirm `uv run test` is green.
 2. Make your change following the page for its kind, above.
-3. [**Publish**](./publishing.md) — only when you are cutting a release.
+3. [**Publish**](#contribute-release) — only when you are cutting a release.
 
 Where any contributor page differs from [`ai_context.md`](./ai_context.md), that document wins: it
 is the authoritative architecture contract, and the skills defer to it too.

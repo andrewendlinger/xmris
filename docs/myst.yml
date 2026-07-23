@@ -163,7 +163,7 @@ project:
           title: Contributing
         - file: contributing/setup.md
           title: Environment Setup
-        - title: Skills
+        - title: Workflows
           children:
             - file: contributing/methods.md
               title: Add a processing method
@@ -173,10 +173,10 @@ project:
               title: Write a docs page
             - file: contributing/dev_diary.md
               title: Write a dev-diary entry
+            - file: contributing/publishing.md
+              title: Publishing
         - file: contributing/ai_context.md
           title: AI Context
-        - file: contributing/publishing.md
-          title: Publishing
 
 site:
   template: book-theme
