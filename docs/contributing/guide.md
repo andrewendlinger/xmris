@@ -45,8 +45,15 @@ that owns it, obeying the same "one home per concept" rule these docs preach.
 
 1. [**Set up your environment**](./setup.md) — clone the repo, run `uv sync --all-extras --dev`, and
    confirm `uv run test` is green.
-2. Make your change following the page for its kind, above.
-3. [**Publish**](#contribute-release) — only when you are cutting a release.
+2. **Make your change**, following the page for its kind above. A significant decision starts as a
+   [dev-diary draft](#contribute-dev-diary) that gets reviewed before the code is written.
+3. **Open a pull request** against `main`, with a
+   [Conventional Commit](https://www.conventionalcommits.org/) title (`feat:`, `fix:`, `docs:`, …)
+   and a body that says what changed — and, if you consolidated docs, what moved where. Every push
+   runs the test suite (Python 3.10 and 3.13) and an executed build of this documentation, so a
+   broken notebook fails the PR rather than `main`.
+4. **Drive CI green, then hand off** — a maintainer reviews and merges. Cutting a release is a
+   separate, maintainer-run workflow: [Publishing](#contribute-release).
 
 Where any contributor page differs from [The Architecture Contract](./contract.md), that page
 wins: it is the authoritative rule set, and the skills defer to it too.
