@@ -64,8 +64,7 @@ def remove_digital_filter(
         The corrected FID data with the filter transient stripped, phase aligned,
         and lineage metadata preserved.
     """
-    if dim not in da.dims:
-        raise ValueError(f"Dimension '{dim}' missing in DataArray.")
+    _check_dims(da, dim, "remove_digital_filter")
 
     # Resolve string sentinels ("header"/"measure") to a numeric delay before any
     # arithmetic — the guards below assume a float.
@@ -133,7 +132,7 @@ def remove_digital_filter(
         {dim: as_variable(COORDS.time, dim, time_coords - time_coords[0])}
     )
 
-    # 6. Preserve Lineage — record only the quantifiable parameter applied (Commandment 3).
+    # 6. Preserve Lineage — record the parameter actually applied (Commandment 3).
     new_attrs = da.attrs.copy()
     new_attrs[ATTRS.group_delay_removed] = group_delay
 
@@ -545,17 +544,13 @@ def build_fid(
     groupDelay = _get_strict("groupDelay")
 
     # 2. Build explicit coordinates
-    coords: dict[str, tuple] = {}
+    coords: dict[str, tuple | xr.Variable] = {}
 
     # Time Coordinate
     time_idx = dims.index(DIMS.time)
     n_points = data.shape[time_idx]
     dt_s = 1.0 / sw_hz
-    coords[DIMS.time] = (
-        DIMS.time,
-        np.arange(n_points) * dt_s,
-        {"units": "s", "long_name": "Time"},
-    )
+    coords[DIMS.time] = as_variable(COORDS.time, DIMS.time, np.arange(n_points) * dt_s)
 
     # Repetition Coordinate (if present)
     if DIMS.repetition in dims:

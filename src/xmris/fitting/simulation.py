@@ -4,6 +4,7 @@ from numpy.typing import ArrayLike
 
 # Assuming your core vocabulary is accessible here
 from xmris.core import ATTRS, COORDS, DIMS
+from xmris.core.utils import as_variable
 
 
 def _simulate_fid_ndarray(
@@ -229,9 +230,7 @@ def simulate_fid(
     return xr.DataArray(
         data=fid_data,
         dims=[DIMS.time],
-        coords={
-            COORDS.time: (DIMS.time, time_coords, {"units": "s", "long_name": "Time"})
-        },
+        coords={COORDS.time: as_variable(COORDS.time, DIMS.time, time_coords)},
         attrs=attrs,
         name="FID Signal",
     )

@@ -698,6 +698,7 @@ class TestAccessorDefaults:
             ("to_hz", "dim", DIMS.chemical_shift),
             ("to_real_imag", "dim", DIMS.component),
             ("to_complex", "dim", DIMS.component),
+            ("fit_amares", "dim", DIMS.time),
         ],
     )
     def test_default_matches_config(self, method_name, param_name, expected_default):
