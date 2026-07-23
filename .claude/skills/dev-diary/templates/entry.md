@@ -48,22 +48,26 @@ spectrum = fid.xmr.to_spectrum().xmr.new_thing(...)
 
 ## Pass 2 — what changes
 
-The 500-word budget is a **pass-1** figure. Pass 2 legitimately exceeds it: corrections plus the
-closing section are what the entry is for.
+The 500-word budget is a **pass-1** figure. Pass 2 legitimately exceeds it: the reconciled story
+is what the entry is for.
 
 - `Last edited` line → the reconcile date with the merged PR numbers appended
   (`Last edited: 2026-01-15 · #101, #104`).
-- Drifted prose corrected **in place**, so the article never misleads.
-- The `{attention}` block **deleted**: each item folded into prose (it held) or promoted to a
-  bullet below (it broke).
-- A closing section appended:
+- Drifted prose rewritten **in place** — the deliverable is the story of how it is now and why,
+  not the draft plus patches.
+- The `{attention}` block **deleted**: each item folded into the story, whether it held or broke.
+- Rationale only the plan held — decision criteria, rejected options, discovered constraints —
+  absorbed into the main line or a dropdown; the plan file does not survive the merge.
+- A closing section **only when the divergence itself teaches** (an instructive failure, or a
+  prior state someone actually saw — with no witnesses, fold the lesson into the main argument
+  instead):
 
 ````markdown
 (diary-<slug>-changed)=
 ## What changed from the plan
 
-- <Where reality diverged, and what that revealed. This is the diary's payoff — a plan that
-  survived unchanged is rare enough that pretending otherwise devalues every entry.>
+- <The plan assumed X; reality showed Y, which revealed Z. Self-contained — the reader has no
+  plan to consult.>
 ````
 
 ## Blocks worth reaching for

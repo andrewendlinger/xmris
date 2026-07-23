@@ -14,7 +14,9 @@ argument is what this diary aims to keep.
 
 So if you are chasing the reasoning behind a design decision, you are in the
 right place! Skim the entries below, or search for the thing that puzzled you.
-Each entry is one decision, told as a story.
+Each entry is one decision, told as a story — and when a decision evolves, its
+entry is rewritten in place rather than joined by a sequel. The muted *Last
+edited* line under each title tells you the story is current.
 
 (diary-about-how)=
 ## How an entry gets written
@@ -25,7 +27,8 @@ steps with the one real decision buried underneath them.
 
 So before any code is written, the plan is distilled into a short **draft
 entry** — one screen: the tension, the decision, a diagram, and often a code snippet or two — a small user story sketching
-the call we wish existed. That draft is what gets reviewed.
+the call we wish existed. That draft is what gets reviewed — and the work stops
+until it has been.
 Writing it this early, forcing the argument onto a single page helps catching bad decision early.
 
 > It's almost like a docs-first approach.

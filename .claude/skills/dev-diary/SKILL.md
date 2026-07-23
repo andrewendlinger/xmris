@@ -1,17 +1,23 @@
 ---
 name: dev-diary
-description: Write and reconcile an xmris dev-diary entry — a short, rendered article recording why a change was made and how it actually went. Use at the START of any change that adds vocabulary or a contract, picks between viable approaches, or spans multiple PRs (the entry doubles as the plan overview the user reviews); and again at the END to reconcile it against what was built.
+description: Write and reconcile an xmris dev-diary entry — a short, rendered article recording why a change was made and how it actually went. Use at the START of any change that picks between viable approaches, adds conceptual surface (a rule, decorator, or namespace), or spans multiple PRs — the entry is the review gate the user reads before implementation begins; and again at the END to reconcile it into the story of how it is now.
 ---
 
 # Write an xmris dev-diary entry
 
-A diary entry is a **dated article about one change**, written twice and rendered on the docs site.
-It is not a reference page. Its two passes serve two readers who never meet:
+A diary entry is a **decision record told as a story**, written twice and rendered on the docs
+site. It is not a reference page and not a changelog. Its two passes serve two readers who never
+meet:
 
 | Pass | Written | Reader | Deliverable |
 |---|---|---|---|
-| **1** | first commit on the branch, straight from the approved plan | **the user, now** — reviewing on the rendered site | one screen: problem → decision → shape → what's assumed |
-| **2** | last commit on the branch | whoever asks *"why is it like this?"* later | same entry, corrected, plus what actually changed |
+| **1** | first commit on the branch, straight from the approved plan | **the user, now** — reviewing on the rendered site *before implementation starts* | one screen: problem → decision → shape → what's assumed |
+| **2** | last commit on the branch | whoever asks *"why is it like this?"* later | the same entry, rewritten into how it is now and why |
+
+**One entry per decision.** When a later change extends a decision an entry already tells, that
+entry is rewritten ground-up into the current story — `Last edited` updated, the new PR number
+appended — rather than a sibling entry spawned. A new dated entry is for a new decision; the
+reader should never have to join two articles to get one answer.
 
 The `Dev Diary` group also has **one evergreen page** — `docs/diary/about.md` ("A dev diary for
 xmris") — that tells readers *what the diary is*. It is **not** an entry: no `Last edited` line, no
@@ -22,10 +28,10 @@ Pass 1 exists because the plan file is precise but heavy — right for executing
 **Never restate the plan's steps.** If the entry reads like a second plan, it has failed.
 
 **House style lives in `CLAUDE.md` § "Documentation style"** and is not restated here — with one
-carve-out: a diary entry is a dated record, so *one home per concept* does **not** bind it. Two
-entries months apart may touch the same concept; neither is its home. When a concept needs a
-permanent home it graduates into an explainer under `docs/explanation/`, which is `docs-page`'s
-job, not this skill's.
+carve-out: *one home per concept* binds an entry at the **decision** level, not the concept level.
+Two entries may touch the same concept when their decisions differ; neither is the concept's home.
+When a concept needs a permanent home it graduates into an explainer under `docs/explanation/`,
+which is `docs-page`'s job, not this skill's.
 
 ## 1. Assess the triggers, then ask — always
 
@@ -34,18 +40,26 @@ The entry is published and costs real effort; whether a change earns one is the 
 
 Triggers worth proposing (any one):
 
-- **New vocabulary or contract** — a new `ATTRS`/`DIMS`/`COORDS`/`VARS` term, decorator, domain
-  rule, or accessor namespace. Anything growing the package's conceptual surface.
 - **≥2 viable approaches existed** — you had to pick and the rejected option was defensible. These
   get silently re-litigated six months later.
+- **New conceptual surface** — a new rule, decorator, domain, or accessor namespace. A new
+  `ATTRS`/`DIMS`/`COORDS`/`VARS` term only when it required a real choice of its own — not when it
+  merely names what a new function did.
 - **Multi-PR chain or cross-cutting refactor.**
 
-Weak candidates: a bug fix, a processing function following existing patterns, a dependency bump.
-Still ask if invoked — recommend skipping and name the missing trigger.
+The key is decision-weight, not category: an entry records a choice that could have gone another
+way. Weak candidates: a bug fix, a processing function following existing patterns, a dependency
+bump — and **a term that follows an existing pattern** (a lineage attr riding a new method is
+vocabulary, not a decision). Still ask if invoked — recommend skipping and name the missing
+trigger.
 
-The ask is one question, two options: **write an entry / skip**. Name the concrete trigger in the
-question ("adds `ATTRS.group_delay` plus a new decorator"), never ask abstractly. If the user skips,
-drop it — do not re-ask later in the same change.
+Before proposing a *new* entry, check whether an existing entry already tells this decision's
+story. If one does, the proposal becomes **update that entry** — rewritten ground-up per §4 —
+instead of writing a sibling.
+
+The ask is one question, two options: **write an entry / skip** (or **update `<entry>` / skip**).
+Name the concrete trigger in the question ("adds `@ensures_domain` — a new decorator contract"),
+never ask abstractly. If the user skips, drop it — do not re-ask later in the same change.
 
 ## 2. Pass 1 — from the plan, as the branch's first commit
 
@@ -73,8 +87,11 @@ only moment an assumption matters. Inline `:::{attention} Assumption` boxes only
 a single specific passage. A pass-1 entry with no assumptions marked usually means none were looked
 for.
 
-**Then tell the user to run `uv run docs` and name the page.** That handoff is what makes the entry
-a review artifact instead of a file nobody opens.
+**Then stop — the draft is the gate.** Commit, name the page, tell the user to run `uv run docs`,
+and **end the turn**. Implementation, verification, further commits — everything waits until the
+user responds; a bare "go" is approval. This binds in auto-accept mode too: the handoff is the
+last thing in the turn, with nothing queued behind it. Rolling past an unreviewed draft defeats
+the entry's purpose, which is catching a bad decision *before* it is built.
 
 ```{note}
 **Pass-1 code is illustrative — do not chase executability.** The API does not exist yet; you are
@@ -98,9 +115,8 @@ sketching the call site you *wish* existed, which is design work in its own righ
 
 There is no rendered "planned / built" banner. A cold re-invocation tells the passes apart
 structurally: an open `:::{attention} Assumptions` block means pass 1 is still outstanding; its
-absence, together with a `## What changed from the plan` section, means pass 2 has landed. The exact
-`Last edited` span — kept muted with an inline style, because MyST's `[text]{.class}` shorthand does
-**not** parse here — lives in `templates/entry.md`.
+absence means pass 2 has landed. The exact `Last edited` span — kept muted with an inline style,
+because MyST's `[text]{.class}` shorthand does **not** parse here — lives in `templates/entry.md`.
 
 Mermaid escaping rules live in `docs-page`'s `templates/patterns.md` — quote every label, `<br>`
 not `\n`, monospace `<span>` for code inside labels. Copy an existing diagram rather than
@@ -116,18 +132,29 @@ Split by **who** rejected it:
 - **The reader would naively try it** → stays on the main line as paired ❌ / ✅ blocks. That is
   `architecture.md`'s "Parameter Soup", and it is pedagogy, not an appendix.
 
-## 4. Pass 2 — reconcile, as the branch's last commit
+## 4. Pass 2 — reconcile into the story of how it is now
 
 Re-read the entry **against the merged code**, not from memory. Commit as
 `docs: reconcile diary entry for <topic>`. Not re-asked — accepting pass 1 commits to it.
 
+The deliverable is a coherent article about **how it is now and why** — not the draft plus
+patches, and not a delta log. The plan file lives outside the repo and does not survive the merge,
+so after this commit the entry and the PR body are the only reasoning record:
+
 1. Update the `Last edited` line to the reconcile date, appending the merged PR numbers.
-2. **Correct drifted prose in place** so the article never misleads.
-3. Empty and **delete** the assumptions block — each item either folded into prose (it held) or
-   promoted to a bullet in step 4 (it broke).
-4. Add a short closing **`## What changed from the plan`**. This is the payoff: divergence is
-   content, not embarrassment. A plan that survives contact with implementation unchanged is rare
-   enough that pretending otherwise makes every entry less useful.
+2. **Rewrite drifted prose in place** — real paths, real snippets, the argument as you would make
+   it *having now built it* — so the article never misleads.
+3. Empty and **delete** the assumptions block — each item folded into the story, whether it held
+   or broke.
+4. **Absorb rationale that only the plan held** — decision criteria, rejected options, constraints
+   discovered on the way — into the main line or a dropdown. *Steps* stay unrestated: commits and
+   the diff own those; the entry owns the why.
+5. A closing **`## What changed from the plan`** is *conditional*, not mandatory. Add it only when
+   the divergence itself teaches — an instructive failure mode, or a prior state real enough that
+   someone actually saw it (shipped code, a published page). Early in a package's life the
+   abandoned state usually had no witnesses, and a delta against a plan nobody read confuses more
+   than it helps — fold the lesson into the main argument instead. When the section does appear,
+   every bullet states inline what was previously assumed, so it reads without the plan.
 
 Skipping this pass cost PR #90: `domains.md` was written mid-design (#76) and never reconciled, so
 it sat wrong on `main` across five merges until two code reviews caught it. Every category below is
@@ -170,14 +197,16 @@ pass 2 as usual, and note the mid-flight start in the PR body.
 ## Checklist
 
 <!-- excerpt:start -->
-- [ ] Trigger named and the choice **put to the user**
+- [ ] Trigger named (decision-weight, not category) and the choice **put to the user** — including
+      update-an-existing-entry when one already tells this decision's story
 - [ ] Entry is the branch's first commit (or mid-flight start noted in the PR body)
 - [ ] One screen: ≤500 words, no restated plan steps, driving question named in the PR body
 - [ ] `Last edited` line present; assumptions in a **rendered** block; rejections in dropdowns
-- [ ] User told to run `uv run docs`, with the page named
-- [ ] Pass 2 committed last, read against the code — error strings, diagram branches, guardrail
-      scopes and snippets all verified against `src/`
+- [ ] **Pass 1 ends the turn**: page named, `uv run docs` handoff given, implementation not started
+- [ ] Pass 2 committed last, rewritten into how it is now and read against the code — error
+      strings, diagram branches, guardrail scopes and snippets all verified against `src/`
 - [ ] `git grep -nF "{attention} Assumption" -- 'docs/diary/*.md'` is empty
-- [ ] `## What changed from the plan` present and honest
+- [ ] `## What changed from the plan` only where the divergence teaches — each bullet readable
+      without the plan
 - [ ] TOC entry appended at the bottom of the `Dev Diary` group (below the pinned intro)
 <!-- excerpt:end -->
