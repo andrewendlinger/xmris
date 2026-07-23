@@ -1,7 +1,7 @@
 (diary-architecture-contract)=
 # The Commandments now run against the code they govern
 
-<span style="color: gray; font-size: 0.9em;">Last edited: 2026-07-23</span>
+<span style="color: gray; font-size: 0.9em;">Last edited: 2026-07-23 · #103</span>
 
 The [architecture rules](../contributing/contract.md) are the standing law for everything under
 `src/xmris/` — and the law had quietly stopped describing the land. Commandment 3 bans descriptive
@@ -28,12 +28,13 @@ errors that end with a copy-pasteable fix, and the `# xmris-diagnostic-dim` esca
 
 The exemplars are `{literalinclude}`s of the real `apodize_exp` and `to_ppm` — but an unmatched
 anchor only *warns* in mystmd, so a hidden cell pins both slices with `inspect.getsource` asserts
-and runs the pipeline the page preaches:
+(which do return the *decorated* source, decorators included) and runs the pipeline the page
+preaches:
 
 ```python
-fid = xmris.simulate_fid(...)          # reference_frequency and carrier_ppm set
-spec = fid.xmr.apodize_exp(lb=5.0).xmr.to_spectrum().xmr.to_ppm()
-assert "apodization_lb" in spec.attrs  # lineage appended — Commandment 3, live
+fid = xmris.simulate_fid(...)  # reference_frequency and carrier_ppm set
+spectrum = fid.xmr.apodize_exp(lb=5.0).xmr.to_spectrum().xmr.to_ppm()
+assert spectrum.attrs["apodization_lb"] == 5.0  # lineage — Commandment 3, live
 ```
 
 Commandment 3 itself is rewritten to the law the code actually follows: preserve, then append the
@@ -54,12 +55,21 @@ branch just shipped route to "the one canonical doc" per concept. Dissolving rem
 home everything was just pointed at, for the price of re-homing every rule anyway.
 :::
 
-:::{attention} Assumptions to verify
-- `inspect.getsource` on the decorated `apodize_exp` returns the *decorated* source — the pins
-  assume it sees `@computes_in(TIME_DIMS)`, not the wrapper inside `validation.py`.
-- A kernelspec'd page under `docs/contributing/` executes in the PR docs build while staying out of
-  `uv run test`, as the docs-page skill claims.
-- The anchor-miss-warns-only behavior observed in the local mystmd 1.10.1 bundle matches CI.
-- Adding `fit_amares` to `TestAccessorDefaults` inspects its signature without triggering the lazy
-  pyAMARES import.
-:::
+(diary-architecture-contract-changed)=
+## What changed from the plan
+
+- **One planned `_check_dims` adoption was impossible.** `build_fid` checks its `dims` argument —
+  a plain list, before any `DataArray` exists — so the helper (which takes a `DataArray`) cannot
+  apply. That check stays hand-rolled by design; the other two call sites converted cleanly.
+- **The warn-only anchor rot fired on day one — from the inside.** mystmd parses directive options
+  as raw strings, not YAML, so quoting the `start-at:` anchors made the build search for the quote
+  characters themselves. The build stayed exit 0 with four warnings; the grep-for-warnings
+  verification step caught it, which is precisely the failure mode the `inspect.getsource` pins
+  exist for.
+- **One Commandment 7 violation was left standing.** `build_fid`'s repetition coordinate still
+  hand-builds its attrs dict: `COORDS` has no `repetition` term, and growing the vocabulary is a
+  Commandment 4 event of its own — flagged as follow-up rather than smuggled in.
+- All four pass-1 assumptions held: `inspect.getsource` sees the decorators; the kernelspec'd page
+  executes in the docs build while `test-gen` still walks exactly its 26 tutorial/explainer files;
+  the pinned mystmd's anchor behavior is what the build showed; and the new `TestAccessorDefaults`
+  row runs without importing pyAMARES.
