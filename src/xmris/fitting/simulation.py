@@ -147,7 +147,10 @@ def simulate_fid(
     dampings : float | ArrayLike, optional
         The damping factor(s) (d_k). Default is 50.0.
     phases : float | ArrayLike, optional
-        The phase(s) (phi_k) in radians. Default is 0.0.
+        The phase(s) (phi_k) in radians. Default is 0.0. Mind the unit asymmetry with
+        fitting: this simulation takes phase in **radians**, whereas ``fit_amares``
+        *reports* fitted phase in **degrees** (and ``build_prior_knowledge`` takes it
+        in degrees too).
     lineshape_g : float | ArrayLike, optional
         The lineshape parameter(s) (g_k) between 0 (Lorentzian) and 1 (Gaussian).
     dead_time : float, optional

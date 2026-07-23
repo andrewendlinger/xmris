@@ -748,68 +748,32 @@ class XmrisAccessor(
         init_fid: np.ndarray | None = None,
         verbose: bool = False,
     ) -> xr.Dataset:
-        """
-        Apply AMARES time-domain fitting to an N-dimensional FID.
+        """Apply AMARES time-domain fitting to an N-dimensional signal.
 
-        This method wraps `pyAMARES` to perform parallelized batch fitting
-        across spatial or repetition dimensions. The numerical results and
-        the reconstructed time-domain fits are packed into an aligned xarray Dataset.
+        Thin wrapper around the :func:`xmris.fit_amares` free function — see it for the
+        full parameter reference, the domain-preserving contract (a complex spectrum is
+        round-tripped through the FID and the fit returned in the representation you
+        passed in, ppm in -> ppm out), and the robustness behavior (a single global
+        magnitude normalization so the optimizer's tolerance holds at any signal scale,
+        and a ``NaN`` sentinel for a fit that fails).
 
-        Requires the optional `pyAMARES` package to be installed.
-
-        Parameters
-        ----------
-        prior_knowledge : Mapping | pandas.DataFrame | str | Path
-            The prior-knowledge constraints, in memory or on disk. A mapping of peak
-            name to parameters is built and validated via
-            :func:`~xmris.fitting.build_prior_knowledge`; a ``str``/``Path`` is a
-            pyAMARES CSV/XLSX file; a DataFrame in pyAMARES's positional layout is
-            used as-is.
-        dim : str, optional
-            The time dimension along which to fit, by default ``DIMS.time``. A
-            complex spectrum is accepted too and converted to a FID for the fit.
-        mhz : float, optional
-            Spectrometer frequency in MHz. If None, read from
-            ``attrs['reference_frequency']``.
-        sw : float, optional
-            Spectral width in Hz. If None, calculated from the `dim` coordinate spacing.
-        deadtime : float, optional
-            Acquisition time origin in seconds. If None, taken from the first `dim`
-            coordinate value.
-        carrier : float, optional
-            Transmitter carrier position on the absolute ppm scale, letting
-            prior-knowledge and reported shifts be absolute/literature ppm. If None,
-            taken from ``da.attrs['carrier_ppm']`` (default 0.0 = carrier-relative).
-        g_global : float or bool, optional
-            Global lineshape held for every peak: 0.0 = Lorentzian (default),
-            1.0 = Gaussian, in between = pseudo-Voigt. Pass ``False`` to let each
-            peak's ``g`` vary, fitted from the prior-knowledge value.
-        method : {"leastsq", "least_squares"}, optional
-            Fitting method. Defaults to 'leastsq' (Levenberg-Marquardt).
-        initialize_with_lm : bool, optional
-            Run an internal Levenberg-Marquardt initializer before fitting.
-            Defaults to False.
-        num_workers : int, optional
-            Number of parallel processes to spawn. Defaults to 4.
-        init_fid : np.ndarray, optional
-            A 1D complex array to use as the template for pyAMARES initialization.
-            If None, the function automatically selects the spectrum with the highest SNR.
-        verbose : bool, optional
-            If True, sets logging level to INFO and prints progress. Default is False.
+        Requires the optional ``pyAMARES`` package (``pip install 'xmris[fitting]'``).
 
         Returns
         -------
         xr.Dataset
-            A dataset containing the original data, the fitted model, the residuals,
-            and the quantified parameters (amplitude, chem_shift, linewidth, phase,
-            CRLB, SNR) mapped across the original dimensions and the new ``metabolite``
-            dimension. Time-domain variables are returned in the input's domain
-            (ppm in -> ppm out).
+            The original data, the fitted model, the residuals, and the quantified
+            parameters (amplitude, chem_shift, linewidth, phase, CRLB, SNR) mapped
+            across the original dimensions and the new ``metabolite`` dimension.
+
+        See Also
+        --------
+        xmris.fit_amares : The free function this delegates to, fully documented.
 
         Raises
         ------
         ImportError
-            If the `pyAMARES` package is not installed.
+            If the optional ``pyAMARES`` package is not installed.
         """
         # Routed through the package resolver, whose __getattr__ raises the friendly
         # MISSING_FITTING_DEP_MSG ImportError when the optional pyAMARES dep is absent.

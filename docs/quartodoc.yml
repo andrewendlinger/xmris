@@ -23,6 +23,7 @@ quartodoc:
       desc: Spectral NMR fitting based on pyAMARES.
       contents:
         - fitting.simulation
+        - fitting.prior_knowledge
         - fitting.amares
 
     - title: Vendor Integrations

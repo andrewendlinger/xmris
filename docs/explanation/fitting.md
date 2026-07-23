@@ -1,5 +1,42 @@
+---
+jupytext:
+  text_representation:
+    extension: .md
+    format_name: myst
+kernelspec:
+  display_name: Python 3 (xmris)
+  language: python
+  name: python3
+---
+
 (fitting)=
 # Fitting on Real Data
+
+```{code-cell} ipython3
+:tags: [remove-cell]
+
+import numpy as np
+
+import xmris  # registers the .xmr accessor
+from xmris.core.config import ATTRS
+from xmris.fitting.simulation import simulate_fid
+
+# A small synthetic FID + prior knowledge, reused by the hidden checks below.
+fid = simulate_fid(
+    amplitudes=[10.0, 5.0],
+    chemical_shifts=[0.0, -7.5],
+    reference_frequency=49.0,
+    spectral_width=8000.0,
+    n_points=512,
+    dampings=[np.pi * 15.0, np.pi * 20.0],
+    target_snr=300.0,
+    seed=0,
+)
+pk = {
+    "PCr": {"amplitude": 10.0, "chem_shift": 0.0, "linewidth": 15.0},
+    "ATP": {"amplitude": 5.0, "chem_shift": -7.5, "linewidth": 20.0},
+}
+```
 
 :::{seealso}
 New to AMARES fitting? The [pyAMARES tutorial](../notebooks/fitting/pyamares.md) runs
@@ -60,6 +97,20 @@ reconstructed fit) back by the same factor.
 scale = abs(fid).max()
 ds = (fid / scale).xmr.fit_amares(pk)   # fit where the tolerance behaves
 ds["amplitude"] *= scale                # ...then restore your input units   ✅
+```
+
+```{code-cell} ipython3
+:tags: [remove-cell]
+
+# STRICT: the scale trap is defeated end to end. A Bruker-scale copy (peaks ~1e7)
+# returns amplitudes in input units — the true 2:1 ratio, not the prior guess — and
+# records the global normalization factor as lineage.
+_big = (fid * 1e7).assign_attrs(fid.attrs)  # arithmetic drops attrs; real FIDs keep them
+_ds = _big.xmr.fit_amares(pk, num_workers=1)
+_amps = _ds["amplitude"].values
+np.testing.assert_allclose(_amps, [1.0e8, 5.0e7], rtol=0.1)
+np.testing.assert_allclose(_amps[0] / _amps[1], 2.0, rtol=0.1)
+assert _ds.attrs[ATTRS.amares_amplitude_scale] > 1e6
 ```
 
 At the call site you just write `fid.xmr.fit_amares(pk)` — the round trip happens
@@ -124,8 +175,16 @@ fitted parameters are identical either way.
 ```python
 ds_fid  = fid.xmr.fit_amares(pk)                      # data/fit/residuals are FIDs
 ds_spec = fid.xmr.to_spectrum().xmr.fit_amares(pk)    # ...come back as spectra
+```
 
-np.testing.assert_allclose(ds_fid.amplitude, ds_spec.amplitude, rtol=1e-3)  # same fit
+```{code-cell} ipython3
+:tags: [remove-cell]
+
+# STRICT: the round trip is transparent — the fitted parameters are identical whether
+# you hand in a FID or its spectrum.
+_ds_fid = fid.xmr.fit_amares(pk, num_workers=1)
+_ds_spec = fid.xmr.to_spectrum().xmr.fit_amares(pk, num_workers=1)
+np.testing.assert_allclose(_ds_fid["amplitude"], _ds_spec["amplitude"], rtol=1e-3)
 ```
 
 This doesn't hide the model — it makes it *legible*. xmris's [domain contract](domains.md)

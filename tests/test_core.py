@@ -1702,6 +1702,40 @@ class TestFittingDomain:
         assert np.all(np.isnan(ds[VARS.amplitude].isel(voxel=1).values))
         assert np.all(np.isfinite(ds[VARS.amplitude].isel(voxel=0).values))
 
+    def test_parallel_path_matches_serial(self, fid, pk_path):
+        """The loky parallel branch (num_workers>1) matches the serial fit exactly.
+
+        Every other fitting test forces ``num_workers=1``, so this is the only test
+        that drives ``_run_parallel_fitting_optimal`` (the joblib/loky pool) — it
+        guards both the parallel dispatch and the generator's result-to-index
+        ordering. The two voxels are made *distinct* (v1 at half scale) so a
+        mis-ordered parallel assembly would diverge from the serial result. Kept in
+        the arch suite under ``-n0``: loky inside nbmake's ``-n auto`` xdist would
+        nest parallel pools.
+        """
+        stack = xr.concat([fid, 0.5 * fid], dim="voxel").assign_attrs(fid.attrs)
+        serial = stack.xmr.fit_amares(
+            prior_knowledge=pk_path, method="least_squares", num_workers=1
+        )
+        parallel = stack.xmr.fit_amares(
+            prior_knowledge=pk_path, method="least_squares", num_workers=2
+        )
+        # Same shape and variable set whichever engine ran.
+        assert dict(parallel.sizes) == dict(serial.sizes)
+        assert set(parallel.data_vars) == set(serial.data_vars)
+        # Same fit, voxel for voxel: leastsq is deterministic, only the dispatch differs.
+        np.testing.assert_allclose(
+            parallel[VARS.amplitude].values,
+            serial[VARS.amplitude].values,
+            rtol=1e-6,
+            equal_nan=True,
+        )
+        # Ordering sanity: v0 carries twice v1's amplitude, so a swap would fail here.
+        amps = serial[VARS.amplitude]
+        np.testing.assert_allclose(
+            amps.isel(voxel=0).values, 2.0 * amps.isel(voxel=1).values, rtol=0.05
+        )
+
     # --- in-memory prior knowledge (workstream C) ---
 
     # A dict spec numerically equivalent to the `pk_path` hand-written fixture.

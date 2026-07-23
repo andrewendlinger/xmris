@@ -136,6 +136,8 @@ project:
         # --- 3. Fitting & Vendors Submenu ---
         - title: Modeling & Vendors
           children:
+            - file: api_reference/fitting.prior_knowledge.md
+              title: Prior Knowledge
             - file: api_reference/fitting.amares.md
               title: AMARES Fitting
             - file: api_reference/vendor.bruker.md
@@ -164,6 +166,8 @@ project:
           title: The authoring skills
         - file: diary/2026-07-23-architecture-contract.md
           title: The Architecture Contract
+        - file: diary/2026-07-24-amares-fitting.md
+          title: AMARES fitting
         - file: diary/2026-07-25-docs-previews.md
           title: Per-PR docs previews
 
