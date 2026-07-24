@@ -9,6 +9,9 @@ kernelspec:
   name: python3
 ---
 
+(widget-phase)=
+# Interactive Spectrum Phasing
+
 ```{code-cell} ipython3
 :tags: [remove-cell]
 

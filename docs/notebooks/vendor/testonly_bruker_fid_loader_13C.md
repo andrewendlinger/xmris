@@ -31,7 +31,7 @@ plt.rcParams["figure.dpi"] = 150
 xr.set_options(display_expand_data=False)
 ```
 
-# Internal Validation: 13C NSPECT Slab Data
+## Internal Validation: 13C NSPECT Slab Data
 
 **Goal:** Strictly validate the Bruker data loader, memory reshaping, and coordinate calculation against a known ground-truth dataset (`nspect_slab_13C`). This ensures that future refactors to `xmris` do not break raw Paravision parsing or shift physical coordinate definitions.
 

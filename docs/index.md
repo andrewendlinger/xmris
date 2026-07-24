@@ -54,7 +54,7 @@ dims=["Voxel", "Time"]
 attrs={"B0_Field": 7.0, "MHz": 300.15}
 ```
 
-You are free to use any dimension names you like in your own data — xmris functions accept a `dim` argument to handle non-standard names. But when xmris creates or expects names internally, it uses lowercase. For the full rationale, see [The Architecture Guide](notebooks/basics/architecture.ipynb#the-lowercase-convention).
+You are free to use any dimension names you like in your own data — xmris functions accept a `dim` argument to handle non-standard names. But when xmris creates or expects names internally, it uses lowercase. For the full rationale, see [The Controlled Vocabulary](#the-lowercase-convention).
 :::
 
 ---
@@ -125,62 +125,10 @@ flowchart TD
 
 If you are curious about *why* xmris is built this way — why metadata lives in `.attrs`, why dimensions are flexible but attributes are strictly guarded, or what the `@requires_attrs` decorator does — read the architecture guide:
 
-* [**The xmris Architecture: Why We Built It This Way**](notebooks/basics/architecture.ipynb)
+* [**The xmris Architecture: Why We Built It This Way**](notebooks/basics/architecture.md)
 
 ---
 
 ## 🧭 Where do I start?
 
 We recommend going through the example notebooks. They are designed to be read more or less chronologically :)
-
-<!-- ### 1. The Basics
-
-Learn how <span style="color: #B05418;font-weight: bold;">x</span><span style="color: #002E7A;font-weight: bold;">mris</span> leverages `xarray` to make switching between the time and frequency domains completely painless.
-
-* [Basics of FFT](notebooks/basics/fft.ipynb)
-* [FID to Spectrum](notebooks/basics/fid_transformations.ipynb)
-* [Complex Number Handling](notebooks/basics/complex_numbers.ipynb)
-* [Hz and ppm Unit Handling](notebooks/basics/hz_and_ppm.ipynb)
-
-Or do a deeper dive on how <span style="color: #B05418;font-weight: bold;">x</span><span style="color: #002E7A;font-weight: bold;">mris</span> works:
-
-* [The xmris Architecture](notebooks/basics/architecture.ipynb)
-
-### 2. The Processing Pipeline
-
-This section guides you step-by-step through a complete MRS processing pipeline. We cover everything from loading raw data to state-of-the-art time-domain fitting using our `pyAMARES` integration.
-
-* [Zero Filling](notebooks/pipeline/zero_fill.ipynb)
-* [Apodization](notebooks/pipeline/apodization.ipynb)
-* [Manual Phasing](notebooks/pipeline/phase.ipynb)
-* [Automated Phasing](notebooks/pipeline/autophasing.ipynb)
-
-### 3. Fitting and Simulation
-
-* [FID simulation](notebooks/fitting/simufid.ipynb)
-* [pyAMARES Part I](notebooks/fitting/pyamares.ipynb)
-* [pyAMARES Part II ](notebooks/fitting/pyamares_advanced.ipynb)
-
-### 4. Visualization
-
-"Static" matplotlib based routines:
-
-* [Basics and the Ridge Plot (NMR Time Series)](notebooks/visualization/plot/01_plotting_basics.ipynb)
-* [The Heatmap Plot as an alternative NMR Time Series plot](notebooks/visualization/plot/02_plotting_heatmap.ipynb)
-* [Spectral Fitting Result Plotting](notebooks/visualization/plot/03_plotting_fit_1d.ipynb)
-
-Interactive routines:
-
-* [Interactive Spectrum Phasing](notebooks/visualization/widget/01_widget_phase.ipynb)
-
-### 5. Vendor Specific Routines
-
-* [Bruker Filter Removal](notebooks/vendor/bruker_filter_removal.ipynb)
-* [Bruker FID Building](notebooks/vendor/bruker_fid_loader.ipynb)
-
-### 6. API Reference
-
-Need to check the exact arguments for a function? The complete scope of the library can be found in the API reference.
-
-* [The `.xmr` Accessor](api_reference/accessor.md)
-* [API Index](api_reference/index.md) -->
