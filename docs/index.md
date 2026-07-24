@@ -40,8 +40,12 @@ results = (
 )
 
 # 3. Fit the time-domain data using the pyAMARES integration
-fit_dataset = mrsi_data.xmr.fit_amares(prior_knowledge="pk.csv")
+fit_dataset = mrsi_data.xmr.fit_amares(
+    {"PCr": {"amplitude": 10.0, "chem_shift": 0.0, "linewidth": 15.0}}
+)
 ```
+
+Fitting has its own five-minute path in: [Quick Start: Fitting a Spectrum](#fitting-quickstart).
 
 :::{note} Naming convention
 xmris uses **lowercase `snake_case`** for all dimension names, coordinate names, and attribute keys — matching the conventions of the xarray ecosystem and [CF Conventions](https://cfconventions.org/).
