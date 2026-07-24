@@ -2314,3 +2314,62 @@ class TestEstimateGroupDelayRobustness:
         d = fid.xmr.estimate_group_delay(search_range=(70, 255))
         assert np.isfinite(d)
         assert 70.0 <= d <= 255.0
+
+
+class TestPlotQCGridDomain:
+    """`plot_qc_grid` must handle a domain-preserving fit result in either domain.
+
+    `fit_amares` returns data/fit/residuals in the caller's domain, so a
+    spectrum-domain fit is already spectral and must not be FFT'd as if it were a
+    time-domain FID (finding 02). These are pyAMARES-free: the Dataset is synthetic.
+    """
+
+    def _fit_ds(self, axis_dim: str, axis_units: str) -> xr.Dataset:
+        """Build a minimal AMARES-shaped Dataset with the signals on ``axis_dim``."""
+        rng = np.random.default_rng(0)
+        n_rep, n_pts, n_metab = 3, 64, 2
+        params = [VARS.amplitude, VARS.chem_shift, VARS.linewidth, VARS.phase]
+
+        def _signal():
+            return rng.standard_normal((n_rep, n_pts)) + 1j * rng.standard_normal((n_rep, n_pts))
+
+        data_dims = ("repetition", axis_dim)
+        return xr.Dataset(
+            {
+                VARS.original_data: (data_dims, _signal()),
+                VARS.fit: (data_dims, _signal()),
+                VARS.residuals: (data_dims, _signal()),
+                VARS.crlb: (
+                    ("repetition", DIMS.metabolite, DIMS.parameter),
+                    rng.uniform(1.0, 10.0, (n_rep, n_metab, len(params))),
+                ),
+            },
+            coords={
+                "repetition": np.arange(n_rep),
+                axis_dim: xr.DataArray(
+                    np.linspace(0.0, 5.0, n_pts), dims=axis_dim, attrs={"units": axis_units}
+                ),
+                DIMS.metabolite: [f"m{i}" for i in range(n_metab)],
+                DIMS.parameter: params,
+            },
+        )
+
+    def _render(self, ds: xr.Dataset):
+        import matplotlib
+
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+
+        from xmris.visualization.plot.plot_qc_grid import plot_qc_grid
+
+        fig = plot_qc_grid(ds, dim="repetition")
+        assert isinstance(fig, plt.Figure)
+        plt.close(fig)
+
+    def test_spectrum_domain_fit_renders(self):
+        """A ppm-domain fit result renders without the old `dim='time'` crash."""
+        self._render(self._fit_ds(DIMS.chemical_shift, "ppm"))
+
+    def test_time_domain_fit_still_renders(self):
+        """A time-domain (FID) fit result still renders — no regression."""
+        self._render(self._fit_ds(DIMS.time, "s"))
