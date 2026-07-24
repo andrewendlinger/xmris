@@ -5,6 +5,8 @@ import numpy as np
 import xarray as xr
 from matplotlib.ticker import MaxNLocator
 
+from xmris.core.config import DIMS, VARS
+
 from ._base_config import BasePlotConfig
 
 
@@ -38,8 +40,7 @@ class PlotQCGridConfig(BasePlotConfig):
         metadata={
             "group": "Grid Layout",
             "description": (
-                "Max subplots. If None (default), plots all spectra. "
-                "If N > max, samples evenly."
+                "Max subplots. If None (default), plots all spectra. If N > max, samples evenly."
             ),
         },
     )
@@ -48,8 +49,7 @@ class PlotQCGridConfig(BasePlotConfig):
         metadata={
             "group": "Grid Layout",
             "description": (
-                "Share Y-axis limits across all plots to accurately "
-                "compare absolute amplitudes."
+                "Share Y-axis limits across all plots to accurately compare absolute amplitudes."
             ),
         },
     )
@@ -109,7 +109,7 @@ def plot_qc_grid(
     """
     cfg = config or PlotQCGridConfig()
 
-    required_vars = ["fit_data", "raw_data", "crlb"]
+    required_vars = [VARS.fit, VARS.original_data, VARS.crlb]
     for v in required_vars:
         if v not in ds.data_vars:
             raise ValueError(f"Dataset missing required AMARES variable: {v}")
@@ -146,16 +146,16 @@ def plot_qc_grid(
         )
         axes_flat = axes.flatten()
 
-        freq_dim = "frequency"
+        freq_dim = DIMS.frequency
         dim_coords = ds.coords[dim].values
         dim_unit = ds.coords[dim].attrs.get("units", "")
 
         # Pre-convert needed slices to frequency domain to save time
         ds_subset = ds.isel({dim: indices})
-        spec_raw = ds_subset["raw_data"].xmr.to_spectrum(out_dim=freq_dim).real
-        spec_fit = ds_subset["fit_data"].xmr.to_spectrum(out_dim=freq_dim).real
+        spec_raw = ds_subset[VARS.original_data].xmr.to_spectrum(out_dim=freq_dim).real
+        spec_fit = ds_subset[VARS.fit].xmr.to_spectrum(out_dim=freq_dim).real
         if cfg.plot_residuals:
-            spec_res = ds_subset["residuals"].xmr.to_spectrum(out_dim=freq_dim).real
+            spec_res = ds_subset[VARS.residuals].xmr.to_spectrum(out_dim=freq_dim).real
 
         freq_coords = spec_raw.coords[freq_dim].values
 
@@ -189,8 +189,8 @@ def plot_qc_grid(
                     linewidth=1.0,
                 )
 
-            # Check CRLB Quality
-            crlbs = ds_subset["crlb"].isel({dim: i}).values
+            # Check CRLB Quality (amplitude CRLB, per metabolite)
+            crlbs = ds_subset[VARS.crlb].sel({DIMS.parameter: VARS.amplitude}).isel({dim: i}).values
             max_crlb = np.nanmax(np.nan_to_num(crlbs, nan=np.inf))
 
             # In-plot Annotation (Top-Left corner)

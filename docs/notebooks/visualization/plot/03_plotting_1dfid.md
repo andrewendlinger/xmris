@@ -272,8 +272,8 @@ assert isinstance(fig_qc, plt.Figure), "plot_qc_grid did not return a Figure"
 
 # 3. Verify CRLB Thresholding Logic
 # Find the CRLB for PCr at index 15 (the massive noisy scan)
-crlb_massive = ds_dyn["crlb"].sel(Metabolite="PCr").isel(repetition=15).values
-crlb_clean = ds_dyn["crlb"].sel(Metabolite="PCr").isel(repetition=0).values
+crlb_massive = ds_dyn["crlb"].sel(metabolite="PCr", parameter="amplitude").isel(repetition=15).values
+crlb_clean = ds_dyn["crlb"].sel(metabolite="PCr", parameter="amplitude").isel(repetition=0).values
 
 # assert crlb_massive > 20.0, (
 #     "The simulated noise did not trigger a high CRLB. Test design failed."
