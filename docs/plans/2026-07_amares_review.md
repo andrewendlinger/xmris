@@ -294,3 +294,10 @@ Excluded from this review at the reviewer's request, but recorded so the state i
 `docs/plans/amares_handoff.md` already flags this as **known and deliberately deferred** ("rewrite-not-patch").
 Note the handoff's claim that `plot_trajectory.py` is "not a consumer" is inaccurate — it uses
 `.sel(Metabolite=…)` and is broken too.
+
+**Resolved (`40f84a4`).** The rename *was* propagated to both consumers and the notebook assert —
+the touched lines now route through `DIMS`/`VARS` and select `parameter="amplitude"` off the new
+`crlb` axis, restoring the old error-band / QC-flag semantics. `03_plotting_1dfid.md` is green again.
+The one genuinely separable piece — `plot_qc_grid`'s pre-existing spectrum-in assumption (unconditional
+`to_spectrum`, broken on `main` too) — stays deferred, now tracked as
+[#106](https://github.com/andrewendlinger/xmris/issues/106).

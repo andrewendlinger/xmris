@@ -80,12 +80,14 @@ local string, deliberately **not** a `VARS` term.
   `docs/notebooks/fitting/pyamares.md` (currently only `num_workers=1` executes; the loky path is
   `skip-execution`); add `docs/notebooks/fitting/testonly_amares_robustness.md`; #34 de-dup accessor vs
   free-fn docstring.
-- **Legacy viz is broken vs the new output and DEFERRED (user's rewrite-not-patch directive):**
-  `docs/notebooks/visualization/plot/03_plotting_1dfid.md` still uses `Metabolite` → **fails full
-  `uv run test`**. `plot_qc_grid.py` reads old var names / FFTs `data`/`fit` assuming FIDs (breaks on a
-  spectrum-in fit); `plot_trajectory.py` reads `crlb`, now `(…, metabolite, parameter)`. Rewrite against
-  the new contract, don't patch. The `prior_knowledge_file`→`prior_knowledge` rename was propagated to
-  that notebook mechanically only.
+- **Legacy viz vs the new output — RESOLVED (`40f84a4`):**
+  `plot_trajectory.py` / `plot_qc_grid.py` and `03_plotting_1dfid.md`'s assert now read the new
+  contract (`DIMS`/`VARS`, `crlb` selected at `parameter="amplitude"`), and the notebook is green.
+  Only `plot_qc_grid.py`'s pre-existing spectrum-in assumption (unconditional `to_spectrum`, broken on
+  `main` too) stays deferred — tracked as
+  [#106](https://github.com/andrewendlinger/xmris/issues/106). *(Original note: it still used
+  `Metabolite` and failed full `uv run test`; the `prior_knowledge_file`→`prior_knowledge` rename had
+  been propagated mechanically only.)*
 - **Verify fitting notebooks individually, not via full `uv run test`:**
   `uv run test-gen && uv run pytest "tests/autogen_notebooks/fitting/pyamares.ipynb" -n0 --no-cov`.
 - **mypy: 55 pre-existing errors** (accessor xarray-typing + `amares.py:540` `restore_state`
