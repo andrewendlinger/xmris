@@ -13,9 +13,9 @@ like the latter — without touching the AMARES mathematics.
 
 :::{important}
 Every robustness and ergonomics fix lives in the **xmris adapter** around pyAMARES, not
-in the algorithm: a scale-normalizing wrapper, a `NaN` sentinel, a domain-preserving
-round trip, and an in-memory prior-knowledge builder — so `fit_amares` is one more `.xmr`
-method, and pyAMARES stays a faithful upstream we only repackage.
+in the algorithm: a scale-normalizing wrapper, a `NaN` sentinel with a `fit_status` label,
+a domain-preserving round trip, and an in-memory prior-knowledge builder — so `fit_amares`
+is one more `.xmr` method, and pyAMARES stays a faithful upstream we only repackage.
 :::
 
 (diary-amares-fitting-decisions)=
@@ -28,8 +28,12 @@ each went the way it did.
   FID (~`1e7`) quits on step one. The fix normalizes by a *single global* factor, fits
   where the tolerance behaves, and rescales the amplitudes back — recorded as
   `amares_amplitude_scale` so the normalization is auditable, not hidden.
-- **Failure.** A voxel that will not fit is written `NaN`, never `0`: a give-up must stay
-  distinguishable from a genuine near-zero measurement, or a downstream `mean` folds it in.
+- **Absence vs. failure.** A voxel with no fitted value is written `NaN`, never `0` — a
+  give-up must stay distinguishable from a genuine near-zero measurement, or a downstream
+  `mean` folds it in. But one `NaN` conflates two absences: an **empty** voxel (no signal to
+  fit) and a **failed** fit read alike. So the values stay honest `NaN`, and a separate
+  `fit_status` label (`fitted` / `no_signal` / `failed`) records *which* absence it was — a
+  data-quality flag beside the science array, not a second sentinel overloaded onto it.
 - **Domain.** Fitting now meets your data in either representation and returns it in the
   one you passed, like every other step — reversing an earlier stance that `fit_amares`
   should demand a FID and keep the Fourier transform explicit.
@@ -71,6 +75,18 @@ uncertainty variables span. The uncertainties took **Shape B** — the values (`
 `chem_shift`, …) stay named data variables, and only `crlb` and the new `sd` carry the
 `parameter` axis. So the common case (`ds["amplitude"]`) stays a plain named array, and
 only an uncertainty comparison pays for the extra dimension.
+
+`fit_status` is the one new term that is a *decision*, not a name for what a function did: a
+per-spectrum integer with CF-style `flag_values` / `flag_meanings`, picked over a boolean
+(there are three states, not two) and over overloading the float arrays (the outcome is
+categorical, not numeric).
+
+:::{attention} Assumptions to verify
+- An all-zero voxel lands `no_signal` (1) with `NaN` values; a real voxel lands `fitted` (0);
+  a crashed fit lands `failed` (2) — the same `NaN` values as today, now told apart by the label.
+- Adding `fit_status` does not disturb the plot consumers (`plot_qc_grid`, `plot_trajectory`),
+  which select variables by name.
+:::
 
 (diary-amares-fitting-changed)=
 ## What changed from the plan
