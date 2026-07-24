@@ -1,16 +1,20 @@
 (diary-amares-fitting)=
 # pyAMARES now behaves like the rest of the pipeline
 
-<span style="color: gray; font-size: 0.9em;">Last edited: 2026-07-24</span>
+<span style="color: gray; font-size: 0.9em;">Last edited: 2026-07-24 · #105</span>
 
-Point `fit_amares` at a real Bruker FID and something unnerving happens: every status
-reads *converged*, and the numbers it hands back are — exactly, to the digit — the prior
-knowledge you started from. No exception, no warning, no failed status: just plausible
-numbers that happen to be your guess. That was the sharpest edge of a broader mismatch.
-pyAMARES is a stateful, file-driven optimizer with its own scale assumptions; xmris is a
-pure `xarray in, xarray out` pipeline. This arc (workstreams A–G on one branch, closing
-the issue tree #67/#69/#70/#80/#81/#82) makes the former behave like the latter — without
-touching the AMARES mathematics.
+Quantifying a spectrum in xmris means `da.xmr.fit_amares(...)`: one accessor method that
+wraps [pyAMARES](https://github.com/HawkMRS/pyAMARES), fits every voxel of an N-dimensional
+array, and hands back a `Dataset` of amplitudes, chemical shifts and linewidths. Point that
+method at a real Bruker FID, though, and something unnerving happens. Every status reads
+*converged*, and the numbers are — exactly, to the digit — the prior knowledge you started
+from. No exception, no warning, no failed status: just plausible numbers that happen to be
+your guess.
+
+That was the sharpest edge of a broader mismatch. pyAMARES is a stateful, file-driven
+optimizer with its own scale assumptions; xmris is a pure `xarray in, xarray out` pipeline.
+[PR #105](https://github.com/andrewendlinger/xmris/pull/105) makes the former behave like
+the latter — without touching the AMARES mathematics.
 
 :::{important}
 Every robustness and ergonomics fix lives in the **xmris adapter** around pyAMARES, not
@@ -31,7 +35,7 @@ and passes it to SciPy's least-squares solver as `xtol`/`ftol` — which are the
 *relative* tolerances. The two don't compose. On a signal near unit scale the tolerance is
 a sensible `~1e-6`; on a Bruker FID peaking around `1e7` it balloons:
 
-| `max|fid|` | derived `tol` | what the solver does |
+| peak magnitude | derived `tol` | what the solver does |
 |---|---|---|
 | `1e0` (synthetic) | `~1e-6` | iterates to a real minimum ✅ |
 | `1e4` | `~1e-4` | stops early, near the prior |
