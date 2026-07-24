@@ -2061,6 +2061,66 @@ class TestFittingPackaging:
             """
         )
 
+    def test_star_import_succeeds_without_pyamares(self):
+        """`from xmris import *` must not force the lazy resolver on a bare install.
+
+        The star-import iterates `__all__`, so `fit_amares` is pruned when absent.
+        """
+        self._run(
+            """
+            import importlib.abc
+            import sys
+
+            class _Block(importlib.abc.MetaPathFinder):
+                def find_spec(self, name, path, target=None):
+                    if name == "pyAMARES" or name.startswith("pyAMARES."):
+                        raise ModuleNotFoundError(name)
+                    return None
+
+            sys.meta_path.insert(0, _Block())
+
+            top = {}
+            exec("from xmris import *", top)
+            assert "fit_amares" not in top, "fit_amares leaked into a fitting-free star-import"
+            assert "simulate_fid" in top, "simulate_fid missing from star-import"
+
+            # The fitting subpackage star-import must degrade the same way.
+            sub = {}
+            exec("from xmris.fitting import *", sub)
+            assert "fit_amares" not in sub, "fit_amares leaked from xmris.fitting star-import"
+            print("OK")
+            """
+        )
+
+    def test_broken_pyamares_surfaces_real_error(self):
+        """A present-but-broken pyAMARES must surface its real ImportError.
+
+        Not the 'install the extra' message, which points at an installed package.
+        """
+        self._run(
+            """
+            import sys
+            import types
+
+            # pyAMARES is present in sys.modules but missing the symbols amares.py
+            # imports, so `from pyAMARES import initialize_FID, ...` raises a real
+            # "cannot import name" ImportError.
+            sys.modules["pyAMARES"] = types.ModuleType("pyAMARES")
+
+            import xmris
+
+            try:
+                xmris.fit_amares
+            except ImportError as exc:
+                msg = str(exc)
+                assert "fitting" not in msg.lower(), ("masked real error:", msg)
+                assert "initialize_FID" in msg or "cannot import name" in msg, msg
+            else:
+                raise AssertionError("expected the real ImportError to surface")
+            print("OK")
+            """
+        )
+
 
 class TestSetOptions:
     """Verify ``xmris.set_options(auto_convert=False)`` turns coercion into errors.

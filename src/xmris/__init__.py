@@ -27,6 +27,7 @@ from .core.options import set_options
 # `fit_amares` needs the optional `fitting` extra (pyAMARES); it is exposed
 # lazily via __getattr__ below so `import xmris` works without it. `simulate_fid`
 # and `build_prior_knowledge` are dependency-light and stay eager.
+from .fitting import _pyamares_installed
 from .fitting.prior_knowledge import build_prior_knowledge
 from .fitting.simulation import simulate_fid
 from .processing.baseline import baseline_als
@@ -109,6 +110,12 @@ __all__ = [
     "PlotTrajectoryConfig",
     "PlotQCGridConfig",
 ]
+
+# `fit_amares` resolves lazily via __getattr__ (optional `fitting` extra). Keep it
+# out of the star-imported `__all__` when pyAMARES is absent so `from xmris import *`
+# doesn't force the resolver and raise on a fitting-free install.
+if not _pyamares_installed():
+    __all__.remove("fit_amares")
 
 
 def __getattr__(name: str):
