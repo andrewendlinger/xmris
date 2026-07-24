@@ -50,37 +50,68 @@ run 2: [10.1198 6.1211] [10.0044 5.0007] [10.1198 6.1211] [10.0044 5.0007] [10.0
 `[10.0044, 5.0007]` is the true answer (simulated amplitudes 10 and 5). `[10.1198, 6.1211]` is a
 shallower second minimum. Note also the jitter *within* a minimum (`6.1211` vs `6.1331`).
 
-### What was ruled out
+### Root cause: it is inside MINPACK, not inside xmris (established 2026-07-25)
 
-- **Not** input variation — the FID is seeded and identical (`np.allclose` across calls).
-- **Not** `initialParams` mutation. `lmfit` does not modify the shared `Parameters` object between
-  fits (`amares.py:597` passes `shared_obj.initialParams` to every spectrum; a before/after diff
-  over all parameter values is empty after four fits).
-- **Not** `initialize_FID` — calling it three times on identical inputs yields
-  bit-identical `initialParams`.
+`fit_amares` hands the optimizer **bit-identical** inputs on every call, and the optimizer still
+returns different minima. Measured by hashing every argument reaching `_fit_dataset_safe` across
+six `fit_amares` calls — the FID array, parameter values, bounds, `vary` flags and names, the
+`timeaxis`, and `MHz`/`sw`/`deadtime`/`g_global`/`ppm_offset` — all identical, all six calls.
+
+That **rules out all three suspects this section used to name**: the global normalization factor
+(`amares.py:545-553`), the per-call temp prior-knowledge CSV (`_resolve_pk_file`), and the
+`_set_verbosity` / `_muted_warnings` context (`amares.py:54-93`). Nothing `fit_amares` does around
+the fit is responsible.
+
+Narrowed further, from the outside in:
+
+- The pyAMARES objective is bit-identical over 50 evaluations at the start point (one distinct
+  hash), so the forward model is deterministic.
+- `deepcopy(Parameters)` and `Minimizer.prepare_fit()` are order-stable over 300 trials — one
+  distinct `var_names` order, one distinct `init_vals`. The optimizer is not being handed the ten
+  variables in a shuffled order.
+- Raw `lmfit` `Minimizer.minimize(method="leastsq")`, given those bit-identical inputs and freshly
+  deep-copied parameters, still returns **χ² = 0.004** (the true minimum, `nfev≈304`) or
+  **χ² = 3.71** (the shallow one, `nfev≈172`) unpredictably. The nondeterminism is inside the
+  MINPACK path itself.
+
+Also ruled out:
+
+- **Not** BLAS/OpenMP threading — still varies under
+  `OMP/MKL/OPENBLAS/NUMEXPR/VECLIB_NUM_THREADS=1`.
+- **Not** the legacy global NumPy RNG — still varies with `np.random.seed(0)` before each call.
+- **Not** a premature stop on a loose tolerance. pyAMARES auto-generates
+  `xtol = ftol = sqrt(amp0) * 1e-6`, and our normalization puts `amp0` at 1.0, so `tol = 1e-6`.
+  Nondeterminism persists at 1e-8, 1e-10, 1e-12 and 1e-14, and χ² = 3.71 is a genuine second
+  minimum at every one of them — not an early exit.
 - **Not** the parallel path — this reproduces at `num_workers=1`.
-- Reusing **one** `shared_obj` across repeated direct `_fit_dataset_safe` calls *is* stable (4/4
-  land on the same minimum). So the variation appears to enter with something `fit_amares` does
-  per call around the fit, not with the optimizer in isolation.
+
+Correction to the earlier note that reusing **one** `shared_obj` "is stable (4/4)": that was
+small-sample luck. Eight sequential `_fit_dataset_safe` calls on one `shared_obj` and one array
+split 4/4 between the two minima.
 
 ### Where to look next
 
-Bisect what `fit_amares` adds around `_fit_dataset_safe` between calls: the global normalization
-factor (`amares.py:541-549`), the per-call temp prior-knowledge CSV (`_resolve_pk_file`), and the
-`_set_verbosity` / `_muted_warnings` context (`amares.py:54-95`). Then check whether lmfit's
-`leastsq` (MINPACK) path picks up any process- or thread-level state.
+Nowhere in `src/xmris/` — this is an upstream property of `scipy.optimize.leastsq` on an
+ill-conditioned two-peak problem. The remaining work is a **decision, not a bug fix**: whether
+`fit_amares`'s default `method` should move from `"leastsq"` to `"least_squares"`. That changes a
+public default and picks between viable approaches, so it wants a dev-diary entry as its review
+gate.
 
 ### Workaround already in place
 
-`method="least_squares"` (SciPy trust-region) is stable: 6/6 identical on the single spectrum
-above, and 5/5 **bit-identical** on the 8-voxel grid in `docs/notebooks/fitting/pyamares.md`. Both
-new fitting pages pin it, and the deep dive says why in prose. That prose should be revisited when
-this is fixed.
+`method="least_squares"` (SciPy trust-region) is **basin-stable**: 10 consecutive `fit_amares`
+calls on the repro above all land on the true minimum, and 5/5 on the 8-voxel grid in
+`docs/notebooks/fitting/pyamares.md`. Note it is *not* bit-identical — the same low-level float
+jitter is present (8 distinct χ² bit patterns over 8 runs, agreeing to ~1e-12), it simply no longer
+flips the basin. Both new fitting pages pin `least_squares`, and the deep dive says why in prose
+(`docs/notebooks/fitting/pyamares.md:190-193`); that prose is accurate as written and deliberately
+does not claim bit-identity.
 
 ### Acceptance
 
-Ten consecutive `fit_amares` calls on the repro above, with the default `method`, return identical
-amplitudes — ideally pinned by a test in `TestFittingDomain`.
+Ten consecutive `fit_amares` calls on the repro above, with the default `method`, agree on the
+minimum — asserted with `assert_allclose`, **not** exact equality, since not even the stable path
+is bit-reproducible. Ideally pinned by a test in `TestFittingDomain`.
 
 ---
 
@@ -168,7 +199,29 @@ defect. It would close `docs/plans/2026-07_amares_hardening.md:285-287`.
 
 ---
 
-## 3. `simulate_fid` can return `n_points + 1` samples — MEDIUM
+## 3. `simulate_fid` can return `n_points + 1` samples — ~~MEDIUM~~ **DONE 2026-07-25**
+
+Fixed: both sites now route through one module-private `_time_axis(spectral_width, n_points,
+dead_time)` helper returning `dead_time + np.arange(n_points) * (1 / spectral_width)` — the
+length-exact form `fit_amares` already used. The signal and its coordinate were previously derived
+from two *independent* copies of the bad expression, which is exactly why the off-by-one agreed
+with itself and never raised; one helper makes that drift impossible. Pinned by
+`TestSimulateFid::{test_length_exact, test_axis_step_and_offset, test_noise_matches_length}` — a
+pyAMARES-free class, so it runs everywhere. Verified non-vacuous: 8 of its 14 cases fail against
+the pre-fix `simulation.py`.
+
+Two things the fix turned up:
+
+- The report listed one hostile pair; a sweep found **four**: `(3001.2, 60)`, `(2999.7, 1000)`,
+  `(1234.5, 255)`, `(3333.3, 1000)`. All four are parametrized.
+- The change is **length-only**. `np.arange(0, dw*n, dw) + dt` and `dt + np.arange(n) * dw` are
+  bit-identical on their overlapping range (checked across `sw ∈ {10000, 8000, 5000, 2000, 3000,
+  120.6, 2999.7, 1234.5} × n ∈ {32…2048} × dead_time ∈ {0, 75 µs}`), and no `(sw, n)` pair actually
+  used anywhere in `docs/` or `tests/` changes length. Notebook outputs and fit numbers are
+  untouched — all 28 notebook tests and 258 architecture tests pass.
+
+<details>
+<summary>Original report</summary>
 
 `simulation.py:89` and `:209` build the time axis as
 `np.arange(0, dwelltime * n_points, dwelltime)`, whose length is float-rounding dependent:
@@ -192,6 +245,8 @@ should use the same form.
 
 `simulate_fid(..., n_points=n).sizes["time"] == n` for a parametrized sweep of awkward
 `(spectral_width, n_points)` pairs, pinned in `tests/test_core.py`.
+
+</details>
 
 ---
 

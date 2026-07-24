@@ -1581,6 +1581,52 @@ class TestPriorKnowledgeBuilder:
         assert init["g"] == ["0.0"]
 
 
+class TestSimulateFid:
+    """Pin `simulate_fid`'s time axis to exactly `n_points` samples.
+
+    Like the builder above, these are pyAMARES-free and run everywhere. The axis used
+    to be `np.arange(0, dwelltime * n_points, dwelltime)`, whose length is float-rounding
+    dependent — and because the signal and its coordinate were built from that same
+    expression, an off-by-one agreed with itself and never raised. Callers that concat,
+    add or slice two simulated FIDs are the ones that would have paid for it.
+    """
+
+    # (spectral_width, n_points) pairs whose float-step arange returned n + 1 samples.
+    _HOSTILE = [(3001.2, 60), (2999.7, 1000), (1234.5, 255), (3333.3, 1000)]
+    _BENIGN = [(8000.0, 512), (10000.0, 1024)]
+
+    @staticmethod
+    def _fid(sw, n, **kwargs):
+        from xmris.fitting.simulation import simulate_fid
+
+        return simulate_fid(
+            amplitudes=[1.0], frequencies=[10.0], spectral_width=sw, n_points=n, **kwargs
+        )
+
+    @pytest.mark.parametrize(("sw", "n"), _HOSTILE + _BENIGN)
+    def test_length_exact(self, sw, n):
+        """`n_points=n` returns n samples — data and coordinate alike."""
+        da = self._fid(sw, n)
+        assert da.sizes[DIMS.time] == n
+        # Pinned separately: the two were built by independent expressions, so a future
+        # divergence between signal and coordinate would otherwise pass unnoticed.
+        assert da.coords[COORDS.time].size == n
+
+    @pytest.mark.parametrize(("sw", "n"), _HOSTILE)
+    def test_axis_step_and_offset(self, sw, n):
+        """Fixing the length leaves the sampling instants themselves untouched."""
+        dead_time = 7.5e-5
+        t = self._fid(sw, n, dead_time=dead_time).coords[COORDS.time].values
+        np.testing.assert_allclose(t[0], dead_time)
+        np.testing.assert_allclose(np.diff(t), 1.0 / sw)
+
+    @pytest.mark.parametrize(("sw", "n"), _HOSTILE)
+    def test_noise_matches_length(self, sw, n):
+        """The noisy branch is length-exact too — it shapes noise from the signal."""
+        da = self._fid(sw, n, target_snr=50.0, seed=0)
+        assert da.sizes[DIMS.time] == n == da.coords[COORDS.time].size
+
+
 # =============================================================================
 # 16. Runtime Options: strict mode (auto_convert=False)
 # =============================================================================
