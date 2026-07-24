@@ -152,10 +152,17 @@ zeros and the two become indistinguishable — a downstream mean or a concentrat
 quietly folds the give-ups in as though they were measurements of nothing.
 
 So `fit_amares` writes **`NaN`** for a fit that failed, and for any spectrum with no
-signal to normalize (`max|fid| = 0`). `NaN` is not a value pretending to be data; it
-is the honest absence of one. It shows up as a hole in a map, forces an explicit
-`nanmean` instead of silently biasing an average, and makes "did this voxel fit?" as
-simple as `isnan`. A genuine zero stays zero; a non-answer reads as one.
+signal to fit (`max|fid| = 0`). `NaN` is not a value pretending to be data; it is the
+honest absence of one — a hole in a map, an explicit `nanmean` instead of a silently
+biased average. A genuine zero stays zero; a non-answer reads as one.
+
+But that leaves a second question the `NaN` cannot answer: *why* is the value absent —
+was there no signal to fit, or did a real spectrum defeat the solver? Both read as
+`NaN`, yet one is an empty background voxel you expected and the other is a fit you
+should look at. So beside the science variables `fit_amares` returns a per-spectrum
+**`fit_status`** flag — `0` fitted, `1` no_signal, `2` failed, carrying CF-style
+`flag_values`/`flag_meanings`. The values stay honestly `NaN`; the flag records which
+absence it is, rather than overloading a second meaning onto the numbers.
 
 (fitting-domains)=
 ## Fit a FID or a spectrum

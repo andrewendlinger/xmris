@@ -88,11 +88,14 @@ assert np.all(np.isfinite(_crlb_amp))
 ```
 
 (testonly-amares-robustness-nan)=
-## 2. An empty voxel reads as `NaN`, never a spurious zero
+## 2. An empty voxel stays `NaN` — and `fit_status` says why
 
 Fit an N-dimensional dataset and some voxels have no signal. Writing them as `0` makes
 a give-up indistinguishable from a genuine near-zero measurement — a downstream mean
-folds them in. `fit_amares` writes `NaN` instead: the honest absence of a value.
+folds them in. `fit_amares` writes `NaN` instead: the honest absence of a value. But one
+`NaN` cannot say *which* absence it is — an empty (no-signal) voxel and a failed fit read
+alike. The `fit_status` flag (0=fitted, 1=no_signal, 2=failed) records the distinction the
+values cannot.
 
 ```{code-cell} ipython3
 # Stack the real FID with an all-zero voxel.
@@ -103,9 +106,13 @@ ds_stack = stack.xmr.fit_amares(prior_knowledge=pk, num_workers=1)
 ```{code-cell} ipython3
 :tags: [remove-cell]
 
-# STRICT TESTS: the empty voxel is NaN; the real one still fits.
+# STRICT TESTS: the empty voxel's values stay NaN (never a spurious zero); the real one
+# still fits; and fit_status separates the two states the shared NaN cannot.
 assert np.all(np.isnan(ds_stack[VARS.amplitude].isel(voxel=1).values))
 assert np.all(np.isfinite(ds_stack[VARS.amplitude].isel(voxel=0).values))
+assert int(ds_stack[VARS.fit_status].isel(voxel=1)) == 1  # empty voxel -> no_signal
+assert int(ds_stack[VARS.fit_status].isel(voxel=0)) == 0  # real voxel  -> fitted
+assert ds_stack[VARS.fit_status].attrs["flag_meanings"] == "fitted no_signal failed"
 ```
 
 (testonly-amares-robustness-traps)=

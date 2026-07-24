@@ -409,8 +409,9 @@ def fit_amares(
     Robustness: the FID is normalized by a single global factor before fitting — so
     pyAMARES's magnitude-derived optimizer tolerance behaves at any signal scale (a
     Bruker-scale FID no longer "converges" on the prior) — and the fitted amplitudes
-    are rescaled back into the input units. A fit that fails is recorded as `NaN`, so
-    it is distinguishable from a genuine zero-signal spectrum.
+    are rescaled back into the input units. A voxel with no fitted value is recorded as
+    `NaN` — never a spurious zero — for both an empty (no-signal) spectrum and a failed
+    fit; the ``fit_status`` variable (0=fitted, 1=no_signal, 2=failed) tells the two apart.
 
     Parameters
     ----------
@@ -461,7 +462,8 @@ def fit_amares(
     xr.Dataset
         A dataset containing the original data, the fitted model, the residuals, and
         the quantified parameters (amplitude, chem_shift, linewidth, phase, CRLB, SNR)
-        mapped across the original dimensions and the new ``metabolite`` dimension.
+        mapped across the original dimensions and the new ``metabolite`` dimension. It
+        also carries a per-spectrum ``fit_status`` flag (0=fitted, 1=no_signal, 2=failed).
     """
     _set_verbosity(verbose)
 
@@ -507,11 +509,12 @@ def fit_amares(
     # 4. Normalize by a single global factor so the optimizer's magnitude-derived
     #    tolerance is well-behaved. One factor for the whole array — never per
     #    spectrum, which would flatten a dynamic series.
-    global_scale = float(np.abs(fid_arrs).max())
+    abs_fid = np.abs(fid_arrs)  # magnitude once — reused for global scale and per-spectrum max
+    global_scale = float(abs_fid.max())
     if not np.isfinite(global_scale) or global_scale == 0.0:
         global_scale = 1.0  # nothing to normalize; degenerate fits fall through to NaN
     fid_norm = fid_arrs / global_scale
-    spectrum_max = np.abs(fid_arrs).max(axis=1)  # per-spectrum: 0 => no signal => NaN
+    spectrum_max = abs_fid.max(axis=1)  # per-spectrum: 0 => no signal => the no_signal flag
 
     # 5. Smart initialization: pick the highest-SNR (normalized) FID as the template.
     if init_fid is not None:
@@ -578,8 +581,11 @@ def fit_amares(
         )
 
     # 8. Extract parameters (NaN sentinel for failed fits) and reconstruct the model.
+    # Cache the all-NaN test once per frame — reused by the first_ok scan and the loop below.
+    df_all_nan = [df is not None and bool(df.isna().all().all()) for df in result_list]
     first_ok = next(
-        (df for df in result_list if df is not None and not df.isna().all().all()), None
+        (df for df, all_nan in zip(result_list, df_all_nan) if df is not None and not all_nan),
+        None,
     )
     if first_ok is None and np.any(spectrum_max > 0):
         # Every spectrum that had signal failed to fit — escalate above the per-voxel
@@ -597,6 +603,7 @@ def fit_amares(
     crlb_out = np.full((n_spectra, n_metab, n_param), np.nan)
     sd_out = np.full((n_spectra, n_metab, n_param), np.nan)
     fit_norm = np.full((n_spectra, n_time), np.nan, dtype=complex)
+    status = np.zeros(n_spectra, dtype=np.int8)  # 0 = fitted; set below for no_signal / failed
 
     dwelltime = 1.0 / sw
     # Length-exact axis: `np.arange(0, dwelltime * n_time, dwelltime)` can round to
@@ -605,8 +612,12 @@ def fit_amares(
     timeaxis = deadtime + np.arange(n_time) * dwelltime
 
     for i, df in enumerate(result_list):
-        # No signal to fit, a hard failure, or an all-NaN fit -> keep the NaN sentinel.
-        if spectrum_max[i] == 0 or df is None or df.isna().all().all():
+        # Empty and failed voxels both keep the NaN sentinel; fit_status records which.
+        if spectrum_max[i] == 0:
+            status[i] = 1  # no_signal: nothing to fit
+            continue
+        if df is None or df_all_nan[i]:
+            status[i] = 2  # failed: crashed or an all-NaN result frame
             continue
         # Align rows to the canonical metabolite order so per-spectrum values can
         # never be positionally mis-mapped if pyAMARES returns rows in another order.
@@ -712,6 +723,21 @@ def fit_amares(
         ds[var] = _param_var(arr)
     ds[VARS.crlb] = _uncertainty_var(crlb_out)
     ds[VARS.sd] = _uncertainty_var(sd_out)
+
+    # Per-spectrum outcome flag beside the science arrays: an empty voxel and a failed
+    # fit both carry NaN quantified values, and this is what tells them apart. CF-style
+    # flag attrs are set directly — as_variable (C7) builds coordinates, not a data
+    # variable's quality flag, and there is no helper for the latter.
+    if other_dims:
+        status_da = (
+            xr.DataArray(status, dims=[stack_dim], coords={stack_dim: stacked_coords})
+            .unstack(stack_dim)
+            .transpose(*other_dims)
+        )
+    else:
+        status_da = xr.DataArray(status[0])
+    status_da.attrs = {"flag_values": [0, 1, 2], "flag_meanings": "fitted no_signal failed"}
+    ds[VARS.fit_status] = status_da
 
     # 11. Preserve lineage: input attrs + the one quantitative fitting parameter.
     ds.attrs = dict(da.attrs)

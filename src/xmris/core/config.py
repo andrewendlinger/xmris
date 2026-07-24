@@ -440,6 +440,15 @@ class XmrisDataVars(BaseVocabulary):
 
     snr = XmrisTerm("snr", description="Signal-to-Noise Ratio.")
 
+    fit_status = XmrisTerm(
+        "fit_status",
+        description=(
+            "Per-spectrum fit outcome: 0=fitted, 1=no_signal (empty voxel), 2=failed. "
+            "An empty voxel and a failed fit both carry NaN quantified values; this "
+            "categorical flag is what tells them apart."
+        ),
+    )
+
 
 # =============================================================================
 # Global Singletons
