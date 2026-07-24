@@ -297,7 +297,10 @@ def docs_notebooks() -> None:
     # failure (fail fast) rather than a crash worth relaunching.
     min_healthy_seconds = 15.0
     # Return codes that mean "the user stopped it", not "it crashed".
-    stop_codes = (-2, -15, 130, 143)
+    # POSIX: -2/-15 are SIGINT/SIGTERM as negative codes; 130/143 the 128+signal shell
+    # convention. Windows: a Ctrl-C surfaces STATUS_CONTROL_C_EXIT (0xC000013A) as
+    # -1073741510 (signed) or 3221225786 (unsigned), depending on how it is reported.
+    stop_codes = (-2, -15, 130, 143, -1073741510, 3221225786)
 
     restarts = 0
     while True:

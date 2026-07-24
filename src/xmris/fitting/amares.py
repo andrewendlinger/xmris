@@ -126,6 +126,7 @@ def _fit_dataset_safe(
     method="leastsq",
     initialize_with_lm=False,
     verbose=False,
+    apply_verbosity=True,
 ):
     """
     Safely fit a single FID dataset using the pyAMARES algorithm.
@@ -156,6 +157,11 @@ def _fit_dataset_safe(
         refine starting values before the main fitting routine. Defaults to False.
     verbose: bool, optional
         If True, sets logging level to INFO. Default is False -> log level ERROR.
+    apply_verbosity: bool, optional
+        If True (default), (re)apply the log level in this process before fitting —
+        needed in joblib workers, which re-import this module fresh. The in-process
+        (single-core) caller already set it once and passes False to skip the redundant
+        per-voxel reconfiguration.
 
 
     Returns
@@ -165,8 +171,11 @@ def _fit_dataset_safe(
         chemical shift, phase, CRLB, SNR) for the current dataset. If the fit
         fails, returns ``None`` (the caller's NaN sentinel).
     """
-    # Re-apply verbosity here so it also holds in joblib worker processes.
-    _set_verbosity(verbose)
+    # Re-apply verbosity so it also holds in joblib worker processes (fresh import).
+    # The single-core loop already called `_set_verbosity` once and passes
+    # apply_verbosity=False, so it is not reconfigured redundantly per voxel.
+    if apply_verbosity:
+        _set_verbosity(verbose)
     try:
         with _muted_warnings(verbose):
             FIDobj_current = deepcopy(FIDobj_shared)
@@ -475,15 +484,33 @@ def fit_amares(
         mhz = da_fid.attrs.get(ATTRS.reference_frequency)
         if mhz is None:
             raise ValueError(
-                f"mhz must be provided or present in da.attrs[{ATTRS.reference_frequency!r}]."
+                f"mhz must be provided or present in da.attrs[{ATTRS.reference_frequency!r}].\n\n"
+                f"To fix this, pass it directly or assign it via standard xarray methods:\n"
+                f"    >>> da = da.assign_attrs({{{ATTRS.reference_frequency!r}: <MHz>}})"
             )
 
-    if sw is None:
-        dt = float(da_fid.coords[dim].values[1] - da_fid.coords[dim].values[0])
-        sw = 1.0 / dt
-
-    if deadtime is None:
-        deadtime = float(da_fid.coords[dim].values[0])
+    # sw/deadtime are read positionally off the fit dim's coordinate. `_resolve_fit_domain`
+    # returns early on `dim in da.dims` without checking a coordinate exists or has >=2
+    # samples, so guard both here — a coordinate-less or single-sample FID gets the C10
+    # "pass sw/deadtime" message rather than an opaque KeyError/IndexError.
+    if sw is None or deadtime is None:
+        if dim not in da_fid.coords:
+            raise ValueError(
+                f"Cannot infer sw/deadtime: the fit dimension {dim!r} has no coordinate.\n\n"
+                f"To fix this, pass them explicitly:\n"
+                f"    >>> ds = da.xmr.fit_amares(prior_knowledge, sw=<Hz>, deadtime=<s>)"
+            )
+        coord_vals = da_fid.coords[dim].values
+        if sw is None:
+            if len(coord_vals) < 2:
+                raise ValueError(
+                    f"Cannot infer sw from a single-sample {dim!r} coordinate.\n\n"
+                    f"To fix this, pass it explicitly:\n"
+                    f"    >>> ds = da.xmr.fit_amares(prior_knowledge, sw=<Hz>)"
+                )
+            sw = 1.0 / float(coord_vals[1] - coord_vals[0])
+        if deadtime is None:
+            deadtime = float(coord_vals[0])
 
     # Carrier position on the absolute ppm scale — lets prior-knowledge shifts be
     # given in literature/absolute ppm rather than relative to the transmitter.
@@ -493,6 +520,11 @@ def fit_amares(
     # 3. Flatten the N-dimensional FID to a 2D array (n_spectra x time). The stack
     #    dim is transient (unstacked away before output); pick a name that cannot
     #    collide with an input dim literally called "spectrum".
+    # xmris-diagnostic-dim: "spectrum" is a deliberate LOCAL stacking-axis label, never
+    # surfaced in the output Dataset (unstacked away below). It is intentionally NOT added
+    # to xmris.core.config, to keep that vocabulary limited to physical/acquisition axes.
+    # Revocable: if a diagnostic-axis vocabulary is later introduced, grep
+    # "xmris-diagnostic-dim" to migrate every such site.
     stack_dim = "spectrum"
     while stack_dim in da_fid.dims:
         stack_dim = "_" + stack_dim
@@ -566,6 +598,8 @@ def fit_amares(
                 method=method,
                 initialize_with_lm=initialize_with_lm,
                 verbose=verbose,
+                # single-core: verbosity is already set once above; don't reapply per voxel.
+                apply_verbosity=False,
             )
             for i in tqdm(range(n_spectra), desc="Fitting Spectra", disable=not verbose)
         ]

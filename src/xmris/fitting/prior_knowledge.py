@@ -63,9 +63,12 @@ _BOUND_KEYS = frozenset(f"{k}_bounds" for k in _PK_ROWS)
 
 def _validate_peak_name(name: str) -> None:
     """Reject peak names pyAMARES would silently misread as multiplets."""
-    if not name.isalpha():
+    # `str.isalpha()` is True for Unicode letters ('γATP'.isalpha() -> True), so gate
+    # on ASCII too: a non-ASCII name reaches the positional CSV where pyAMARES may
+    # misencode it or fail to match it against result rows — the corruption this guards.
+    if not (name.isascii() and name.isalpha()):
         raise ValueError(
-            f"Peak name {name!r} must be letters only. pyAMARES reads a trailing "
+            f"Peak name {name!r} must be ASCII letters only. pyAMARES reads a trailing "
             f"digit as a J-coupling multiplet component and silently sums it into "
             f"the base peak (e.g. 'ATP2' folds into 'ATP'). For a genuine multiplet "
             f"model, write the CSV by hand and pass its path to fit_amares."
