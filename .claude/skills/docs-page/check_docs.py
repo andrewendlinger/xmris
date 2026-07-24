@@ -57,6 +57,9 @@ INLINE_COMMENT_RE = re.compile(r"<!--.*?-->")  # applied per line, so no DOTALL
 # (10.1016/S1090-7807(02)00069-1), so stopping at the first `)` truncates it.
 DOI_LINK_RE = re.compile(r"doi\.org/(10\.[^\s>\]\"']+)")
 DOI_ENTRY_RE = re.compile(r"doi\s*=\s*[{\"]([^}\"]+)", re.I)
+# The oscillation term of a hand-written damped sinusoid -- the tell that a page
+# is re-deriving simulate_fid's forward model in a loop.
+HANDROLLED_FID_RE = re.compile(r"np\.exp\(\s*-?\s*1j\s*\*\s*2\s*\*\s*np\.pi")
 
 
 class Page:
@@ -279,11 +282,26 @@ def check(page: Page, toc: set[str]) -> tuple[list[str], list[str]]:
             warn(lineno, "bare ```mermaid fence -- prefer the ```{mermaid} directive")
         if not info.startswith("{code-cell}"):
             continue
+        # A skip-execution twin renders code that never ran, so its output --
+        # and any dropdown discussing that output -- is fiction. Show the
+        # variant you cannot run as a plain ```python block instead.
+        if "skip-execution" in body:
+            warn(lineno, "skip-execution cell -- the reader sees code that never ran")
         # Config singletons are for library internals and hidden test cells.
         # Contributor-facing passages (architecture.md) legitimately show them,
         # so this can only ever be a warning.
         if "remove-cell" not in body and CONFIG_SINGLETON_RE.search(body):
             warn(lineno, "config singleton in a visible cell -- readers see plain strings")
+
+    # Synthetic MRS data comes from simulate_fid. Only the basics/ pages, whose
+    # subject *is* raw construction, build a damped sinusoid by hand -- anywhere
+    # else it re-derives the forward model, usually in the for-loop the package
+    # exists to delete. A page that does both is fine, so the warning fires only
+    # when nothing on the page reaches for the simulator.
+    if page.genre == "tutorial" and "basics" not in page.path.parts:
+        code_src = "\n".join(b for _, i, b in page.cells if i.startswith("{code-cell}"))
+        if HANDROLLED_FID_RE.search(code_src) and "simulate_fid" not in code_src:
+            warnings.append(f"{rel}:1: hand-rolled FID -- build MRS signals with simulate_fid")
 
     # Both tutorials and explainers are executed by nbmake (test-gen walks
     # docs/notebooks/ and docs/explanation/), so either one that runs code
