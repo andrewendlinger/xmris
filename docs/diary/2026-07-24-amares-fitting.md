@@ -79,14 +79,10 @@ only an uncertainty comparison pays for the extra dimension.
 `fit_status` is the one new term that is a *decision*, not a name for what a function did: a
 per-spectrum integer with CF-style `flag_values` / `flag_meanings`, picked over a boolean
 (there are three states, not two) and over overloading the float arrays (the outcome is
-categorical, not numeric).
-
-:::{attention} Assumptions to verify
-- An all-zero voxel lands `no_signal` (1) with `NaN` values; a real voxel lands `fitted` (0);
-  a crashed fit lands `failed` (2) — the same `NaN` values as today, now told apart by the label.
-- Adding `fit_status` does not disturb the plot consumers (`plot_qc_grid`, `plot_trajectory`),
-  which select variables by name.
-:::
+categorical, not numeric). An all-zero voxel lands `no_signal` (1), a real one `fitted` (0),
+and a crashed fit `failed` (2) — the quantified values are the same honest `NaN` as before,
+now told apart by the label. It rides beside the science variables, so consumers that select
+by name (`plot_qc_grid`, `plot_trajectory`) are untouched.
 
 (diary-amares-fitting-changed)=
 ## What changed from the plan
