@@ -24,15 +24,18 @@ import sys
 from pathlib import Path
 
 # --- genre ------------------------------------------------------------------
-# Location is genre: the directory segment under docs/ names it. Diary entries
-# belong to the `dev-diary` skill and api_reference/ is generated + gitignored,
-# so neither is checked here.
+# Location is genre: the directory segment under docs/ names it. Writing a diary
+# entry belongs to the `dev-diary` skill, but the structural rules bind it like
+# any other page -- an entry missing from the TOC never renders, and the diary
+# is a review gate that only works if it does. Only api_reference/ escapes:
+# it is generated and gitignored, so there is nothing to hand-fix.
 GENRES = {
     "notebooks": "tutorial",
     "explanation": "explainer",
     "contributing": "guide",
+    "diary": "diary",
 }
-SKIP_DIRS = ("_build", "api_reference", "diary")
+SKIP_DIRS = ("_build", "api_reference")
 
 KERNEL_DISPLAY_NAME = "Python 3 (xmris)"
 
@@ -73,11 +76,29 @@ class Page:
         """Index of the first line past the closing frontmatter ``---``."""
         return self.frontmatter.count("\n") + 3 if self.frontmatter else 0
 
+    @staticmethod
+    def _uncomment(line: str, incomment: bool) -> tuple[str, bool]:
+        """Return the part of the line that renders, carrying block state.
+
+        Inline comments close on their own line; block comments span lines, so
+        the state has to be carried. Applied once here rather than per check, so
+        every rule sees the same page the reader does.
+        """
+        line = INLINE_COMMENT_RE.sub("", line)
+        if incomment:
+            if "-->" not in line:
+                return "", True
+            line, incomment = line.split("-->", 1)[1], False
+        if "<!--" in line:
+            return line.split("<!--", 1)[0], True
+        return line, False
+
     def _scan(self) -> None:
         fence: str | None = None
         info = ""
         body: list[str] = []
         cell_start = 0
+        incomment = False
         for i in range(self._body_start, len(self.lines)):
             line = self.lines[i]
             m = FENCE_RE.match(line)
@@ -92,10 +113,15 @@ class Page:
             if fence is not None:
                 body.append(line)
                 continue
-            self.prose.append((i, line))
-            hm = HEADER_RE.match(line)
+            # Commented-out prose is dead weight, not a broken page: a header or
+            # a link inside `<!-- -->` renders nothing, so neither is an error.
+            # Fences are already excluded above, which is why the state machine
+            # lives here -- a `<!--` inside a code cell must not flip it.
+            visible, incomment = self._uncomment(line, incomment)
+            self.prose.append((i, visible))
+            hm = HEADER_RE.match(visible)
             if hm:
-                self.headers.append((i, len(hm.group(1)), line.lstrip("#").strip()))
+                self.headers.append((i, len(hm.group(1)), visible.lstrip("#").strip()))
 
     def first_content_line(self) -> int | None:
         """Index of the first non-blank, non-frontmatter line."""
@@ -165,20 +191,9 @@ def check(page: Page, toc: set[str]) -> tuple[list[str], list[str]]:
 
     # --- dead .ipynb links --------------------------------------------------
     # myst.yml excludes notebooks/**/*.ipynb, so these resolve to null -- and
-    # the build emits no warning.
-    # Commented-out links never render, so they are dead weight rather than a
-    # broken page. Inline comments close on their own line; block comments span
-    # lines, so carry the state. Fences are already excluded -- page.prose is
-    # what _scan saw outside every one of them.
-    incomment = False
-    for i, raw in page.prose:
-        line = INLINE_COMMENT_RE.sub("", raw)
-        if incomment:
-            if "-->" not in line:
-                continue
-            incomment, line = False, line.split("-->", 1)[1]
-        if "<!--" in line:
-            incomment, line = True, line.split("<!--", 1)[0]
+    # the build emits no warning. page.prose is what _scan saw outside every
+    # fence, already stripped of anything a comment hides.
+    for i, line in page.prose:
         if IPYNB_LINK_RE.search(line):
             err(i, "links a .ipynb -- excluded from the build, so the link is dead")
 

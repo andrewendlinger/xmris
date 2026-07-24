@@ -8,6 +8,23 @@ on:
     branches: [ main ]
 
 jobs:
+  docs-check:
+    name: Docs style
+    runs-on: ubuntu-latest
+    # Stdlib-only and whole-tree: seconds, so it gets its own job rather than
+    # riding the test matrix. A docs failure then reads as a docs failure.
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      # Errors gate (exit 1) -- each one renders wrong or dies as a link, and
+      # `myst build` is silent about all of them. Warnings exit 0 by design:
+      # real drift, too judgment-dependent to block a PR on.
+      - name: Check docs style
+        run: python3 .claude/skills/docs-page/check_docs.py
+
   test:
     runs-on: ubuntu-latest
     # A healthy run is ~4 min; bound it so a hung kernel fails fast, not at GitHub's 6h ceiling.

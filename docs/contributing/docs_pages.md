@@ -21,7 +21,15 @@ Documentation style](https://github.com/andrewendlinger/xmris/blob/main/CLAUDE.m
 
 The **`docs-page`** skill owns the cell structure, the hidden-assert convention, and the TOC step,
 and it ships a stdlib-only checker (`check_docs.py`) that catches what the build stays silent about
-— a missing target, a dead `.ipynb` link, a drifted kernel name. Its checklist:
+— a missing target, a dead `.ipynb` link, a drifted kernel name. Run it on the page you are editing:
+
+```bash
+uv run python .claude/skills/docs-page/check_docs.py docs/<path>/<page>.md
+```
+
+Its errors **gate CI** — the `Docs style` job in `ci-fast.yml` runs the same command over the whole
+tree on every PR, so a page with errors is a red build. Its warnings deliberately do not: they are
+real drift, but too judgment-dependent to block a merge on. The checklist:
 
 ```{literalinclude} ../../.claude/skills/docs-page/SKILL.md
 :language: markdown

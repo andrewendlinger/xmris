@@ -1,7 +1,7 @@
 (diary-authoring-skills)=
 # The skills remember the rules so you don't
 
-<span style="color: gray; font-size: 0.9em;">Last edited: 2026-07-23 · #103</span>
+<span style="color: gray; font-size: 0.9em;">Last edited: 2026-07-25 · #103, #104</span>
 
 Every change to xmris has to clear the same stack of contracts at once. A new function, for
 example, has to honour
@@ -65,6 +65,12 @@ refinements, now law in it:
   absorbed its later turns rather than spawning sequels, and its *Last edited* line says the
   story is current.
 
-New here? The [Contribute](#contribute-home) section is the map — start there. A stdlib-only
-checker (`check_docs.py`) enforces the docs-style half; the backlog it surfaced is
-[issue #104](https://github.com/andrewendlinger/xmris/issues/104).
+The docs-style half has a second enforcer, and it is not a skill. A stdlib-only checker
+(`check_docs.py`) measures the rules `myst build` stays silent about, and it first ran as an
+advisory: 141 errors across the tree, which is too many to gate on and too many to read. Paying
+them down ([#104](https://github.com/andrewendlinger/xmris/issues/104)) was worth doing only
+because of what it bought — at zero, `exit 1` became trustworthy, and the checker moved into
+`ci-fast.yml` as the **`Docs style`** job. The rules now hold the way the Commandments do: a
+missing target is a red build, not a note in a review.
+
+New here? The [Contribute](#contribute-home) section is the map — start there.

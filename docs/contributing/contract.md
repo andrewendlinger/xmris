@@ -98,8 +98,12 @@ data)` bundles data and term metadata into a fully formed `xr.Variable` for `.as
 ### 8. Explicit MyST targets in docs
 
 Every docs header carries an explicit `(kebab-target)=` and is linked via `[text](#target)`, never
-an auto-generated slug. The full documentation law lives with the
-[docs-page workflow](#contribute-docs). *Enforced: `check_docs.py`.*
+an auto-generated slug — which mystmd numbers by *document position*, so inserting one section
+silently renumbers every anchor below it. The target is kebab-case and prefixed with the page
+topic (`baseline-visualizing-the-results`, not `visualizing-the-results`), since targets resolve
+page-globally. The full documentation law lives with the
+[docs-page workflow](#contribute-docs). *Enforced: `check_docs.py`, run over the whole tree by
+the `Docs style` job in `ci-fast.yml`.*
 
 (contract-c9)=
 ### 9. The accessor method is a thin delegator
