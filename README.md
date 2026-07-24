@@ -1,7 +1,9 @@
 <div align="center">
-  <img src="https://raw.githubusercontent.com/andrewendlinger/xmris/main/docs/assets/logo.svg" alt="xmris logo" width="300" />
+<img height="200" alt="fid_showpiece_logo_always_light" src="https://github.com/user-attachments/assets/d05d3a2b-5742-4b7e-8623-b5fdab885a6f" />
+
+  <!-- <img src="https://raw.githubusercontent.com/andrewendlinger/xmris/main/docs/assets/logo.svg" alt="xmris logo" width="300" /> -->
   
-  <h1></h1>
+  
   <p><b>A modern, N-dimensional, <code>xarray</code>-based toolbox for Magnetic Resonance Imaging and Spectroscopy.</b></p>
 
   <a href="https://github.com/andrewendlinger/xmris/actions/workflows/deploy.yml"><img src="https://github.com/andrewendlinger/xmris/actions/workflows/deploy.yml/badge.svg" alt="MyST GitHub Pages Deploy"></a>
