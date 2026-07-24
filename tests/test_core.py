@@ -1911,6 +1911,106 @@ class TestFittingDomain:
         ds = stack.xmr.fit_amares(prior_knowledge=pk_path, num_workers=1)  # must not raise
         assert np.all(np.isnan(ds[VARS.amplitude].values))
 
+    # --- empty voxels are never dispatched (PR #105 follow-up, item 2) ---
+
+    @pytest.fixture
+    def gapped_stack(self, fid):
+        """Three voxels with an *empty* one in the middle, the live two distinguishable.
+
+        The empty voxel sits at index 1 (not the end) and v0 carries twice v2's
+        amplitude, so a result mis-mapped by the skip would show up as a swap.
+        """
+        return xr.concat([fid, xr.zeros_like(fid), 0.5 * fid], dim="voxel").assign_attrs(fid.attrs)
+
+    def test_empty_voxel_not_dispatched(self, gapped_stack, pk_path, monkeypatch):
+        """An all-zero voxel never reaches the optimizer — it is skipped up front.
+
+        Fitting it was pure waste: the result is discarded by the `no_signal` flag
+        either way, and the degenerate covariance leaks an lmfit RuntimeWarning.
+        """
+        from xmris.fitting import amares as amares_mod
+
+        real = amares_mod._fit_dataset_safe
+        dispatched = []
+
+        def _counting(fid_current, *args, **kwargs):
+            dispatched.append(float(np.abs(fid_current).max()))
+            return real(fid_current, *args, **kwargs)
+
+        monkeypatch.setattr(amares_mod, "_fit_dataset_safe", _counting)
+        ds = gapped_stack.xmr.fit_amares(
+            prior_knowledge=pk_path, method="least_squares", num_workers=1
+        )
+        assert len(dispatched) == 2, f"the empty voxel was fitted anyway: {dispatched}"
+        assert all(m > 0 for m in dispatched)
+        # The output is unchanged by the skip: still no_signal, still NaN.
+        np.testing.assert_array_equal(ds[VARS.fit_status].values, [0, 1, 0])
+        assert np.all(np.isnan(ds[VARS.amplitude].isel(voxel=1).values))
+        assert np.all(np.isfinite(ds[VARS.amplitude].isel(voxel=[0, 2]).values))
+
+    def test_parallel_empty_voxel_keeps_order(self, gapped_stack, pk_path):
+        """Skipping empty voxels must not shift the parallel results off their index.
+
+        The pool is now handed only the *active* rows, so the write-back is what
+        maps results home. A mis-scatter would put voxel 2's fit at index 1. Same
+        loky caveat as ``test_parallel_path_matches_serial``.
+        """
+        kw = dict(prior_knowledge=pk_path, method="least_squares")
+        serial = gapped_stack.xmr.fit_amares(num_workers=1, **kw)
+        parallel = gapped_stack.xmr.fit_amares(num_workers=2, **kw)
+        np.testing.assert_array_equal(parallel[VARS.fit_status].values, [0, 1, 0])
+        np.testing.assert_allclose(
+            parallel[VARS.amplitude].values,
+            serial[VARS.amplitude].values,
+            rtol=1e-6,
+            equal_nan=True,
+        )
+        # Ordering sanity: v0 carries twice v2's amplitude across the gap at v1.
+        amps = parallel[VARS.amplitude]
+        np.testing.assert_allclose(
+            amps.isel(voxel=0).values, 2.0 * amps.isel(voxel=2).values, rtol=0.05
+        )
+
+    def test_empty_voxel_leaks_no_stderr(self):
+        """A grid with an empty voxel fits without leaking a warning onto stderr.
+
+        This is the user-visible half: lmfit's degenerate-covariance
+        ``RuntimeWarning`` used to escape with an absolute ``.venv`` path, which
+        then rendered into notebook output on the docs site. It runs in a
+        subprocess because that leak is a file-descriptor write from a joblib
+        worker — nothing in-process observes it.
+        """
+        script = """
+            import numpy as np
+            import xarray as xr
+            import xmris
+
+            fid = xmris.simulate_fid(
+                amplitudes=[10.0, 5.0], chemical_shifts=[0.0, -7.5],
+                reference_frequency=120.0, spectral_width=10000.0, n_points=256,
+                dampings=[15.0 * np.pi, 20.0 * np.pi], target_snr=200.0, seed=0,
+            )
+            grid = xr.concat(
+                [fid, xr.zeros_like(fid), 0.5 * fid], dim="voxel"
+            ).assign_attrs(fid.attrs)
+            pk = {
+                "PCr": {"amplitude": 10.0, "chem_shift": 0.0, "linewidth": 15.0},
+                "ATP": {"amplitude": 5.0, "chem_shift": -7.5, "linewidth": 20.0},
+            }
+            ds = grid.xmr.fit_amares(pk, method="least_squares", num_workers=4)
+            assert ds["fit_status"].values.tolist() == [0, 1, 0]
+            print("OK")
+        """
+        result = subprocess.run(
+            [sys.executable, "-c", textwrap.dedent(script)],
+            capture_output=True,
+            text=True,
+        )
+        assert result.returncode == 0, result.stderr
+        assert result.stdout.strip().endswith("OK"), result.stdout
+        noisy = [ln for ln in result.stderr.splitlines() if "Warning" in ln]
+        assert not noisy, f"the empty voxel leaked onto stderr: {noisy}"
+
 
 class TestFittingVerbosity:
     """Pin BUG-010: `verbose=False` silences pyAMARES, and it holds in workers.
@@ -1968,7 +2068,19 @@ class TestFittingVerbosity:
             assert len(rec) == 3  # verbose passes everything through
 
     def test_fit_silent_when_not_verbose(self):
-        """A fit that trips the divide-by-zero warning leaks nothing at verbose=False."""
+        """A fit that trips a real warning leaks nothing at verbose=False.
+
+        Both directions are asserted. The `verbose=True` half is what keeps this
+        test honest: it proves the trigger still fires, so the `verbose=False`
+        half cannot quietly degrade into asserting silence about nothing. That is
+        not hypothetical — the previous trigger was an exactly-zero voxel, which
+        `fit_amares` no longer dispatches at all (empty voxels are skipped up
+        front), which would have left this test passing vacuously.
+
+        The trigger here is a vanishingly small voxel under `least_squares`: its
+        magnitude-derived tolerance falls below machine epsilon, so scipy emits
+        the `xtol`/`ftol` UserWarning that `_muted_warnings` targets.
+        """
         mhz, sw, n = 120.0, 10000.0, 256
         t = np.arange(n) / sw
         sig = 10.0 * np.exp(-15.0 * np.pi * t) * np.exp(2j * np.pi * 0.0 * mhz * t)
@@ -1978,14 +2090,31 @@ class TestFittingVerbosity:
             coords={"time": t},
             attrs={"reference_frequency": mhz, "carrier_ppm": 0.0},
         )
-        # A zero voxel trips pyAMARES's fid.py divide-by-zero RuntimeWarning in-process.
-        stack = xr.concat([fid, xr.zeros_like(fid)], dim="voxel").assign_attrs(fid.attrs)
+        stack = xr.concat([fid, fid * 1e-30], dim="voxel").assign_attrs(fid.attrs)
         pk = {"PCr": {"amplitude": 10.0, "chem_shift": 0.0, "linewidth": 15.0}}
-        with warnings.catch_warnings(record=True) as rec:
-            warnings.simplefilter("always")
-            ds = stack.xmr.fit_amares(prior_knowledge=pk, num_workers=1, verbose=False)
+
+        def _fit(verbose):
+            with warnings.catch_warnings(record=True) as rec:
+                warnings.simplefilter("always")
+                ds = stack.xmr.fit_amares(
+                    prior_knowledge=pk, num_workers=1, method="least_squares", verbose=verbose
+                )
+            return ds, rec
+
+        ds_loud, loud = _fit(True)
+        assert loud, "the trigger stopped firing — this test would now be vacuous"
+
+        ds, rec = _fit(False)
         assert rec == [], f"verbose=False leaked: {[str(w.message) for w in rec]}"
+        # Same fit either way: muting changes what is reported, never what is computed.
+        # Pinned on the real voxel — the 1e-30 one is degenerate, so its fitted value
+        # is float noise and would be fragile to compare at any tolerance.
         assert np.all(np.isfinite(ds[VARS.amplitude].isel(voxel=0).values))
+        np.testing.assert_allclose(
+            ds[VARS.amplitude].isel(voxel=0).values,
+            ds_loud[VARS.amplitude].isel(voxel=0).values,
+            rtol=1e-9,
+        )
 
 
 class TestFittingPackaging:

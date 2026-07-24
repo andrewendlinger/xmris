@@ -66,8 +66,10 @@ def _muted_warnings(verbose: bool):
     """Mute the routine warnings a fit emits unless ``verbose``.
 
     The scipy ``xtol``/``ftol`` UserWarning (from our magnitude-normalized
-    tolerance) and the pyAMARES ``fid.py`` divide-by-zero RuntimeWarning (an
-    exactly-zero spectrum) are expected here and would otherwise flood a batch fit.
+    tolerance) and the pyAMARES ``fid.py`` divide-by-zero RuntimeWarning (a
+    degenerate spectrum with no noise floor to divide by) are expected here and
+    would otherwise flood a batch fit. An *exactly*-zero spectrum no longer reaches
+    here at all — ``fit_amares`` skips dispatching it — but near-degenerate ones do.
     """
     if verbose:
         yield
@@ -421,6 +423,8 @@ def fit_amares(
     are rescaled back into the input units. A voxel with no fitted value is recorded as
     `NaN` — never a spurious zero — for both an empty (no-signal) spectrum and a failed
     fit; the ``fit_status`` variable (0=fitted, 1=no_signal, 2=failed) tells the two apart.
+    Empty spectra are skipped rather than fitted, so an MRSI grid costs only its
+    signal-bearing voxels.
 
     Parameters
     ----------
@@ -588,31 +592,51 @@ def fit_amares(
             preview=False,
         )
 
-    # 7. Fit every spectrum.
-    if num_workers == 1:
-        result_list = [
-            _fit_dataset_safe(
-                fid_norm[i, :],
+    # 7. Fit every spectrum that has signal. An empty (all-zero) spectrum is never
+    #    dispatched: its fit is discarded by the no_signal flag below anyway, and
+    #    fitting one costs a real optimizer run *and* leaks lmfit's degenerate-covariance
+    #    "invalid value encountered in sqrt" RuntimeWarning onto stderr (absolute .venv
+    #    paths and all, which then render into notebook output). `!= 0` rather than
+    #    `> 0` so an all-NaN spectrum is still fitted and still lands on status 2.
+    active_idx = np.flatnonzero(spectrum_max != 0)
+    result_list: list[pd.DataFrame | None] = [None] * n_spectra
+    if active_idx.size < n_spectra:
+        logger.info(
+            "Skipping %d empty spectra (no signal); fitting %d of %d.",
+            n_spectra - active_idx.size,
+            active_idx.size,
+            n_spectra,
+        )
+
+    if active_idx.size:
+        if num_workers == 1:
+            fitted = [
+                _fit_dataset_safe(
+                    fid_norm[i, :],
+                    FIDobj_shared=shared_obj,
+                    initial_params=shared_obj.initialParams,
+                    method=method,
+                    initialize_with_lm=initialize_with_lm,
+                    verbose=verbose,
+                    # single-core: verbosity is already set once above; don't reapply per voxel.
+                    apply_verbosity=False,
+                )
+                for i in tqdm(active_idx, desc="Fitting Spectra", disable=not verbose)
+            ]
+        else:
+            fitted = _run_parallel_fitting_optimal(
+                fid_arrs=fid_norm[active_idx],
                 FIDobj_shared=shared_obj,
                 initial_params=shared_obj.initialParams,
                 method=method,
                 initialize_with_lm=initialize_with_lm,
+                num_workers=num_workers,
                 verbose=verbose,
-                # single-core: verbosity is already set once above; don't reapply per voxel.
-                apply_verbosity=False,
             )
-            for i in tqdm(range(n_spectra), desc="Fitting Spectra", disable=not verbose)
-        ]
-    else:
-        result_list = _run_parallel_fitting_optimal(
-            fid_arrs=fid_norm,
-            FIDobj_shared=shared_obj,
-            initial_params=shared_obj.initialParams,
-            method=method,
-            initialize_with_lm=initialize_with_lm,
-            num_workers=num_workers,
-            verbose=verbose,
-        )
+        # Scatter back to absolute indices: `fitted` is in *active* order, while
+        # everything downstream reads `result_list` positionally against `spectrum_max`.
+        for idx, df in zip(active_idx, fitted):
+            result_list[idx] = df
 
     # 8. Extract parameters (NaN sentinel for failed fits) and reconstruct the model.
     # Cache the all-NaN test once per frame — reused by the first_ok scan and the loop below.
