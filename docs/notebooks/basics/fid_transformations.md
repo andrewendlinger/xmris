@@ -9,6 +9,7 @@ kernelspec:
   name: python3
 ---
 
+(fid-transforms)=
 # FID - Transformations
 
 ```{code-cell} ipython3
@@ -28,15 +29,14 @@ In Magnetic Resonance Spectroscopy (MRS), the raw data acquired by the scanner i
 
 To visualize the chemical resonances, this digital FID signal is processed by a discrete Fourier transformation (DFT) to produce a digital MR spectrum. Because an FID conventionally starts at $t=0$, we perform a standard Fast Fourier Transform (FFT) followed by a frequency-domain shift (`fftshift`) to center the zero-frequency (DC) component.
 
-```mermaid
+```{mermaid}
 flowchart LR
     A[Time-Domain / FID] --> B(FFT) --> C(fftshift) --> D[Frequency-Domain / Spectrum]
 
     style A fill:#e1f5fe,stroke:#01579b,stroke-width:2px
-    style D fill:#e8f5e9,stroke:#2e7d32,s
-
+    style D fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
 ```
-```mermaid
+```{mermaid}
 flowchart LR
     D[Frequency-Domain / Spectrum] --> E(ifftshift) --> F(IFFT) --> A[Time-Domain / FID]
 
@@ -53,6 +53,7 @@ import xarray as xr
 import xmris.core.accessor
 ```
 
+(fid-transforms-simulate)=
 ## 1. Generate a Synthetic FID
 Let's create an FID with two distinct resonances (at 50 Hz and -150 Hz).
 
@@ -79,6 +80,7 @@ plt.title("Synthetic FID (Real Part)")
 plt.show()
 ```
 
+(fid-transforms-to-spectrum)=
 ## 2. Convert to Spectrum
 We use `.xmr.to_spectrum()` to perform the FFT and automatically rename the dimension to "frequency". Notice how the resulting coordinates automatically represent the correct centered frequency axis (ranging from -500 Hz to 500 Hz).
 
@@ -127,6 +129,7 @@ np.testing.assert_allclose(
 )
 ```
 
+(fid-transforms-to-fid)=
 ## 3. Convert back to FID
 We can accurately recover the original time-domain signal using `.xmr.to_fid()`.
 

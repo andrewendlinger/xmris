@@ -9,6 +9,7 @@ kernelspec:
   name: python3
 ---
 
+(pyamares)=
 # Time-Domain Fitting with AMARES
 
 ```{code-cell} ipython3
@@ -39,6 +40,7 @@ In contrast, frequency-domain fitting methods like LCModel require all metabolit
 LCModel and AMARES have been compared directly and proven to be comparable, each with its own advantages. However, AMARES is often the preferred method for quantifying X-nuclei MRS data, such as 13C and 31P MRS, where spectra typically exhibit fewer peaks and less J-coupling compared to 1H MRS.
 :::
 
+(pyamares-nd-advantage)=
 ## The N-Dimensional Advantage
 
 
@@ -47,7 +49,7 @@ Traditional fitting tools often force you to write `for` loops to fit multiple s
 
 You pass in an N-dimensional `DataArray`, and the package automatically flattens the spatial dimensions, distributes the fitting across your CPU cores, and reconstructs the results into an aligned `xarray.Dataset`.
 
-```mermaid
+```{mermaid}
 graph LR
     A[Input DataArray<br>Dims: Voxel, Time] --> B(xmris Auto-Flatten)
     B --> C{joblib/loky Parallel Pool}
@@ -74,6 +76,7 @@ import xarray as xr
 import xmris.core.accessor
 ```
 
+(pyamares-prior-knowledge)=
 ## 1. Define Prior Knowledge
 AMARES requires Prior Knowledge (PK) to know how many peaks to look for and what constraints to place on their parameters (amplitude, frequency, linewidth, phase). This is provided as a CSV file.
 
@@ -101,6 +104,7 @@ pk_path = Path("example_pk.csv")
 pk_path.write_text(pk_csv_content)
 ```
 
+(pyamares-simulate)=
 ## 2. Generate N-Dimensional Synthetic Data
 We will simulate a 1D spatial array containing 5 voxels. To make it realistic, we will vary the amplitude of the PCr peak across the voxels, representing a spatial concentration gradient, while keeping ATP constant.
 
@@ -163,6 +167,7 @@ ax.set_title("Synthetic MRSI Data: PCr Gradient & Constant ATP")
 plt.show()
 ```
 
+(pyamares-fit)=
 ## 3. Fit the Data with xmris
 We pass the `DataArray` to `.xmr.fit_amares()`.
 
@@ -224,6 +229,7 @@ PyAMARES safely catches this and defaults the P matrix to an identity matrix. Th
 
 +++
 
+(pyamares-result-dataset)=
 ### Exploring the Resulting Dataset
 
 The returned `Dataset` is incredibly powerful. Instead of returning raw numbers, `xmris` neatly categorizes the fitting outputs into two sets of variables, mapped along their natural physical dimensions:
@@ -279,6 +285,7 @@ ax.legend()
 plt.show()
 ```
 
+(pyamares-quality-control)=
 ### Quality Control (Tabular & Visual)
 
 In quantitative MRS, simply looking at a plot is not enough to confirm a successful fit. The gold standard for assessing fit quality is the **Cramér-Rao Lower Bound (CRLB)**, which estimates the minimum variance of the fitted parameters.

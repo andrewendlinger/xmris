@@ -9,6 +9,7 @@ kernelspec:
   name: python3
 ---
 
+(phase)=
 # Spectrum - Phase Correction
 
 ```{code-cell} ipython3
@@ -48,6 +49,7 @@ import xarray as xr
 import xmris
 ```
 
+(phase-simulate)=
 ## 1. Generating Synthetic Unphased Data
 
 Let's generate a synthetic, noisy Free Induction Decay (FID) with two distinct peaks,
@@ -90,6 +92,7 @@ plt.tight_layout()
 plt.show()
 ```
 
+(phase-manual)=
 ## 2. Manual Phase Correction
 
 :::{tip} Interactive manual phase correction
@@ -163,6 +166,7 @@ When you apply phase correction, `xmris` appends the following attributes to the
 $$\phi(x) = p_0 + p_1 \cdot \frac{x - x_{pivot}}{x_{max} - x_{min}}$$
 :::
 
+(phase-next-autophase)=
 ## Next up: Automated Phase Correction (`autophase`)
 
 Finding the perfect phase angles manually is tedious. We can use algorithms such as entropy-minimization

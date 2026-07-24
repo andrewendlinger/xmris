@@ -1,3 +1,4 @@
+(home)=
 # Welcome to xmris
 
 <span style="color: #B05418;font-weight: bold;">x</span><span style="color: #002E7A;font-weight: bold;">mris</span> is an [xarray](https://xarray.dev)-based toolkit for Magnetic Resonance Imaging and Spectroscopy (MRIS).
@@ -8,6 +9,7 @@ By keeping your multi-dimensional data permanently linked to its named dimension
 
 ---
 
+(home-quick-start)=
 ## ⚡ Quick Start: A Minimal Working Example
 
 Because <span style="color: #B05418;font-weight: bold;">x</span><span style="color: #002E7A;font-weight: bold;">mris</span> functions return standard `xarray` objects, you can chain methods together to build readable, N-dimensional processing pipelines without writing a single `for` loop:
@@ -59,6 +61,7 @@ You are free to use any dimension names you like in your own data — xmris func
 
 ---
 
+(home-how-it-works)=
 ## 🧠 How it Works: xarray + xmris
 
 By simply importing `xmris`, standard `xarray` DataArrays instantly gain specialized MRIS functionality. You put an `xarray` in, apply a method, and get a processed `xarray` out.
@@ -84,7 +87,7 @@ It is the exact same data object, meaning you never have to switch contexts or c
 
 Here is a conceptual look at how your raw data might be structured and processed through the <span style="color: #B05418;font-weight: bold;">x</span><span style="color: #002E7A;font-weight: bold;">mris</span> pipeline:
 
-```mermaid
+```{mermaid}
 flowchart TD
     %% 1. Reusable Class Definitions
     classDef component fill:#ffffff,stroke:#adb5bd,stroke-width:1px,stroke-dasharray: 2 2
@@ -121,6 +124,7 @@ flowchart TD
 
 ---
 
+(home-design)=
 ## 🏗️ Want to Understand the Design?
 
 If you are curious about *why* xmris is built this way — why metadata lives in `.attrs`, why dimensions are flexible but attributes are strictly guarded, or what the `@requires_attrs` decorator does — read the architecture guide:
@@ -129,6 +133,7 @@ If you are curious about *why* xmris is built this way — why metadata lives in
 
 ---
 
+(home-where-to-start)=
 ## 🧭 Where do I start?
 
 We recommend going through the example notebooks. They are designed to be read more or less chronologically :)

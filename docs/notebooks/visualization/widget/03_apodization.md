@@ -9,6 +9,7 @@ kernelspec:
   name: python3
 ---
 
+(widget-apodization)=
 # Interactive Apodization
 
 ```{code-cell} ipython3
@@ -35,6 +36,7 @@ import xmris
 from xmris import simulate_fid
 ```
 
+(widget-apodization-simulate)=
 ## 1. Generate Synthetic Data
 
 We create a noisy FID with two closely spaced peaks to demonstrate resolution enhancement.
@@ -54,6 +56,7 @@ da_fid = simulate_fid(
 )
 ```
 
+(widget-apodization-launch)=
 ## 2. Launch the Widget
 
 Pass a 1D time-domain `DataArray` to the `apodize` method. The widget computes the Fourier transform in the browser and renders the FID (top) and spectrum (bottom) side by side.
@@ -85,6 +88,7 @@ export_widget_static(
 )
 ```
 
+(widget-apodization-controls)=
 ### Widget Controls
 
 | Control | Description |
@@ -94,6 +98,7 @@ export_widget_static(
 | **Show Original** | Overlay the un-apodized data as a gray trace for comparison. |
 | **LB / GB Sliders** | Adjust apodization parameters. The orange dashed line on the FID canvas shows the weighting envelope being applied. |
 
+(widget-apodization-extract)=
 ## 3. Extract and Apply Parameters
 
 Once you are satisfied with the result, click **Close**. The widget displays a copyable Python snippet so your parameters are recorded in your notebook.

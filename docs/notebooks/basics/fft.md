@@ -31,6 +31,7 @@ While `numpy.fft` is incredibly fast, applying it directly to physical data is n
 
 The `xmris` Fourier module provides a mathematically rigorous, `xarray`-native toolbox to solve these issues. It handles orthogonal normalization, coordinate math, and shifting automatically.
 
+(fft-overview)=
 ## Overview of Available Functions
 
 The module provides three pairs of functions to handle any transformation scenario:
@@ -47,7 +48,7 @@ The module provides three pairs of functions to handle any transformation scenar
 
     Convenience wrappers for symmetrically sampled data (like imaging). It chains shifts *before* and *after* the transform to keep the zero-frequency component dead center.
 
-```mermaid
+```{mermaid}
 flowchart TD
     subgraph Centered Transform
         D2[(Input Data)] --> S1[ifftshift] --> F2[xmris.fft] --> S2[fftshift] --> O2[(Centered Output)]
@@ -72,6 +73,7 @@ import xmris  # Registers the .xmr accessor
 
 ---
 
+(fft-1d-signal)=
 ## 1. 1D Signal: Time Domain to Frequency Domain
 
 Let's generate a simple, synthetic time-domain signal: a decaying sine wave with a 50 Hz frequency offset.
@@ -138,6 +140,7 @@ assert np.isclose(energy_time, energy_freq), "FFT energy conservation failed!"
 
 ---
 
+(fft-2d-kspace)=
 ## 2. Imaging: 2D $k$-space to Image Space
 
 The true power of `xarray` + `xmris` shines in multi-dimensional data. Let's create a synthetic 2D $k$-space using custom dimension strings (`"kx"` and `"ky"`). We will use a simple 2D rectangle, which analytically transforms into a 2D sinc function in the image domain.

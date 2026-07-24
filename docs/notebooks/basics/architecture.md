@@ -9,6 +9,7 @@ kernelspec:
   name: python3
 ---
 
+(architecture)=
 # The xmris Architecture: Why We Built It This Way
 
 Welcome to the engine room of `xmris`! If you are wondering why we rely so heavily on `xarray`, why we don't just pass sequence parameters as function arguments, or what the deal is with our decorators, you are in the right place.
@@ -21,6 +22,7 @@ Let's dive in.
 
 +++
 
+(architecture-parameter-soup)=
 ## 1. The Parameter Soup Problem
 
 Imagine you are writing Python functions to process an MRI Free Induction Decay (FID) signal.  You need the raw data, but to do anything meaningful — converting frequencies to ppm, removing a digital filter, auto-phasing — you also need the scanner metadata: the spectrometer frequency, the B0 field, the dwell time, and so on.
@@ -61,6 +63,7 @@ data = autophase(data, mhz=300.15, dwell_time=0.0005)
 
 ```
 
+(architecture-xarray-solution)=
 ### The `xarray` Solution
 
 To avoid parameter soup, `xmris` is built natively on top of [xarray](https://docs.xarray.dev/en/stable/). An `xarray.DataArray` bundles together the raw data, **named dimensions** ("numpy axes"), coordinates (axis labels), and arbitrary metadata (`.attrs`) into a single, self-describing object.
@@ -145,6 +148,7 @@ which integer axis is which. The metadata and the axis semantics travel
 
 +++
 
+(architecture-hidden-state)=
 ## 2. The Danger of "Hidden State"
 
 Encapsulation is beautiful, but it introduces a dangerous new problem: **magic strings and hidden state.**
@@ -267,6 +271,7 @@ an `AttributeError` at import time — not a silent bug three hours into a proce
 
 ```
 
+(architecture-dictionary-internals)=
 ### How the Dictionary Is Used Internally
 
 Throughout the `xmris` codebase, **no function uses a bare string to access metadata.** Every
@@ -344,6 +349,7 @@ flowchart LR
 
 The decorator does two things:
 
+(architecture-fail-fast)=
 ### 1. Fail-Fast with Helpful Errors
 
 If a required attribute is missing, the bouncer intercepts the call *before* any math runs
@@ -364,6 +370,7 @@ copy-pasteable fix code.
 
 :::
 
+(architecture-self-documenting)=
 ### 2. Self-Documenting Functions
 
 At import time, the decorator dynamically injects a **"Required Attributes"** section into
@@ -394,6 +401,7 @@ sync with the code.
 
 +++
 
+(architecture-dims-vs-attrs)=
 ## 5. Dimensions vs. Attributes: The Great Divide
 
 You might be wondering: *"If decorators are so great for attributes, why don't you use them for dimensions to enforce consistent use of e.g. `time` or `frequency`?"*
@@ -402,12 +410,14 @@ This was the single most important architectural decision we made. We treat **Di
 and **Attributes** with different strategies, because they play fundamentally
 different roles.
 
+(architecture-attrs-hidden-state)=
 ### Attributes Are "Hidden State"
 
 A B0 field strength is a physical constant of the experiment. You don't apply an operation
 *to* the B0 field; the math just requires it to exist in the background. Because it is
 invisible, it needs strict guarding by our `@requires_attrs` decorator.
 
+(architecture-dims-action-space)=
 ### Dimensions Are an "Action Space"
 
 When you apply an FFT or an apodization, you are actively choosing *which axis* to act upon.
@@ -452,6 +462,7 @@ or rename your data's axes using xarray:
 
 :::
 
+(architecture-design-rule)=
 ### The Design Rule
 
 Here is the rule we follow throughout the entire codebase:
@@ -467,6 +478,7 @@ Here is the rule we follow throughout the entire codebase:
 
 +++
 
+(architecture-putting-it-together)=
 ## Putting It All Together
 
 Let's trace through a single function call — `spectrum.xmr.to_ppm()` — to see every
@@ -494,6 +506,7 @@ Every layer serves a distinct purpose:
 
 +++
 
+(architecture-summary)=
 ## Summary
 
 By combining `xarray` encapsulation, a strongly-typed Data Dictionary, fail-fast decorators

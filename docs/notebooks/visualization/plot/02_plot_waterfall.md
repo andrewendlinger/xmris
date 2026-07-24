@@ -9,12 +9,14 @@ kernelspec:
   name: python3
 ---
 
+(waterfall)=
 # Waterfall Plots
 
 Waterfall plots (also known as ridge or joy plots) are essential in Magnetic Resonance Spectroscopy (MRS) for visualizing kinetic, dynamic, or relaxation series. By vertically stacking and horizontally offsetting 1D spectra, they allow the human eye to easily track peak growth, decay, and frequency shifts over an independent variable like time . 
 
 In `xmris`, this visualization is built entirely around our `WaterfallConfig` object, giving you publication-ready results without cluttering your function calls.
 
+(waterfall-data-requirements)=
 ## 1. Data Requirements
 
 Before plotting, your `xarray.DataArray` must meet the following criteria:
@@ -22,6 +24,7 @@ Before plotting, your `xarray.DataArray` must meet the following criteria:
 * **X-Axis (Horizontal):** The accessor will automatically search for dimensions named `chemical_shift` or `frequency`. If your spectral axis has a different name, you must specify it explicitly via the `x_dim` argument.
 * **Stack Axis (Vertical):** The accessor will automatically stack along the remaining dimension. If multiple dimensions remain, it looks for `average` or `repetition`, or you can specify it explicitly via the `stack_dim` argument.
 
+(waterfall-simulate)=
 ## 2. Generating Synthetic Data
 
 We will generate a realistic kinetic time-course of a hyperpolarized 13C experiment where Pyruvate decays and Lactate grows over 60 seconds.
@@ -71,6 +74,7 @@ da_kinetic = da_kinetic_fid.xmr.to_spectrum().xmr.to_ppm().real
 
 :::
 
+(waterfall-basic-usage)=
 ## 3. Basic Usage
 
 Because we utilize an intelligent xarray accessor, the simplest plotting call requires zero arguments. The accessor dynamically reads the dataset's units and dimensions to build the axes automatically.
@@ -81,6 +85,7 @@ ax = da_kinetic.sel(chemical_shift=slice(160, 190)).xmr.plot.waterfall()
 plt.show()
 ```
 
+(waterfall-config)=
 ## 4. Advanced Configuration
 
 To customize the plot, do not pass endless keyword arguments. Instead, instantiate a `WaterfallConfig`. Outputting this object in a notebook renders a table of all available styling options.
@@ -105,6 +110,7 @@ ax = da_kinetic.sel(chemical_shift=slice(160, 190)).xmr.plot.waterfall(config=CF
 plt.show()
 ```
 
+(waterfall-subplots)=
 ## 5. Subplot Integration (Wireframe Mode)
 
 Professional library functions should never hijack your global plotting environment. Because `plot.waterfall()` returns a standard `matplotlib.Axes` object and accepts an `ax` keyword argument, you can easily embed these visualizations into multi-panel figures.

@@ -9,6 +9,7 @@ kernelspec:
   name: python3
 ---
 
+(bruker-fid)=
 # Visual Verification: FID Loader and Processing Pipeline
 
 ```{warning} **Work in Progress 🚧**
@@ -39,6 +40,7 @@ from xmris.core.config import DIMS, COORDS
 xr.set_options(display_expand_data=False)
 ```
 
+(bruker-fid-load)=
 ## 1. Data Loading and Reshaping
 
 Raw Bruker data is read as a continuous 1D array. To make it useful, we must reshape it into an N-dimensional C-contiguous array based on the acquisition parameters, and then wrap it in an `xarray.DataArray` with the correct physical coordinates.
@@ -60,6 +62,7 @@ print(f"Constructed FID Shape: {fid_xr.shape}")
 print(f"Assigned Attributes: {list(fid_xr.attrs.keys())}")
 ```
 
+(bruker-fid-time-domain)=
 ## 2. Inspecting the Time Domain (FID)
 
 To simplify our visual inspection, we will select the first repetition, channel, or average if the data is multi-dimensional. We then plot the Free Induction Decay (FID) to verify signal decay shape, complex quadrature, and the absence of truncation artifacts.
@@ -84,6 +87,7 @@ ax.grid(True, alpha=0.3)
 plt.show()
 ```
 
+(bruker-fid-digital-filter)=
 ### Removing the Digital Filter
 
 Bruker spectrometers utilize digital filters that introduce a group delay at the beginning of the FID. `build_fid` already stored that value in the FID's metadata (`group_delay`), so the default `remove_digital_filter()` reads it automatically — no need to pass the delay by hand. If the header value is unreliable, pass `group_delay="measure"` instead to estimate the true delay from the data (see [The Digital Filter Group Delay](bruker_filter_removal.md)).
@@ -104,6 +108,7 @@ ax.grid(True, alpha=0.3)
 plt.show()
 ```
 
+(bruker-fid-pipeline)=
 ## 3. The `xmris` Spectral Pipeline
 
 With the FID corrected, we can pass it through the `xmris` processing pipeline. Here, we apply an exponential apodization to smooth the signal, transform it to the frequency domain, and automatically correct the phase.
@@ -120,6 +125,7 @@ spectrum = (
 spectrum
 ```
 
+(bruker-fid-frequency-domain)=
 ### Visualizing the Frequency Domain
 
 We can visualize the resulting spectrum. Note how `xarray` automatically handles the coordinate labels. We invert the x-axis to adhere to standard NMR/MRI conventions.
@@ -162,6 +168,7 @@ plt.tight_layout()
 plt.show()
 ```
 
+(bruker-fid-ppm)=
 ## 4. Chemical Shift Conversion
 
 For chemical analysis, viewing the spectrum in parts per million (ppm) is more useful than raw Hertz. The `.xmr.to_ppm()` accessor handles this conversion automatically using the spectrometer frequency metadata.
@@ -207,6 +214,7 @@ plt.tight_layout()
 plt.show()
 ```
 
+(bruker-fid-reverse)=
 ## 5. Reverse Transformation
 
 The `xmris` accessors preserve metadata and coordinates perfectly, allowing seamless reverse transformations. We can convert our processed spectrum back into the time domain using `.xmr.to_fid()`.

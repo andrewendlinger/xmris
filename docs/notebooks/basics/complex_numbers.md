@@ -9,6 +9,7 @@ kernelspec:
   name: python3
 ---
 
+(complex-numbers)=
 # Complex Number Handling
 
 ```{code-cell} ipython3
@@ -21,6 +22,7 @@ matplotlib_inline.backend_inline.set_matplotlib_formats("retina")
 plt.rcParams["figure.dpi"] = 150
 ```
 
+(complex-mri-data)=
 ## Handling Complex MRI/MRS Data
 
 Magnetic resonance data is inherently complex-valued, but many standard tools lack native support for complex numbers. Splitting this data into separate real and imaginary channels is frequently required for:
@@ -49,9 +51,10 @@ import xarray as xr
 import xmris
 ```
 
+(complex-split)=
 ### 1. Splitting Complex Data into Channels
 
-```mermaid
+```{mermaid}
 flowchart LR
     %% Define Nodes
     A["<b>da_complex</b><br>Shape: (time: 512)<br>Dtype: complex128<br>Values: a + bi"]
@@ -112,6 +115,7 @@ ax.set_title("FID Split into Real and Imaginary Components")
 plt.show()
 ```
 
+(complex-split-dim)=
 ### 2. Customizing the Split Dimension
 
 If your specific ML pipeline expects the channel dimension to have a specific name (e.g., `"channel"` instead of `"component"`), you can pass these arguments directly to the function.
@@ -121,6 +125,7 @@ da_torch = da_complex.xmr.to_real_imag(dim="channel", coords=("ch0", "ch1"))
 print("Custom Dimension:", da_torch.dims)
 ```
 
+(complex-reconstruct)=
 ### 3. Reconstructing the Complex Array
 
 After processing the split channels (e.g., passing them through a neural network), you can seamlessly collapse the dimension back down to a standard complex array for downstream signal processing (like an FFT) using `.xmr.to_complex()`.

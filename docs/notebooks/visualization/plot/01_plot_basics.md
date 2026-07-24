@@ -9,6 +9,7 @@ kernelspec:
   name: python3
 ---
 
+(plot-basics)=
 # Introduction to Config-Based Plotting
 
 Generating publication-ready figures directly from code often results in function signatures cluttered with dozens of keyword arguments (`figsize`, `cmap`, `linewidth`, `alpha`, etc.). This leads to unreadable code and makes it difficult to maintain consistent styling across a project.
@@ -25,6 +26,7 @@ To get familiar with this concept we will use the [waterfall plot](./02_plot_wat
 :::
 
 
+(plot-basics-setup)=
 ## 1. Environment Setup
 
 ```{code-cell} ipython3
@@ -48,6 +50,7 @@ import matplotlib.pyplot as plt
 from xmris.visualization import WaterfallConfig
 ```
 
+(plot-basics-config-object)=
 ## 2. The Configuration Object
 
 Instead of passing styling arguments directly to the plotting function, we instantiate a specific configuration object.
@@ -62,6 +65,7 @@ CFG = WaterfallConfig()
 CFG
 ```
 
+(plot-basics-customizing)=
 ## 3. Customizing the Configuration
 
 You can easily modify the config object using standard attribute assignment. Thanks to the underlying architecture, your IDE will catch typos and warn you if you try to pass a string to a parameter that expects a float.
@@ -79,6 +83,7 @@ print(f"Current colormap: {CFG.cmap}")
 print(f"Current alpha: {CFG.alpha}")
 ```
 
+(plot-basics-applying)=
 ## 4. Applying the Configuration
 
 Once your configuration object is tailored to your liking, simply pass it to the corresponding `xarray` accessor.

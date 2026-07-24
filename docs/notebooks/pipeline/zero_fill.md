@@ -9,6 +9,7 @@ kernelspec:
   name: python3
 ---
 
+(zero-fill)=
 # FID - Zero Filling
 
 ```{code-cell} ipython3
@@ -26,6 +27,7 @@ plt.rcParams["figure.dpi"] = 150
 
 In Magnetic Resonance, **zero filling** involves artificially extending a dataset in the time domain (FID) or spatial-frequency domain (k-space) by padding it with zeros.
 
+(zero-fill-physics)=
 ### The Physics of Zero Filling
 
 While it is often mistaken for increasing "true" resolution, zero filling does **not** add new information. According to the Fourier Shift Theorem and DFT properties:
@@ -44,6 +46,7 @@ import xarray as xr
 import xmris
 ```
 
+(zero-fill-simulate)=
 ## 1. Generating a Realistic FID: Sampled Data
 
 Let's define a function to simulate a multi-component FID with $T_2^*$ decay and specific frequency offsets.
@@ -76,6 +79,7 @@ da_fid_sampled = xr.DataArray(
 )
 ```
 
+(zero-fill-time-domain)=
 ## 2. Time-Domain Zero Filling
 
 We apply zero filling to the sampled data, extending it from 64 points to 512 points by padding zeros at the end of the acquisition window.
@@ -123,6 +127,7 @@ This architecture allows `xmris` to intercept your request and automatically inj
 For more info see [xmris Architecture: Why We Built It This Way](../basics/architecture.md)
 :::
 
+(zero-fill-interpolation)=
 ### Interpolating the Truth (Frequency Domain)
 
 When we transform the zero-filled data, the zeros act as mathematical anchors, forcing the FFT to interpolate the discrete points, resulting in a much smoother spectrum. Note that the peaks do not become narrower (resolution has not increased), but their shapes are better defined.
@@ -205,6 +210,7 @@ assert da_fid_zf.attrs.get("zero_fill_position") == "end", "Lineage failed: miss
 
 ---
 
+(zero-fill-kspace)=
 ## 3. Spatial Frequency Zero Filling (2D K-Space)
 
 In MRI imaging, we zero-fill k-space symmetrically to artificially boost the digital resolution matrix (e.g., from 32x32 to 128x128).
@@ -227,6 +233,7 @@ da_k2d_zf = da_k2d.xmr.zero_fill(dim="kx", target_points=target_k_points, positi
 da_k2d_zf = da_k2d_zf.xmr.zero_fill(dim="ky", target_points=target_k_points, position="symmetric")
 ```
 
+(zero-fill-image-reconstruction)=
 ### Image Reconstruction
 
 Transforming back to image space demonstrates how zero-filling smooths the blocky pixels of the low-resolution acquisition. Because we use symmetric padding in k-space, the resulting image remains centered.

@@ -9,6 +9,7 @@ kernelspec:
   name: python3
 ---
 
+(plot-trajectory)=
 # Visualizing Dynamic AMARES Fits
 
 ```{code-cell} ipython3
@@ -66,6 +67,7 @@ pk_path = Path("dyn_pk.csv")
 pk_path.write_text(pk_csv)
 ```
 
+(plot-trajectory-simulate)=
 ## 1. Simulating a Dynamic Exercise Paradigm
 We will simulate 60 consecutive repetitions representing a dynamic muscle exercise paradigm.
 * **Rest (Repetitions 0-14):** Phosphocreatine (PCr) is stable at baseline.
@@ -140,6 +142,7 @@ plt.title("Repetition 0: Raw Spectrum")
 plt.show()
 ```
 
+(plot-trajectory-fit)=
 ## 2. Fitting the Time Series
 We fit the dynamic series using the parallel batch processor.
 
@@ -160,6 +163,7 @@ ds_dyn = da_dyn.xmr.fit_amares(
 )
 ```
 
+(plot-trajectory-bands)=
 ## 3. Plotting Trajectories with Confidence Bands
 
 The `.xmr.plot.trajectory()` tool plots the extracted amplitudes over the dimension.
@@ -173,6 +177,7 @@ Think of a standard NMR spectrum. If a peak is sharp (narrow linewidth) and your
 
 In MRS, the CRLB calculates the mathematical **"best-case scenario"** for this uncertainty. It represents the absolute minimum variance (error) that *any* unbiased fitting algorithm can possibly achieve, based purely on data quality and model constraints.
 
+(plot-trajectory-uncertainty)=
 ### The Mathematics of Uncertainty
 Mathematically, the variance of your estimated amplitude ($\hat{A}$) will always be greater than or equal to the CRLB variance:
 
@@ -182,6 +187,7 @@ In practice, we look at the standard deviation: $\sigma \ge \sqrt{\text{CRLB}_{\
 
 By convention, pyAMARES outputs this error as a relative percentage of the fitted amplitude. To find the absolute error, simply calculate:  ` Absolute Error = Amplitude * (%CRLB / 100)`. *(Note: Our `xmris.plot.trajectory()` tool does this automatically to draw shaded confidence bands!)*
 
+(plot-trajectory-crlb)=
 ### Comparing CRLB values
 You should be careful when comparing %CRLB values across studies or peaks, as the CRLB is highly sensitive to:
 
@@ -203,6 +209,7 @@ plt.show()
 
 Look at the spikes around **repetition time 30s** (index 15) and **90s** (index 45)! The shaded bands immediately draw attention to the uncertainty caused by the noise spikes. The default `PlotTrajectoryConfig` also highlights the exact points where the CRLB exceeded 20% by rendering them as hollow circles.
 
+(plot-trajectory-qc-grid)=
 ## 4. The Spectral Quality Control Grid
 
 While the trajectory plot confirms the kinetics, it is recommended to visually inspect the raw spectra to ensure the mathematical model didn't fail catastrophically (e.g., fitting noise instead of a peak).

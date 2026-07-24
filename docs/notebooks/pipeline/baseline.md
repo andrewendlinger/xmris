@@ -9,6 +9,7 @@ kernelspec:
   name: python3
 ---
 
+(baseline)=
 # Asymmetric Least Squares (AsLS) Baseline Correction
 
 Magnetic Resonance Spectroscopy (MRS) signals often ride on top of a broad, rolling baseline. This distortion is typically caused by macromolecules with extremely short $T_2$ relaxation times (creating very broad frequency-domain peaks), acoustic ringing, or incomplete water suppression. 
@@ -17,6 +18,7 @@ To accurately quantify the sharp, narrow metabolite peaks, this baseline must be
 
 
 
+(baseline-mathematics)=
 ## The Mathematics of AsLS
 
 In `xmris`, we use the **Asymmetric Least Squares (AsLS)** algorithm introduced by @eilers2005baseline. Unlike simple polynomial fitting, AsLS does not require the user to manually define "signal-free" noise regions. Instead, it balances two competing goals: minimizing the distance between the experimental data and the baseline, and maximizing the smoothness of the baseline itself.
@@ -110,6 +112,7 @@ corrected_spectrum = spectrum.xmr.baseline_als(
 )
 ```
 
+(baseline-visualizing-the-results)=
 ### Visualizing the Results
 
 Let's look at the original real spectrum, the isolated baseline, and the final corrected spectrum.
