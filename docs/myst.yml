@@ -61,8 +61,6 @@ project:
           title: FID Simulation
         - file: notebooks/fitting/pyamares.md
           title: pyAMARES
-        - file: explanation/fitting.md
-          title: Fitting on Real Data
 
     # 4. GROUP: Visualization / plotting
     - title: Visualization

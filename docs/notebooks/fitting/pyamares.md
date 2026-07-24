@@ -386,6 +386,19 @@ ax.legend()
 plt.show()
 ```
 
+(pyamares-guarantees)=
+## What `fit_amares` guarantees
+
+The data above was clean, unit-scale and synthetic — the easy case. Three guarantees hold when it isn't:
+
+- **Safe at any signal scale.** Whether your FID peaks at `1` or at `1e7`, the fit converges to the same physical answer. You never rescale by hand to make fitting work.
+- **A non-answer is `NaN`, never `0`.** A voxel that had no signal, or whose fit gave up, stays an honest hole rather than a zero a downstream mean would fold in — and the `fit_status` flag records which of the two it was.
+- **Either domain in, the same domain out.** Hand it a FID and `data`/`fit`/`residuals` come back as FIDs; hand it a spectrum and they come back as spectra, in the representation (Hz or ppm) you passed. The fitted parameters are identical either way.
+
+:::{seealso}
+The reasoning behind each — the optimizer trap that makes a Bruker-scale fit hand back your prior guess unchanged, why a failed voxel is not a zero, and why fitting hand-rolls its own domain round trip — is in the diary entry [pyAMARES now behaves like the rest of the pipeline](#diary-amares-fitting).
+:::
+
 ```{code-cell} ipython3
 :tags: [remove-cell]
 
