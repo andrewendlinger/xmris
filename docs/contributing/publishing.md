@@ -5,6 +5,11 @@
 
 We use `uv` for dependency management and GitHub Actions for testing across Python 3.10–3.13 on Ubuntu, Windows, and macOS.
 
+:::{tip}
+In a hurry, or want the shape before the detail? The [workflow diagram](#release-diagram) at the foot
+of this page traces all four stages end to end, from a pull request to PyPI.
+:::
+
 :::{note}
 **For Claude Code users:** the user-triggered [`release` skill](https://github.com/andrewendlinger/xmris/blob/main/.claude/skills/release/SKILL.md) is the operational checklist for this workflow. Like the other skills, it carries no rules of its own — it routes back to this page for the reasoning behind each step.
 :::

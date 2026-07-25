@@ -44,6 +44,10 @@ git push -u origin <your-branch>
 gh pr create --base main --title "docs: thin the domains page into the contract" --body "…"
 ```
 
+Or push the branch and open it from the GitHub web interface — after a push, the repository page
+offers a **Compare & pull request** button, and the title and body fields are the same ones the
+command above fills in. Nothing downstream cares which route you took.
+
 Every push to the branch re-runs the checks below and refreshes your preview.
 
 (contribute-pr-checks)=
