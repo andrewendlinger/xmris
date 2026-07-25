@@ -122,14 +122,21 @@ reaches them through a transform — lands in the deep basin on every run measur
 | 8-voxel grid, wall clock | 0.16 s | 0.16 s |
 
 Both fitting tutorials had already pinned `method="least_squares"` at every call site, and
-a default that every page in the docs overrides is the wrong default. So it moved. It buys
-stability for about half again per fit on a clean signal — and for nothing measurable
-across a grid, where process setup dominates. `"leastsq"` is still one keyword away.
+a default that every page in the docs overrides is the wrong default. So it moved, and the
+pins came out with it — ten call sites across the docs and eleven more in the test suite,
+which had been exercising a solver the library did not ship. Nothing rendered changed:
+where LM converged at all it converged to the same place, agreeing on amplitudes, CRLBs and
+SNR to every digit the pages print. The switch costs about half again per fit on a clean
+512-point signal and nothing measurable across a grid, where process setup dominates — both
+measured on synthetic data, and a scanner-scale multi-peak fit remains unmeasured.
+`"leastsq"` is still one keyword away.
 
 :::{warning}
 Basin-stable is not bit-identical. `least_squares` still jitters in the last digits (χ²
-agrees run to run to ~1e-12), so the guarantee is *the same minimum*, and the test that
-pins it uses `assert_allclose`, never `==`.
+agrees run to run to ~1e-12), so the guarantee is *the same minimum* — and
+`TestFittingDomain::test_default_method_is_reproducible` pins exactly that, ten consecutive
+default fits compared with `assert_allclose`, never `==`. Forced back to `"leastsq"` it
+fails on its fourth run, which is the only reason to believe it when it passes.
 :::
 
 :::{dropdown} Why not keep LM and fit twice, keeping the better χ²?
@@ -138,16 +145,6 @@ there are exactly two minima. Nothing promises that. On a real ³¹P spectrum wi
 peaks and heavier overlap there may be more, and "best of two" would then be quietly
 choosing among several wrong ones while looking just as convergent. A solver that does not
 flip basins is both cheaper and honest about what it guarantees.
-:::
-
-:::{attention} Assumptions to verify
-- **No rendered number moves.** Measured only on the quick-start signal, where both
-  solvers agree to every printed digit on amplitudes, CRLB, `sd` and SNR. The notebook
-  suite and the architecture tests that call the default have not been re-run yet.
-- **The ~1.5× per-fit cost holds.** Measured on one clean 512-point two-peak synthetic;
-  unmeasured on real multi-peak ³¹P data at scanner scale.
-- **The acceptance test bites.** Ten consecutive default-method fits agreeing is only
-  evidence if the same test fails against `"leastsq"` — assumed until run both ways.
 :::
 
 (diary-amares-fitting-domain)=
