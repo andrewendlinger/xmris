@@ -9,7 +9,7 @@ kernelspec:
   name: python3
 ---
 
-(plot-trajectory)=
+(dynamic-fits)=
 # Visualizing Dynamic AMARES Fits
 
 ```{code-cell} ipython3
@@ -25,7 +25,7 @@ matplotlib_inline.backend_inline.set_matplotlib_formats("retina")
 plt.rcParams["figure.dpi"] = 150
 ```
 
-Following the quantification of spectra using time-domain fitting (as covered in the [Time-Domain Fitting with AMARES](../../fitting/pyamares.md) tutorial), the next critical step is interpreting the results.
+Following the quantification of spectra using time-domain fitting ([Quick Start: Fitting a Spectrum](#fitting-quickstart) for the call itself, [AMARES Fitting in Depth](#pyamares) for what it returns), the next critical step is interpreting the results.
 
 When analyzing a 1D array of spectra—such as a dynamic time-series (fMRS), an echo-time series (relaxation mapping), or a 1D spatial CSI slice—researchers generally need to quickly answer two questions:
 1. **The Kinetics:** How do the metabolite concentrations change across the dimension?
@@ -67,7 +67,7 @@ pk_path = Path("dyn_pk.csv")
 pk_path.write_text(pk_csv)
 ```
 
-(plot-trajectory-simulate)=
+(dynamic-fits-data)=
 ## 1. Simulating a Dynamic Exercise Paradigm
 We will simulate 60 consecutive repetitions representing a dynamic muscle exercise paradigm.
 * **Rest (Repetitions 0-14):** Phosphocreatine (PCr) is stable at baseline.
@@ -142,7 +142,7 @@ plt.title("Repetition 0: Raw Spectrum")
 plt.show()
 ```
 
-(plot-trajectory-fit)=
+(dynamic-fits-fit)=
 ## 2. Fitting the Time Series
 We fit the dynamic series using the parallel batch processor.
 
@@ -150,7 +150,7 @@ We fit the dynamic series using the parallel batch processor.
 :tags: [skip-execution]
 
 ds_dyn = da_dyn.xmr.fit_amares(
-    prior_knowledge_file=pk_path, method="least_squares", num_workers=4
+    prior_knowledge=pk_path, num_workers=4
 )
 ```
 
@@ -159,44 +159,18 @@ ds_dyn = da_dyn.xmr.fit_amares(
 
 # CI execution (Single core for coverage tracking)
 ds_dyn = da_dyn.xmr.fit_amares(
-    prior_knowledge_file=pk_path, method="least_squares", num_workers=1
+    prior_knowledge=pk_path, num_workers=1
 )
 ```
 
-(plot-trajectory-bands)=
+(dynamic-fits-trajectory)=
 ## 3. Plotting Trajectories with Confidence Bands
 
 The `.xmr.plot.trajectory()` tool plots the extracted amplitudes over the dimension.
 
 Crucially, it translates the mathematical CRLB percentage into an absolute error, drawing a **shaded confidence interval** behind the curve. When the fit degrades, the shaded region expands, visually communicating the exact level of uncertainty to the reader.
 
-:::{dropdown}  Deep Dive: Understanding the Cramér-Rao Lower Bound (CRLB)
-The **Cramér-Rao Lower Bound (CRLB)** is a fundamental concept in statistical modeling and Magnetic Resonance Spectroscopy (MRS).
-
-Think of a standard NMR spectrum. If a peak is sharp (narrow linewidth) and your baseline is clean (low noise), the fitting algorithm can pinpoint the peak's amplitude and position with high precision.  Conversely, if the signal is a broad lump buried in baseline noise, any estimate of its area will carry significant uncertainty.
-
-In MRS, the CRLB calculates the mathematical **"best-case scenario"** for this uncertainty. It represents the absolute minimum variance (error) that *any* unbiased fitting algorithm can possibly achieve, based purely on data quality and model constraints.
-
-(plot-trajectory-uncertainty)=
-### The Mathematics of Uncertainty
-Mathematically, the variance of your estimated amplitude ($\hat{A}$) will always be greater than or equal to the CRLB variance:
-
-$$\text{Var}(\hat{A}) \ge \text{CRLB}_{\text{var}}$$
-
-In practice, we look at the standard deviation: $\sigma \ge \sqrt{\text{CRLB}_{\text{var}}}$. PyAMARES estimates this theoretical floor by analyzing the [Fisher Information Matrix](https://en.wikipedia.org/wiki/Fisher_information) alongside the noise variance of your raw data.
-
-By convention, pyAMARES outputs this error as a relative percentage of the fitted amplitude. To find the absolute error, simply calculate:  ` Absolute Error = Amplitude * (%CRLB / 100)`. *(Note: Our `xmris.plot.trajectory()` tool does this automatically to draw shaded confidence bands!)*
-
-(plot-trajectory-crlb)=
-### Comparing CRLB values
-You should be careful when comparing %CRLB values across studies or peaks, as the CRLB is highly sensitive to:
-
-1. **Signal-to-Noise Ratio (SNR):** A massive Peak A might have a 2% CRLB, while a tiny Peak B has 15%. However, a 2% error on a huge peak can still represent a larger *absolute* error than a 15% error on a small one.
-2. **Linewidth and Overlap:** Broad or heavily overlapping peaks increase statistical covariance (the algorithm struggles to unambiguously assign the signal), which intrinsically drives up the CRLB.
-3. **Prior Knowledge Constraints:** Tightly constraining a fit (e.g., fixing linewidths or frequencies) restricts the algorithm's freedom, mathematically forcing the calculated CRLB down.
-
-**The Takeaway:** The historical standard of rejecting fits with a %CRLB > 20% is now  discouraged [](https://doi.org/10.1002/mrm.25568) (see also [](https://doi.org/10.1002/mrm.27742)). Because %CRLB scales inversely with amplitude, discarding high-%CRLB fits disproportionately removes valid low-concentration values. This introduces a "selection bias" that artificially inflates group averages. Instead, use the %CRLB to **weight** statistical analyses, or treat the >20% threshold as a flag to manually inspect spectra for severe artifacts.
-:::
+The band is the %CRLB read as an absolute error — `amplitude * (%CRLB / 100)` — so it widens exactly where the fit stops being able to pin the amplitude down. [What a CRLB is, and why >20% is a flag to inspect rather than a threshold to discard](#pyamares-crlb) covers the statistics behind it.
 
 ```{code-cell} ipython3
 fig, ax = plt.subplots(figsize=(8, 4))
@@ -209,7 +183,7 @@ plt.show()
 
 Look at the spikes around **repetition time 30s** (index 15) and **90s** (index 45)! The shaded bands immediately draw attention to the uncertainty caused by the noise spikes. The default `PlotTrajectoryConfig` also highlights the exact points where the CRLB exceeded 20% by rendering them as hollow circles.
 
-(plot-trajectory-qc-grid)=
+(dynamic-fits-qc)=
 ## 4. The Spectral Quality Control Grid
 
 While the trajectory plot confirms the kinetics, it is recommended to visually inspect the raw spectra to ensure the mathematical model didn't fail catastrophically (e.g., fitting noise instead of a peak).
@@ -272,8 +246,8 @@ assert isinstance(fig_qc, plt.Figure), "plot_qc_grid did not return a Figure"
 
 # 3. Verify CRLB Thresholding Logic
 # Find the CRLB for PCr at index 15 (the massive noisy scan)
-crlb_massive = ds_dyn["crlb"].sel(Metabolite="PCr").isel(repetition=15).values
-crlb_clean = ds_dyn["crlb"].sel(Metabolite="PCr").isel(repetition=0).values
+crlb_massive = ds_dyn["crlb"].sel(metabolite="PCr", parameter="amplitude").isel(repetition=15).values
+crlb_clean = ds_dyn["crlb"].sel(metabolite="PCr", parameter="amplitude").isel(repetition=0).values
 
 # assert crlb_massive > 20.0, (
 #     "The simulated noise did not trigger a high CRLB. Test design failed."

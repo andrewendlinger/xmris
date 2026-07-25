@@ -5,6 +5,8 @@ import numpy as np
 import xarray as xr
 from matplotlib.ticker import AutoMinorLocator
 
+from xmris.core.config import DIMS, VARS
+
 from ._base_config import BasePlotConfig
 
 
@@ -185,7 +187,7 @@ def plot_trajectory(
     cfg = config or PlotTrajectoryConfig()
 
     # 1. Validate Dataset
-    required_vars = ["amplitude", "crlb"]
+    required_vars = [VARS.amplitude, VARS.crlb]
     for v in required_vars:
         if v not in ds.data_vars:
             raise ValueError(f"Dataset missing required AMARES variable: {v}")
@@ -194,8 +196,8 @@ def plot_trajectory(
         raise ValueError(f"Dimension '{dim}' not found in Dataset.")
 
     if metabolites is not None:
-        ds = ds.sel(Metabolite=metabolites)
-    metab_list = ds.coords["Metabolite"].values
+        ds = ds.sel({DIMS.metabolite: metabolites})
+    metab_list = ds.coords[DIMS.metabolite].values
 
     # 2. Setup Context & Palette
     custom_rc = {"font.family": cfg.fontfamily, "axes.linewidth": cfg.axes_linewidth}
@@ -223,8 +225,10 @@ def plot_trajectory(
 
         # 4. Plot Trajectories
         for i, metab in enumerate(metab_list):
-            amps = ds["amplitude"].sel(Metabolite=metab).values
-            crlbs = ds["crlb"].sel(Metabolite=metab).values
+            amps = ds[VARS.amplitude].sel({DIMS.metabolite: metab}).values
+            crlbs = (
+                ds[VARS.crlb].sel({DIMS.metabolite: metab, DIMS.parameter: VARS.amplitude}).values
+            )
 
             # Calculate absolute error from CRLB percentage: Error = Amp * (CRLB / 100)
             crlbs_clean = np.nan_to_num(crlbs, nan=0.0)

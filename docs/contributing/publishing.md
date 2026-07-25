@@ -48,10 +48,10 @@ Do not bump the version. Fix directly on the release branch and push:
 git commit -am "fix: windows path issue" && git push
 ```
 
-The full matrix re-runs automatically. Repeat until green.
+The full matrix re-runs automatically. Repeat until green — all twelve legs, macOS included.
 
 ```{note}
-**macOS exception:** Due to an upstream `pyAMARES` issue, macOS jobs use `continue-on-error: true`. macOS failures won't block the pipeline.
+macOS legs used to be `continue-on-error`, because official `pyamares` hard-requires `hlsvdpro` and that ships no arm64 wheel — the runner could not install the project at all. The `fitting` extra now depends on `pyamares-xmris`, whose platform marker skips `hlsvdpro` on arm64, so macOS blocks the pipeline like every other leg.
 ```
 
 ---
@@ -89,7 +89,7 @@ anything reaches PyPI.
 :::
 
 ```{warning}
-The `v*` tag triggers the `publish` job in `ci-publish.yml`. It uses `uv build --no-sources` to strip local Git forks (e.g. the `pyamares` patch) so PyPI users get standard dependencies. Upload uses PyPI Trusted Publishing (OIDC) — no passwords required.
+The `v*` tag triggers the `publish` job in `ci-publish.yml`. It uses `uv build --no-sources` to strip any local `[tool.uv.sources]` redirects so PyPI users get registry dependencies (the `fitting` extra resolves `pyamares-xmris` straight from PyPI). Upload uses PyPI Trusted Publishing (OIDC) — no passwords required.
 ```
 
 ---

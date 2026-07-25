@@ -7,6 +7,16 @@ from xmris.core import ATTRS, COORDS, DIMS
 from xmris.core.utils import as_variable
 
 
+def _time_axis(spectral_width: float, n_points: int, dead_time: float) -> np.ndarray:
+    """Build the sampling instants, length-exactly.
+
+    `np.arange(0, dwelltime * n_points, dwelltime)` can round to n_points +/- 1 samples
+    for some (sw, n) — the same trap hardened in `fit_amares`'s model reconstruction.
+    Both the signal and its coordinate come through here so they cannot drift apart.
+    """
+    return dead_time + np.arange(n_points) * (1.0 / spectral_width)
+
+
 def _simulate_fid_ndarray(
     amplitudes: ArrayLike,
     *,
@@ -85,8 +95,7 @@ def _simulate_fid_ndarray(
     phases = np.broadcast_to(phases, n_peaks)
     g_arr = np.clip(np.broadcast_to(lineshape_g, n_peaks), 0.0, 1.0)
 
-    dwelltime = 1.0 / spectral_width
-    t = np.arange(0, dwelltime * n_points, dwelltime) + dead_time
+    t = _time_axis(spectral_width, n_points, dead_time)
     t_col = t[:, np.newaxis]
 
     complex_phase = np.exp(1j * phases)
@@ -147,7 +156,10 @@ def simulate_fid(
     dampings : float | ArrayLike, optional
         The damping factor(s) (d_k). Default is 50.0.
     phases : float | ArrayLike, optional
-        The phase(s) (phi_k) in radians. Default is 0.0.
+        The phase(s) (phi_k) in radians. Default is 0.0. Mind the unit asymmetry with
+        fitting: this simulation takes phase in **radians**, whereas ``fit_amares``
+        *reports* fitted phase in **degrees** (and ``build_prior_knowledge`` takes it
+        in degrees too).
     lineshape_g : float | ArrayLike, optional
         The lineshape parameter(s) (g_k) between 0 (Lorentzian) and 1 (Gaussian).
     dead_time : float, optional
@@ -201,9 +213,8 @@ def simulate_fid(
 
         fid_data = fid_data + (noise_real + 1j * noise_imag)
 
-    # 3. Reconstruct the physical time axis
-    dwelltime = 1.0 / spectral_width
-    time_coords = np.arange(0, dwelltime * n_points, dwelltime) + dead_time
+    # 3. Reconstruct the physical time axis (same helper as the kernel — see `_time_axis`)
+    time_coords = _time_axis(spectral_width, n_points, dead_time)
 
     # 4. Build compliant metadata attributes
     attrs = {

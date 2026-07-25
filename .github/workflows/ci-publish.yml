@@ -14,8 +14,11 @@ jobs:
     runs-on: ${{ matrix.os }}
     # Bound each matrix leg so a hung kernel fails fast, not at GitHub's 6h ceiling.
     timeout-minutes: 30
-    # macOS failures won't fail the whole pipeline (Experimental)
-    continue-on-error: ${{ matrix.os == 'macos-latest' }}
+    # macOS used to be `continue-on-error` because official pyamares hard-requires
+    # `hlsvdpro`, which ships no arm64 wheel and no sdist -- so `uv sync` could not
+    # even install on macos-latest. The `fitting` extra now depends on
+    # `pyamares-xmris`, whose PEP 508 marker skips hlsvdpro on arm64 (pyAMARES falls
+    # back to its bundled pure-python HSVD), so macOS is a real, blocking leg again.
     strategy:
       fail-fast: false
       matrix:
@@ -60,7 +63,9 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v7
 
-      - name: Build package (Stripping local git overrides)
+      # --no-sources ignores any [tool.uv.sources] redirect, so the wheel's
+      # metadata names registry dependencies and never a local path or git URL.
+      - name: Build package (registry dependencies only)
         run: uv build --no-sources
 
       - name: Publish to PyPI

@@ -6,7 +6,9 @@ name = "xmris"
 version = "0.6.1"
 description = "An xarray-based MRI and MRS toolbox"
 readme = "README.md"
-# Python restricted to <3.14 due to dependency constraints (pyamares)
+# The <=3.13 ceiling is a pyAMARES constraint (the `fitting` extra). It stays
+# project-wide only because requires-python cannot be scoped to an optional
+# extra; core xmris itself has no such cap. Revisit once pyAMARES supports 3.14.
 requires-python = ">=3.10,<=3.13"
 authors = [
     { name = "Andrecho", email = "37243793+andrewendlinger@users.noreply.github.com" }
@@ -28,10 +30,22 @@ classifiers = [
 
 dependencies = [
     "anywidget>=0.9.21",
-    "joblib>=1.5.3",
     "numpy>=1.26.0",
-    "pyamares",         # Sourced from git below
+    "scipy>=1.11.0",    # core baseline/phasing/bruker import scipy directly
     "xarray<2025.11.0", # Pinned for compatibility
+]
+
+[project.optional-dependencies]
+# AMARES fitting via `pyamares-xmris` — a BSD repackage of pyAMARES on PyPI (import
+# name still `pyAMARES`) that adds the `hlsvdpro` platform marker so it installs on
+# Apple Silicon (hlsvdpro ships no arm64 wheel or sdist) plus the numpy<2 / pandas<2.2
+# caps pyAMARES needs. Optional so a bare `pip install xmris` stays clean on every
+# platform. The caps are restated here so xmris owns them regardless of the provider.
+fitting = [
+    "pyamares-xmris>=0.3.33",
+    "joblib>=1.5.3", # parallel fit dispatch (fitting-only)
+    "numpy<2.0",
+    "pandas<2.2",
 ]
 
 [project.urls]
@@ -46,17 +60,16 @@ test-gen = "xmris._scripts:generate_test_notebooks"
 test = "xmris._scripts:run_tests"
 
 # ==============================================================================
-# 2. BUILD SYSTEM & PACKAGE SOURCES
+# 2. BUILD SYSTEM
 # ==============================================================================
 [build-system]
 requires = ["uv_build>=0.10.0,<0.12.0"]
 build-backend = "uv_build"
 
-[tool.uv.sources]
-# Use the compatible branch of pyAMARES until upstream fixes are released.
-# To develop locally, comment out 'git' and uncomment 'path'.
-pyamares = { git = "https://github.com/andrewendlinger/pyAMARES", branch = "xmris-compatible" }
-# pyamares = { path = "../pyAMARES", editable = true }
+# `pyamares-xmris` resolves from PyPI, so no [tool.uv.sources] redirect is needed.
+# For local pyAMARES development, add one pointing at a checkout, e.g.
+#   [tool.uv.sources]
+#   pyamares-xmris = { path = "../pyAMARES", editable = true }
 
 # ==============================================================================
 # 3. DEVELOPMENT DEPENDENCIES

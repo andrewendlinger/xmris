@@ -7,10 +7,13 @@ for fluent method chaining (e.g., `da.xmr.apodize_exp().xmr.fft()`), while
 the underlying developer API is strictly modularized into Mixin classes.
 """
 
+from collections.abc import Mapping
 from pathlib import Path
+from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import xarray as xr
 
 # Import our core architecture
@@ -732,83 +735,64 @@ class XmrisAccessor(
 
     def fit_amares(
         self,
-        prior_knowledge_file: str | Path,
+        prior_knowledge: Mapping[str, Any] | pd.DataFrame | str | Path,
         dim: str = DIMS.time,
         mhz: float | None = None,
         sw: float | None = None,
         deadtime: float | None = None,
-        method: str = "leastsq",
-        initialize_with_lm: bool = True,
-        num_workers: int = 4,
+        carrier: float | None = None,
+        g_global: float | bool = 0.0,
+        method: str = "least_squares",
+        initialize_with_lm: bool = False,
+        num_workers: int = 1,
         init_fid: np.ndarray | None = None,
-        **kwargs,
+        verbose: bool = False,
     ) -> xr.Dataset:
-        """
-        Apply AMARES time-domain fitting to an N-dimensional FID.
+        """Apply AMARES time-domain fitting to an N-dimensional signal.
 
-        This method wraps `pyAMARES` to perform parallelized batch fitting
-        across spatial or repetition dimensions. The numerical results and
-        the reconstructed time-domain fits are packed into an aligned xarray Dataset.
+        Thin wrapper around the :func:`xmris.fit_amares` free function — see it for the
+        full parameter reference, the domain-preserving contract (a complex spectrum is
+        round-tripped through the FID and the fit returned in the representation you
+        passed in, ppm in -> ppm out), and the robustness behavior (a single global
+        magnitude normalization so the optimizer's tolerance holds at any signal scale,
+        and a ``NaN`` sentinel for a fit that fails).
 
-        Requires the optional `pyAMARES` package to be installed.
-
-        Parameters
-        ----------
-        prior_knowledge_file : str | Path
-            Path to the CSV or XLSX file containing the prior knowledge constraints.
-        dim : str, optional
-            The time dimension along which to fit, by default `DIMS.time`.
-        mhz : float, optional
-            Spectrometer frequency in MHz. If None, read from
-            ``attrs['reference_frequency']``.
-        sw : float, optional
-            Spectral width in Hz. If None, attempts to calculate from `dim` coordinates.
-        deadtime : float, optional
-            Time delay before the first point in seconds. If None, defaults to 0.0.
-        method : {"leastsq", "least_squares"}, optional
-            Fitting method. Defaults to 'leastsq' (Levenberg-Marquardt).
-        initialize_with_lm : bool, optional
-            Run an internal Levenberg-Marquardt initializer before fitting.
-            Defaults to True.
-        num_workers : int, optional
-            Number of parallel processes to spawn. Defaults to 4.
-        init_fid : np.ndarray, optional
-            A 1D complex array to use as the template for pyAMARES initialization.
-            If None, the function automatically selects the spectrum with the highest SNR.
+        Requires the optional ``pyAMARES`` package (``pip install 'xmris[fitting]'``).
 
         Returns
         -------
         xr.Dataset
-            A dataset containing the original data, the fitted FIDs, the residuals,
-            and the quantified parameters (amplitude, chem_shift, linewidth, phase,
-            CRLB, SNR) mapped across the original dimensions and the new 'Metabolite'
-            dimension.
+            The original data, the fitted model, the residuals, and the quantified
+            parameters (amplitude, chem_shift, linewidth, phase, CRLB, SNR) mapped
+            across the original dimensions and the new ``metabolite`` dimension.
+
+        See Also
+        --------
+        xmris.fit_amares : The free function this delegates to, fully documented.
 
         Raises
         ------
         ImportError
-            If the `pyAMARES` package is not installed.
+            If the optional ``pyAMARES`` package is not installed.
         """
-        try:
-            from xmris.fitting.amares import fit_amares as _internal_fit_amares
-        except ImportError as e:
-            raise ImportError(
-                "The '.fit_amares()' method requires the optional 'pyAMARES' package. "
-                "Please install it using 'pip install pyAMARES' or 'uv add pyAMARES'."
-            ) from e
+        # Routed through the package resolver, whose __getattr__ raises the friendly
+        # MISSING_FITTING_DEP_MSG ImportError when the optional pyAMARES dep is absent.
+        from xmris.fitting import fit_amares as _internal_fit_amares
 
         return _internal_fit_amares(
             self._obj,
-            prior_knowledge_file=prior_knowledge_file,
+            prior_knowledge=prior_knowledge,
             dim=dim,
             mhz=mhz,
             sw=sw,
             deadtime=deadtime,
+            carrier=carrier,
+            g_global=g_global,
             method=method,
             initialize_with_lm=initialize_with_lm,
             num_workers=num_workers,
             init_fid=init_fid,
-            **kwargs,
+            verbose=verbose,
         )
 
     # --- Vendor Specific ---

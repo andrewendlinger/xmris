@@ -57,10 +57,12 @@ project:
     # 3. GROUP: Advanced Quantification
     - title: Spectral Fitting & Simulation
       children:
+        - file: notebooks/fitting/quickstart.md
+          title: "1. Quick Start: Fitting"
         - file: notebooks/fitting/simufid.md
-          title: FID Simulation
+          title: 2. FID Simulation
         - file: notebooks/fitting/pyamares.md
-          title: pyAMARES
+          title: 3. AMARES Deep Dive
 
     # 4. GROUP: Visualization / plotting
     - title: Visualization
@@ -134,6 +136,10 @@ project:
         # --- 3. Fitting & Vendors Submenu ---
         - title: Modeling & Vendors
           children:
+            - file: api_reference/fitting.simulation.md
+              title: FID Simulation
+            - file: api_reference/fitting.prior_knowledge.md
+              title: Prior Knowledge
             - file: api_reference/fitting.amares.md
               title: AMARES Fitting
             - file: api_reference/vendor.bruker.md
@@ -162,6 +168,8 @@ project:
           title: The authoring skills
         - file: diary/2026-07-23-architecture-contract.md
           title: The Architecture Contract
+        - file: diary/2026-07-24-amares-fitting.md
+          title: AMARES fitting
         - file: diary/2026-07-25-docs-previews.md
           title: Per-PR docs previews
 

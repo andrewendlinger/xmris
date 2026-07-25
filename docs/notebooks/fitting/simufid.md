@@ -18,6 +18,12 @@ We will generate two distinct datasets with realistic parameters and physical no
 1. A **1H (Proton)** spectrum showing the dominant water and lipid (fat) resonances.
 2. A **13C (Carbon-13)** spectrum showing typical downstream metabolites of hyperpolarized [1-13C]pyruvate, utilizing carrier frequency offsets to prevent spectral aliasing.
 
+| Function | What it does here |
+|---|---|
+| [`simulate_fid()`](#xmris.fitting.simulation.simulate_fid) | generates the complex FID from a peak list |
+| [`.xmr.to_spectrum()`](#xmris.core.accessor.XmrisProcessingMixin.to_spectrum) | FID → spectrum, for looking at the result |
+| [`.xmr.to_ppm()`](#xmris.core.accessor.XmrisSpectrumCoordsMixin.to_ppm) | relabels the frequency axis in ppm |
+
 +++
 
 (simufid-theory)=
@@ -187,4 +193,22 @@ ax.text(171, 16, "Pyruvate", ha='center', va='bottom', fontsize=10)
 ax.text(161.0, 1.5, "Bicarbonate", ha='center', va='bottom', fontsize=10)
 
 plt.show()
+```
+
+```{code-cell} ipython3
+:tags: [remove-cell]
+
+# STRICT TESTS: simulate_fid takes phase in RADIANS.
+# (By contrast, `fit_amares` *reports* fitted phase in degrees — see the
+# `simulate_fid` docstring for the input-radians / output-degrees asymmetry.)
+# Phase enters the AMARES model as a global factor exp(i·phi_k), independent of
+# time, so rotating the input phase by phi rotates the whole FID by exp(i·phi).
+_phi = np.pi / 2
+_f0 = simulate_fid(amplitudes=[1.0], frequencies=[100.0], phases=[0.0], n_points=64)
+_fp = simulate_fid(amplitudes=[1.0], frequencies=[100.0], phases=[_phi], n_points=64)
+np.testing.assert_allclose(
+    _fp.values,
+    _f0.values * np.exp(1j * _phi),
+    err_msg="simulate_fid must interpret `phases` in radians (exp(i·phase))",
+)
 ```

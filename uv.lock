@@ -2343,9 +2343,9 @@ wheels = [
 ]
 
 [[package]]
-name = "pyamares"
+name = "pyamares-xmris"
 version = "0.3.33"
-source = { git = "https://github.com/andrewendlinger/pyAMARES?branch=xmris-compatible#1b5a3244e3de428898f3e4f8b50590ae94adff7c" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "hlsvdpro", marker = "platform_machine == 'amd64' or platform_machine == 'x86_64'" },
     { name = "ipykernel" },
@@ -2367,6 +2367,10 @@ dependencies = [
     { name = "sympy" },
     { name = "tqdm" },
     { name = "xlrd" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/38/3a/51f15271c7a989934690edae0ec2c3b638f0274e1c8540c5c4cded8d0bb7/pyamares_xmris-0.3.33.tar.gz", hash = "sha256:eb3776c6ab07fb09fd32d28c4fca8255331029e84bae6310445a097e16ee0559", size = 947205, upload-time = "2026-07-21T08:20:43.509Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f4/8b/e82f48f840e6f82c4e249d600a4a0e3c9c3eb8f33b18c5bdf08ab3fa56e3/pyamares_xmris-0.3.33-py3-none-any.whl", hash = "sha256:666bb29a17d2825c36871917c4623c192fb503cdfb741cbcdb9626e3c987c195", size = 270701, upload-time = "2026-07-21T08:20:42.088Z" },
 ]
 
 [[package]]
@@ -3499,10 +3503,18 @@ version = "0.6.1"
 source = { editable = "." }
 dependencies = [
     { name = "anywidget" },
+    { name = "numpy" },
+    { name = "scipy", version = "1.15.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "scipy", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "xarray" },
+]
+
+[package.optional-dependencies]
+fitting = [
     { name = "joblib" },
     { name = "numpy" },
-    { name = "pyamares" },
-    { name = "xarray" },
+    { name = "pandas" },
+    { name = "pyamares-xmris" },
 ]
 
 [package.dev-dependencies]
@@ -3527,11 +3539,15 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "anywidget", specifier = ">=0.9.21" },
-    { name = "joblib", specifier = ">=1.5.3" },
+    { name = "joblib", marker = "extra == 'fitting'", specifier = ">=1.5.3" },
     { name = "numpy", specifier = ">=1.26.0" },
-    { name = "pyamares", git = "https://github.com/andrewendlinger/pyAMARES?branch=xmris-compatible" },
+    { name = "numpy", marker = "extra == 'fitting'", specifier = "<2.0" },
+    { name = "pandas", marker = "extra == 'fitting'", specifier = "<2.2" },
+    { name = "pyamares-xmris", marker = "extra == 'fitting'", specifier = ">=0.3.33" },
+    { name = "scipy", specifier = ">=1.11.0" },
     { name = "xarray", specifier = "<2025.11.0" },
 ]
+provides-extras = ["fitting"]
 
 [package.metadata.requires-dev]
 dev = [

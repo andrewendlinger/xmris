@@ -295,6 +295,18 @@ class XmrisAttributes(BaseVocabulary):
         description="The number of sparse solver iterations used to calculate the baseline.",
     )
 
+    # --- Fitting Parameters ---
+    amares_amplitude_scale = XmrisTerm(
+        "amares_amplitude_scale",
+        description=(
+            "The single global factor the FID was divided by before AMARES fitting and "
+            "multiplied back into the reported amplitudes afterwards. Fitting normalizes "
+            "internally so the optimizer's magnitude-derived stopping tolerance behaves at "
+            "any signal scale; this records the factor so the normalization is auditable."
+        ),
+        unit="a.u.",
+    )
+
 
 class XmrisDimensions(BaseVocabulary):
     """Official dimension names for xmris xarray objects (`.dims`)."""
@@ -323,6 +335,15 @@ class XmrisDimensions(BaseVocabulary):
 
     metabolite = XmrisTerm(
         "metabolite", description="Dimension representing quantified metabolites."
+    )
+
+    parameter = XmrisTerm(
+        "parameter",
+        description=(
+            "Dimension indexing the fitted parameters (amplitude, chem_shift, "
+            "linewidth, phase) that the per-parameter uncertainty variables "
+            "(`crlb`, `sd`) span."
+        ),
     )
 
     component = XmrisTerm("component", description="Dimension separating real and imaginary parts.")
@@ -400,10 +421,33 @@ class XmrisDataVars(BaseVocabulary):
     phase = XmrisTerm("phase", description="Fitted phase.", unit="degrees")
 
     crlb = XmrisTerm(
-        "crlb", description="Cramer-Rao Lower Bound (fitting error estimation).", unit="%"
+        "crlb",
+        description=(
+            "Cramer-Rao Lower Bound (relative fitting uncertainty), per fitted "
+            "parameter along the `parameter` dimension."
+        ),
+        unit="%",
+    )
+
+    sd = XmrisTerm(
+        "sd",
+        description=(
+            "Standard deviation (1-sigma uncertainty) of a fitted parameter, along "
+            "the `parameter` dimension. Its unit follows the parameter it describes "
+            "(a.u. / ppm / Hz / degrees)."
+        ),
     )
 
     snr = XmrisTerm("snr", description="Signal-to-Noise Ratio.")
+
+    fit_status = XmrisTerm(
+        "fit_status",
+        description=(
+            "Per-spectrum fit outcome: 0=fitted, 1=no_signal (empty voxel), 2=failed. "
+            "An empty voxel and a failed fit both carry NaN quantified values; this "
+            "categorical flag is what tells them apart."
+        ),
+    )
 
 
 # =============================================================================

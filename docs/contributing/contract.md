@@ -80,8 +80,10 @@ Why: [The Two Domains](../explanation/domains.md).
 
 Gate hidden state with `@requires_attrs(...)`. Declare a domain-sensitive function's working
 domain with `@ensures_domain` (funnel: the result stays there) or `@computes_in`
-(domain-preserving: the representation is restored). Converters, FFT primitives, vendor loaders
-and fitting stay undecorated by design — their transforms are explicit; never inline `fft`/`ifft`
+(domain-preserving: the representation is restored). Converters, FFT primitives and vendor loaders
+stay undecorated by design — their transforms are explicit. Fitting (`fit_amares`) is
+domain-preserving but carries no decorator — it returns a `Dataset`, so it hand-rolls the converter
+round trip (restoring only the signal variables, not the parameter table). Never inline `fft`/`ifft`
 for domain handling, route through the converters. Validate dimensions with
 `_check_dims(da, dim, "func_name")`. *Enforced: `TestDomainRollout` pins every function's
 contract; the semantics under `TestEnsuresDomain`/`TestComputesIn`.* Which decorator: the

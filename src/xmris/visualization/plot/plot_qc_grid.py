@@ -5,6 +5,9 @@ import numpy as np
 import xarray as xr
 from matplotlib.ticker import MaxNLocator
 
+from xmris.core.config import DIMS, SPECTRAL_DIMS, TIME_DIMS, VARS
+from xmris.core.validation import _domain_of
+
 from ._base_config import BasePlotConfig
 
 
@@ -38,8 +41,7 @@ class PlotQCGridConfig(BasePlotConfig):
         metadata={
             "group": "Grid Layout",
             "description": (
-                "Max subplots. If None (default), plots all spectra. "
-                "If N > max, samples evenly."
+                "Max subplots. If None (default), plots all spectra. If N > max, samples evenly."
             ),
         },
     )
@@ -48,8 +50,7 @@ class PlotQCGridConfig(BasePlotConfig):
         metadata={
             "group": "Grid Layout",
             "description": (
-                "Share Y-axis limits across all plots to accurately "
-                "compare absolute amplitudes."
+                "Share Y-axis limits across all plots to accurately compare absolute amplitudes."
             ),
         },
     )
@@ -109,7 +110,7 @@ def plot_qc_grid(
     """
     cfg = config or PlotQCGridConfig()
 
-    required_vars = ["fit_data", "raw_data", "crlb"]
+    required_vars = [VARS.fit, VARS.original_data, VARS.crlb]
     for v in required_vars:
         if v not in ds.data_vars:
             raise ValueError(f"Dataset missing required AMARES variable: {v}")
@@ -146,18 +147,40 @@ def plot_qc_grid(
         )
         axes_flat = axes.flatten()
 
-        freq_dim = "frequency"
         dim_coords = ds.coords[dim].values
         dim_unit = ds.coords[dim].attrs.get("units", "")
 
-        # Pre-convert needed slices to frequency domain to save time
+        # `fit_amares` is domain-preserving, so data/fit/residuals arrive in the
+        # caller's domain: a time-domain FID needs an FFT, an already-spectral fit
+        # does not. Detect it once with the shared domain helper and only convert a FID.
         ds_subset = ds.isel({dim: indices})
-        spec_raw = ds_subset["raw_data"].xmr.to_spectrum(out_dim=freq_dim).real
-        spec_fit = ds_subset["fit_data"].xmr.to_spectrum(out_dim=freq_dim).real
-        if cfg.plot_residuals:
-            spec_res = ds_subset["residuals"].xmr.to_spectrum(out_dim=freq_dim).real
+        data_da = ds_subset[VARS.original_data]
+        time_dim = _domain_of(data_da, TIME_DIMS)
+        spectral_dim = _domain_of(data_da, SPECTRAL_DIMS)
+        spec_dim: str
+        if time_dim is not None:
+            spec_dim = DIMS.frequency
+        elif spectral_dim is not None:
+            spec_dim = spectral_dim
+        else:
+            raise ValueError(
+                f"plot_qc_grid found no time or spectral axis on '{VARS.original_data}' "
+                f"(dims: {list(data_da.dims)}).\n"
+                ">>> ds = ds.xmr.to_spectrum()  # put the fit result on a frequency axis"
+            )
 
-        freq_coords = spec_raw.coords[freq_dim].values
+        def _as_spectrum(da: xr.DataArray) -> xr.DataArray:
+            # FFT a time-domain FID; an already-spectral fit is plotted as-is.
+            if time_dim is not None:
+                return da.xmr.to_spectrum(dim=time_dim, out_dim=spec_dim).real
+            return da.real
+
+        spec_raw = _as_spectrum(data_da)
+        spec_fit = _as_spectrum(ds_subset[VARS.fit])
+        if cfg.plot_residuals:
+            spec_res = _as_spectrum(ds_subset[VARS.residuals])
+
+        freq_coords = spec_raw.coords[spec_dim].values
 
         for i, idx_val in enumerate(indices):
             ax = axes_flat[i]
@@ -189,8 +212,8 @@ def plot_qc_grid(
                     linewidth=1.0,
                 )
 
-            # Check CRLB Quality
-            crlbs = ds_subset["crlb"].isel({dim: i}).values
+            # Check CRLB Quality (amplitude CRLB, per metabolite)
+            crlbs = ds_subset[VARS.crlb].sel({DIMS.parameter: VARS.amplitude}).isel({dim: i}).values
             max_crlb = np.nanmax(np.nan_to_num(crlbs, nan=np.inf))
 
             # In-plot Annotation (Top-Left corner)
@@ -250,8 +273,8 @@ def plot_qc_grid(
             ax.xaxis.set_major_locator(MaxNLocator(nbins=4, prune="both"))
 
         # Dynamic X-Axis Label based on the coordinate's actual name and units
-        x_name = freq_dim.replace("_", " ").title()
-        x_unit = spec_raw.coords[freq_dim].attrs.get("units", "Hz")
+        x_name = spec_dim.replace("_", " ").title()
+        x_unit = spec_raw.coords[spec_dim].attrs.get("units", "Hz")
         fig.supxlabel(f"{x_name} [{x_unit}]", fontweight="bold", fontsize=12)
 
         # Adjust layout to remove outer white space

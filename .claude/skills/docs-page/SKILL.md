@@ -126,6 +126,7 @@ Two pathspec traps, both of which produced wrong answers while auditing this rep
 - [ ] Frontmatter exact, `display_name: Python 3 (xmris)`
 - [ ] `(target)=` + single H1 is the very first content; a target above every header
 - [ ] Reader-facing cells use plain dim strings; config singletons only in hidden cells
+- [ ] Synthetic MRS data comes from `simulate_fid`; tutorials open with the functions-used table
 - [ ] TOC entry in `docs/myst.yml` (unless `testonly_`); no `.ipynb` links
 - [ ] New `doi.org` link frozen into `docs/myst.doi.bib` (`myst build --doi-bib`) and committed
 - [ ] `check_docs.py` passes on the page (0 errors)

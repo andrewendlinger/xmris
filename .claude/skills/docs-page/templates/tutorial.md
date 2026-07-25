@@ -47,6 +47,11 @@ plt.rcParams["figure.dpi"] = 150
 One-paragraph hook: the problem this page solves, in plain language. Physics/math
 motivation next — LaTeX, a table, or a mermaid diagram if it genuinely clarifies.
 
+| Function | What it does here |
+|---|---|
+| [`simulate_fid()`](#xmris.fitting.simulation.simulate_fid) | stands in for the scanner |
+| [`.xmr.some_method()`](#xmris.core.accessor.XmrisProcessingMixin.some_method) | the transform this page is about |
+
 ```{code-cell} ipython3
 import numpy as np
 import matplotlib.pyplot as plt
@@ -85,6 +90,14 @@ Imports go in a plain visible cell; wrap them in a `:::{dropdown}` only when bun
 plotting helper. `+++` splits adjacent markdown into separate cells — use it when prose after a
 `:::` block would otherwise be swallowed into it.
 
+The **functions-used table** sits under the hook, before the first cell: every xmris call the page
+makes, linked to its API entry, one line on what it does *here* (not what it does in general — the
+API page says that). Anchors are quartodoc's dotted targets, which are project-global, so a bare
+`#anchor` resolves from any page: `#xmris.fitting.amares.fit_amares` for the free function,
+`#xmris.core.accessor.XmrisAccessor.fit_amares` for the accessor method. Find the exact one with
+`grep -n "^(xmris" docs/api_reference/<module>.md` after `uv run docs-api`. Skip the table on pure
+concept pages that call nothing.
+
 ## Hidden assert cells
 
 Recommended for any cell that demonstrates a computation. A tutorial that runs code and asserts
@@ -111,8 +124,55 @@ Number the assertions to the claims they back, as `domain_agnostic_autophase.md`
 
 ## Data
 
-- Prefer `xmris.fitting.simulation.simulate_fid` for MRS-like signals; hand-rolled numpy is fine
-  when the page is *teaching* raw construction.
+**Synthetic MRS signals come from `simulate_fid`.** Not "prefer" — the checker warns on a
+hand-written damped sinusoid anywhere outside `basics/`, whose subject genuinely *is* raw
+construction. Re-deriving the forward model inline duplicates
+`docs/notebooks/fitting/simufid.md`, drifts from it, and usually does it in the `for` loop the
+package exists to delete.
+
+```python
+from xmris.fitting.simulation import simulate_fid
+
+fid = simulate_fid(
+    amplitudes=[10.0, 5.0],
+    chemical_shifts=[0.0, -7.5],            # or frequencies=[...] in Hz
+    reference_frequency=120.6,              # MHz — required for the ppm route
+    spectral_width=8000.0,
+    n_points=512,
+    dampings=[np.pi * 15.0, np.pi * 20.0],  # damping = pi * linewidth [Hz]
+    target_snr=60.0,
+    seed=0,
+)
+```
+
+`simulate_fid` returns **one 1-D FID**. For anything N-dimensional, simulate per spectrum and
+stack — this is the recipe pages used to hand-roll a loop to avoid:
+
+```python
+grid = xr.concat(
+    [simulate_fid(amplitudes=[a, 5.0], ..., seed=i) for i, a in enumerate(amps)],
+    dim="voxel",
+).assign_coords(voxel=np.arange(len(amps)))
+# xr.concat keeps only the FIRST FID's attrs, so per-spectrum simulation lineage
+# (target_snr, sim_amplitudes) would be wrong for the stack. Replace it with the
+# calibration downstream functions actually need:
+grid.attrs = {"reference_frequency": 120.6, "carrier_ppm": 0.0}
+```
+
+Realism is a parameter, not a rewrite. Data that converges on the first try teaches nothing about
+reading a result:
+
+| Effect | How |
+|---|---|
+| Peak movement (B0 drift, shim) | vary `chemical_shifts` per spectrum |
+| Noise, SNR gradient | `target_snr=` per spectrum, always with `seed=` |
+| Phase distortion, receiver dead time | `phases=` (radians) / `dead_time=` |
+| Broad macromolecular baseline | a second `simulate_fid` with `dampings≈1200`, summed in — see `pipeline/baseline.md` |
+| Lineshape between Lorentzian and Gaussian | `lineshape_g=` per peak |
+| An empty voxel / dead channel | `xr.zeros_like(fid)` for that slice |
+
+Live exemplar of all of this at once: `fitting/pyamares.md` § 1.
+
 - **Seed randomness** (`np.random.default_rng(42)`, or `target_snr=` with a fixed seed) whenever
   asserts depend on noisy data. Unseeded noise means flaky CI.
 - Real data only from `tests/data/` (relative path `../../../tests/data/` from a notebook). The

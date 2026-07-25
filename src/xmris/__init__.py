@@ -1,3 +1,5 @@
+from typing import TYPE_CHECKING
+
 # =============================================================================
 # 0. Submodules (Required to expose the namespace for quartodoc / Griffe)
 # =============================================================================
@@ -22,9 +24,16 @@ from .core.options import set_options
 # =============================================================================
 # 4. Modeling & Fitting
 # =============================================================================
-from .fitting.amares import fit_amares
+# `fit_amares` needs the optional `fitting` extra (pyAMARES); it is exposed
+# lazily via __getattr__ below so `import xmris` works without it. `simulate_fid`
+# and `build_prior_knowledge` are dependency-light and stay eager.
+from .fitting import _pyamares_installed
+from .fitting.prior_knowledge import build_prior_knowledge
 from .fitting.simulation import simulate_fid
 from .processing.baseline import baseline_als
+
+if TYPE_CHECKING:
+    from .fitting.amares import fit_amares
 
 # =============================================================================
 # 3. Core Signal Processing & Utilities
@@ -92,6 +101,7 @@ __all__ = [
     # --- 4. Fitting ---
     "fit_amares",
     "simulate_fid",
+    "build_prior_knowledge",
     # --- 5. Vendor ---
     "remove_digital_filter",
     # --- 6. Visualization Configs ---
@@ -100,3 +110,23 @@ __all__ = [
     "PlotTrajectoryConfig",
     "PlotQCGridConfig",
 ]
+
+# `fit_amares` resolves lazily via __getattr__ (optional `fitting` extra). Keep it
+# out of the star-imported `__all__` when pyAMARES is absent so `from xmris import *`
+# doesn't force the resolver and raise on a fitting-free install.
+if not _pyamares_installed():
+    __all__.remove("fit_amares")
+
+
+def __getattr__(name: str):
+    """Resolve optional-dependency exports lazily (PEP 562).
+
+    ``fit_amares`` lives behind the optional ``fitting`` extra (pyAMARES). Keeping
+    it out of the eager imports lets ``import xmris`` succeed without pyAMARES,
+    deferring the friendly ImportError to the moment fitting is actually used.
+    """
+    if name == "fit_amares":
+        from .fitting import fit_amares
+
+        return fit_amares
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
