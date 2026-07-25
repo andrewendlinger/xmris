@@ -65,11 +65,12 @@ def _set_verbosity(verbose: bool) -> None:
 def _muted_warnings(verbose: bool):
     """Mute the routine warnings a fit emits unless ``verbose``.
 
-    The scipy ``xtol``/``ftol`` UserWarning (from our magnitude-normalized
-    tolerance) and the pyAMARES ``fid.py`` divide-by-zero RuntimeWarning (a
-    degenerate spectrum with no noise floor to divide by) are expected here and
-    would otherwise flood a batch fit. An *exactly*-zero spectrum no longer reaches
-    here at all — ``fit_amares`` skips dispatching it — but near-degenerate ones do.
+    The scipy ``xtol``/``ftol`` UserWarning (from our magnitude-normalized tolerance,
+    raised on the default ``least_squares`` path) and the pyAMARES ``fid.py``
+    divide-by-zero RuntimeWarning (a degenerate spectrum with no noise floor to
+    divide by) are expected here and would otherwise flood a batch fit. An
+    *exactly*-zero spectrum no longer reaches here at all — ``fit_amares`` skips
+    dispatching it — but near-degenerate ones do.
     """
     if verbose:
         yield
@@ -125,7 +126,7 @@ def _fit_dataset_safe(
     fid_current,
     FIDobj_shared,
     initial_params,
-    method="leastsq",
+    method="least_squares",
     initialize_with_lm=False,
     verbose=False,
     apply_verbosity=True,
@@ -151,9 +152,9 @@ def _fit_dataset_safe(
     initial_params : lmfit.Parameters
         The initialized fitting parameters and prior knowledge constraints
         used for the AMARES algorithm.
-    method : {"leastsq", "least_squares"}, optional
-        The minimization method to be passed to `lmfit`. Defaults to "leastsq"
-        (Levenberg-Marquardt).
+    method : {"least_squares", "leastsq"}, optional
+        The minimization method to be passed to `lmfit`. Defaults to
+        "least_squares" (SciPy trust-region) — see :func:`fit_amares` for why.
     initialize_with_lm : bool, optional
         If True, an internal Levenberg-Marquardt initializer is executed to
         refine starting values before the main fitting routine. Defaults to False.
@@ -212,7 +213,7 @@ def _run_parallel_fitting_optimal(
     fid_arrs,
     FIDobj_shared,
     initial_params,
-    method="leastsq",
+    method="least_squares",
     initialize_with_lm=False,
     num_workers=8,
     verbose=False,
@@ -237,8 +238,9 @@ def _run_parallel_fitting_optimal(
         to avoid serialization overhead across processes.
     initial_params : lmfit.Parameters
         The initialized fitting parameters and prior knowledge constraints.
-    method : {"leastsq", "least_squares"}, optional
-        The minimization method to be passed to `lmfit`. Defaults to "leastsq".
+    method : {"least_squares", "leastsq"}, optional
+        The minimization method to be passed to `lmfit`. Defaults to
+        "least_squares" (SciPy trust-region) — see :func:`fit_amares` for why.
     initialize_with_lm : bool, optional
         If True, an internal Levenberg-Marquardt initializer is executed before
         the main fitting routine. Defaults to False.
@@ -397,7 +399,7 @@ def fit_amares(
     deadtime: float | None = None,
     carrier: float | None = None,
     g_global: float | bool = 0.0,
-    method: str = "leastsq",
+    method: str = "least_squares",
     initialize_with_lm: bool = False,
     num_workers: int = 4,
     init_fid: np.ndarray | None = None,
@@ -457,8 +459,13 @@ def fit_amares(
         Global lineshape held for every peak: 0.0 = pure Lorentzian (default),
         1.0 = pure Gaussian, in between = pseudo-Voigt. Pass ``False`` instead to
         let each peak's ``g`` vary, fitted from the prior-knowledge value.
-    method : {"leastsq", "least_squares"}, optional
-        Fitting method. Defaults to 'leastsq' (Levenberg-Marquardt).
+    method : {"least_squares", "leastsq"}, optional
+        Fitting method, passed through to `lmfit`. Defaults to 'least_squares'
+        (SciPy's trust-region solver), which lands in the same minimum on every
+        run. 'leastsq' (Levenberg-Marquardt) is faster per fit but can settle
+        unpredictably into a shallower second minimum on ill-conditioned
+        multi-peak data — the same input then yields different amplitudes, with
+        every fit reporting success.
     initialize_with_lm : bool, optional
         Run an internal Levenberg-Marquardt initializer before fitting. Defaults to
         False (True can diverge on real data).

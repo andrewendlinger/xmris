@@ -742,7 +742,7 @@ class XmrisAccessor(
         deadtime: float | None = None,
         carrier: float | None = None,
         g_global: float | bool = 0.0,
-        method: str = "leastsq",
+        method: str = "least_squares",
         initialize_with_lm: bool = False,
         num_workers: int = 4,
         init_fid: np.ndarray | None = None,

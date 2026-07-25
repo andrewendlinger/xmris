@@ -1688,7 +1688,7 @@ class TestFittingDomain:
         )
 
     def _fit(self, da, pk_path):
-        return da.xmr.fit_amares(prior_knowledge=pk_path, method="least_squares", num_workers=1)
+        return da.xmr.fit_amares(prior_knowledge=pk_path, num_workers=1)
 
     def test_fid_in_returns_time_domain(self, fid, pk_path):
         """A FID fits directly; outputs stay time-domain and carry the vocab."""
@@ -1760,12 +1760,8 @@ class TestFittingDomain:
         nest parallel pools.
         """
         stack = xr.concat([fid, 0.5 * fid], dim="voxel").assign_attrs(fid.attrs)
-        serial = stack.xmr.fit_amares(
-            prior_knowledge=pk_path, method="least_squares", num_workers=1
-        )
-        parallel = stack.xmr.fit_amares(
-            prior_knowledge=pk_path, method="least_squares", num_workers=2
-        )
+        serial = stack.xmr.fit_amares(prior_knowledge=pk_path, num_workers=1)
+        parallel = stack.xmr.fit_amares(prior_knowledge=pk_path, num_workers=2)
         # Same shape and variable set whichever engine ran.
         assert dict(parallel.sizes) == dict(serial.sizes)
         assert set(parallel.data_vars) == set(serial.data_vars)
@@ -1804,9 +1800,7 @@ class TestFittingDomain:
 
     def test_dict_prior_knowledge_fits(self, fid):
         """A fit runs straight from an in-memory dict — no CSV the user must write."""
-        ds = fid.xmr.fit_amares(
-            prior_knowledge=self._DICT_PK, method="least_squares", num_workers=1
-        )
+        ds = fid.xmr.fit_amares(prior_knowledge=self._DICT_PK, num_workers=1)
         assert list(ds[DIMS.metabolite].values) == ["PCr", "ATP"]
         amps = ds[VARS.amplitude].values
         assert np.all(np.isfinite(amps))
@@ -1814,9 +1808,7 @@ class TestFittingDomain:
 
     def test_dict_and_path_agree(self, fid, pk_path):
         """The builder reproduces the hand-written fixture: identical fits."""
-        by_dict = fid.xmr.fit_amares(
-            prior_knowledge=self._DICT_PK, method="least_squares", num_workers=1
-        )
+        by_dict = fid.xmr.fit_amares(prior_knowledge=self._DICT_PK, num_workers=1)
         by_path = self._fit(fid, pk_path)
         np.testing.assert_allclose(
             by_dict[VARS.amplitude].values, by_path[VARS.amplitude].values, rtol=1e-6
@@ -1914,7 +1906,7 @@ class TestFittingDomain:
             coords={DIMS.time: t},
             attrs={str(ATTRS.reference_frequency): self._MHZ, str(ATTRS.carrier_ppm): 0.0},
         )
-        ds = fid.xmr.fit_amares(prior_knowledge=pk_path, method="least_squares", num_workers=1)
+        ds = fid.xmr.fit_amares(prior_knowledge=pk_path, num_workers=1)
         assert ds[VARS.fit].sizes[DIMS.time] == n  # length-exact; pre-fix raised ValueError
 
     def test_fit_keeps_referencing_attrs(self, fid, pk_path):
@@ -1927,7 +1919,7 @@ class TestFittingDomain:
     def test_stack_dim_name_collision(self, fid, pk_path):
         """An input dim literally named 'spectrum' fits without a stack-name collision."""
         stack = xr.concat([fid, fid], dim="spectrum").assign_attrs(fid.attrs)
-        ds = stack.xmr.fit_amares(prior_knowledge=pk_path, method="least_squares", num_workers=1)
+        ds = stack.xmr.fit_amares(prior_knowledge=pk_path, num_workers=1)
         assert ds[VARS.amplitude].sizes["spectrum"] == 2
 
     def test_coord_long_names(self, fid, pk_path):
@@ -1944,7 +1936,7 @@ class TestFittingDomain:
 
         csv = build_prior_knowledge(self._DICT_PK)
         df_index = pd.read_csv(io.StringIO(csv), index_col=0)  # canonical: labels as index
-        ds = fid.xmr.fit_amares(prior_knowledge=df_index, method="least_squares", num_workers=1)
+        ds = fid.xmr.fit_amares(prior_knowledge=df_index, num_workers=1)
         assert np.all(np.isfinite(ds[VARS.amplitude].values))
         df_range = pd.read_csv(io.StringIO(csv))  # RangeIndex — labels in a column
         with pytest.raises(ValueError, match="row labels as its index"):
@@ -1984,9 +1976,7 @@ class TestFittingDomain:
             return real(fid_current, *args, **kwargs)
 
         monkeypatch.setattr(amares_mod, "_fit_dataset_safe", _counting)
-        ds = gapped_stack.xmr.fit_amares(
-            prior_knowledge=pk_path, method="least_squares", num_workers=1
-        )
+        ds = gapped_stack.xmr.fit_amares(prior_knowledge=pk_path, num_workers=1)
         assert len(dispatched) == 2, f"the empty voxel was fitted anyway: {dispatched}"
         assert all(m > 0 for m in dispatched)
         # The output is unchanged by the skip: still no_signal, still NaN.
@@ -2001,7 +1991,7 @@ class TestFittingDomain:
         maps results home. A mis-scatter would put voxel 2's fit at index 1. Same
         loky caveat as ``test_parallel_path_matches_serial``.
         """
-        kw = dict(prior_knowledge=pk_path, method="least_squares")
+        kw = dict(prior_knowledge=pk_path)
         serial = gapped_stack.xmr.fit_amares(num_workers=1, **kw)
         parallel = gapped_stack.xmr.fit_amares(num_workers=2, **kw)
         np.testing.assert_array_equal(parallel[VARS.fit_status].values, [0, 1, 0])
@@ -2043,7 +2033,7 @@ class TestFittingDomain:
                 "PCr": {"amplitude": 10.0, "chem_shift": 0.0, "linewidth": 15.0},
                 "ATP": {"amplitude": 5.0, "chem_shift": -7.5, "linewidth": 20.0},
             }
-            ds = grid.xmr.fit_amares(pk, method="least_squares", num_workers=4)
+            ds = grid.xmr.fit_amares(pk, num_workers=4)
             assert ds["fit_status"].values.tolist() == [0, 1, 0]
             print("OK")
         """
@@ -2056,6 +2046,90 @@ class TestFittingDomain:
         assert result.stdout.strip().endswith("OK"), result.stdout
         noisy = [ln for ln in result.stderr.splitlines() if "Warning" in ln]
         assert not noisy, f"the empty voxel leaked onto stderr: {noisy}"
+
+    # --- the optimizer default is basin-stable (PR #105 follow-up, item 1) ---
+
+    @staticmethod
+    def _bistable_case():
+        """The signal that split the old `leastsq` default between two minima.
+
+        Both peaks sit 0.25 ppm off their prior inside tight bounds — ill-conditioned
+        enough that Levenberg-Marquardt settles into either the true minimum or a
+        shallow second one, unpredictably, for byte-identical input.
+        """
+        from xmris.fitting.simulation import simulate_fid
+
+        fid = simulate_fid(
+            amplitudes=[10.0, 5.0],
+            chemical_shifts=[-0.25, -7.75],
+            reference_frequency=120.6,
+            spectral_width=8000.0,
+            n_points=512,
+            dampings=[np.pi * 15.0, np.pi * 20.0],
+            target_snr=250.0,
+            seed=0,
+        ).assign_attrs({str(ATTRS.reference_frequency): 120.6, str(ATTRS.carrier_ppm): 0.0})
+        pk = {
+            "PCr": {
+                "amplitude": 10.0,
+                "chem_shift": 0.0,
+                "linewidth": 15.0,
+                "chem_shift_bounds": (-0.6, 0.6),
+            },
+            "ATP": {
+                "amplitude": 5.0,
+                "chem_shift": -7.5,
+                "linewidth": 20.0,
+                "chem_shift_bounds": (-8.2, -6.8),
+            },
+        }
+        return fid, pk
+
+    def test_default_method_is_reproducible(self):
+        """Ten fits with the *default* optimizer agree — and on the true minimum.
+
+        Under the old `leastsq` default this signal returned one of two minima per
+        call (ATP at 5.00 or 6.12 — a 22% spread, every fit reporting success), which
+        made a quantified amplitude depend on which basin that run happened to find.
+        Asserted with `assert_allclose`, never `==`: the trust-region path is
+        basin-stable, not bit-identical (its chi-square agrees only to ~1e-12).
+        """
+        fid, pk = self._bistable_case()
+        runs = [
+            fid.xmr.fit_amares(prior_knowledge=pk, num_workers=1)[VARS.amplitude].values
+            for _ in range(10)
+        ]
+        for i, amps in enumerate(runs[1:], start=1):
+            np.testing.assert_allclose(
+                amps,
+                runs[0],
+                rtol=1e-3,
+                err_msg=f"run {i} landed in a different minimum than run 0",
+            )
+        # ...and it is the deep one: the simulated truth, not the shallow neighbour.
+        np.testing.assert_allclose(runs[0], [10.0, 5.0], rtol=0.01)
+
+    def test_method_default_matches_the_free_function(self):
+        """The accessor copies the free function's `method` default verbatim (C9).
+
+        `TestAccessorDefaults` covers `dim` only, so this is the sole guard against
+        the delegator and its free function drifting apart on this one.
+        """
+        import inspect
+
+        from xmris.core.accessor import XmrisAccessor
+        from xmris.fitting.amares import fit_amares
+
+        accessor = inspect.signature(XmrisAccessor.fit_amares).parameters["method"].default
+        free = inspect.signature(fit_amares).parameters["method"].default
+        assert accessor == "least_squares"
+        assert free == accessor
+
+    def test_leastsq_remains_available(self, fid, pk_path):
+        """`leastsq` is still one keyword away — the escape hatch must not rot."""
+        ds = fid.xmr.fit_amares(prior_knowledge=pk_path, method="leastsq", num_workers=1)
+        assert int(ds[VARS.fit_status]) == 0
+        assert np.all(np.isfinite(ds[VARS.amplitude].values))
 
 
 class TestFittingVerbosity:
