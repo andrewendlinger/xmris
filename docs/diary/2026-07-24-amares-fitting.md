@@ -323,6 +323,11 @@ It ships as its own small PyPI package because the upstream maintainer was unres
 the one-line marker PR — and that is what makes fitting an installable **optional extra**,
 where a bare `pip install xmris` never pulls pyAMARES at all.
 
+That marker also bought back a CI leg. The release matrix ran macOS under
+`continue-on-error` for exactly this reason: `uv sync` could not install the project on an
+arm64 runner, so a red macOS job carried no information. It installs now, so macOS blocks
+the release pipeline like every other platform.
+
 :::{seealso}
 The [pyAMARES tutorial](../notebooks/fitting/pyamares.md) runs a fit end to end and shows
 the Dataset it returns. The guarantees above are pinned by `TestFittingDomain` in
