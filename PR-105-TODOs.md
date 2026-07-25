@@ -236,12 +236,14 @@ path there becomes an option again, which would close the last open to-do in
 
 </details>
 
-### Still open, downstream of this fix
+### ~~Still open, downstream of this fix~~ — **MOOT 2026-07-25**
 
-Switching `docs/notebooks/fitting/pyamares.md` to the default parallel path — now unblocked, but a
-separate call: the page's stated `num_workers=1` rationale (pool startup exceeds eight short fits)
-is measured and still true, so this is a decision about what the page should *demonstrate*, not a
-defect. It would close `docs/plans/2026-07_amares_hardening.md:285-287`.
+There is no longer a "default parallel path" to switch the page to: `num_workers` now defaults to
+`1` (see item 4 below), so `docs/notebooks/fitting/pyamares.md` runs the shipped default simply by
+dropping its pins — the page's measured rationale became the library's.
+`docs/plans/2026-07_amares_hardening.md:285-287` asked for the loky path to be un-skipped; it is,
+by four tests in `TestFittingDomain` under `-n0`, and deliberately *not* by a notebook — loky inside
+nbmake's `-n auto` xdist would nest pools.
 
 ---
 
@@ -334,7 +336,54 @@ Ordered roughly by value.
   test_one_active_voxel_in_a_grid_skips_the_pool, test_two_active_voxels_still_use_the_pool}` — the
   last one guards the other side of the branch, so a threshold cannot creep upward unnoticed.
 
-### New, found while measuring the above: `num_workers=4` is a net loss below ~50 short spectra
+### ~~New, found while measuring the above: `num_workers=4` is a net loss below ~50 short spectra~~ — **DONE 2026-07-25**
+
+Resolved as a decision, not a bug fix: `num_workers` now defaults to **1**, and the worker pool is
+opt-in through joblib's own spelling — `-1` for every core, `-2` for all but one. Recorded in the
+#105 diary entry as [The worker pool that made fitting
+slower](docs/diary/2026-07-24-amares-fitting.md), committed first as the review gate.
+
+**The break-even below was measured wrong — there are two of them.** Re-measured on this branch,
+512-point two-peak signal, `workers=1` vs `-1`: cold (one fit in a fresh process) the pool does not
+draw level until **~64 spectra** (n=64: 3.21 s vs 3.25 s; n=32: 1.64 s vs 3.14 s), but warm (the
+fourth consecutive fit in one process) loky keeps its executor alive and the pool is ahead from
+**~8** (n=8: 0.20 s vs 0.08 s; n=32: 0.81 s vs 0.19 s). The original ~50 figure was a cold-only
+extrapolation. The default serves the cold case — a fitting script starts, fits and exits, never
+amortizing the startup — and whoever fits repeatedly in a session is exactly who can pass `-1` once.
+
+The measurements are not the whole argument, though. Both crossovers are signal-dependent (a real
+³¹P fit runs 0.5–2 s per spectrum, dragging them down to a handful of voxels), so no threshold was
+hardcoded and the floated `"auto"` heuristic was **rejected**: it calibrates the *work* when the
+missing information is the *machine*. `fit_amares` cannot see the container CPU
+quota, the cluster allocation or an enclosing pool, and `os.cpu_count()` still reports host cores
+inside `docker --cpus=2` on Python 3.14. That is why SciPy ships `workers=1`, scikit-learn
+`n_jobs=None`, joblib `n_jobs=1` — and across that corpus no library has ever moved a default from
+serial to parallel; every documented change trimmed parallelism.
+
+Three things the change turned up:
+
+- **The docs were voting, again.** Exactly as with item 1, every fitting call site in `docs/` and
+  `tests/` passed `num_workers=1` — 19 pins in the arch suite and 6 in the notebooks. They are gone,
+  so the suite and the pages now exercise the shipped default. `TestFittingVerbosity`'s pin stays:
+  its `warnings.catch_warnings` assertion only works in-process, so that dependency is worth stating.
+- **The knob was uncapped.** Asking for 8 workers to fit 2 spectra started 8 processes, six of which
+  never received a task. Dispatch now passes `min(effective_n_jobs(num_workers), n_active)`, which
+  also resolves the negative spellings *before* capping — so `-1` on a 2-voxel grid starts 2 workers,
+  not 20. This generalizes the `n == 1` collapse from the commit above rather than replacing it, and
+  it now also catches `-1` on a single-core host.
+- **`num_workers=0` was reachable.** joblib raises an opaque `"n_jobs == 0 in Parallel has no
+  meaning"` from deep inside dispatch, after the whole setup is paid for — a plausible typo now that
+  `1` is the default. It is refused up front with a Commandment 10 message.
+
+Pinned by `TestFittingDomain::{test_default_num_workers_is_serial, test_pool_is_capped_at_active_spectra,
+test_negative_num_workers_uses_the_pool, test_zero_num_workers_raises,
+test_num_workers_default_matches_the_free_function}`. The first two were verified non-vacuous:
+forced back to `num_workers: int = 4` they fail. `_run_parallel_fitting_optimal`'s stale
+`num_workers=8` default — which disagreed with the public `4` and would have become a trap — is now
+a required keyword-only argument.
+
+<details>
+<summary>Original report</summary>
 
 The pool costs a flat **~1.3 s** to start and only overtakes the serial loop once the fits it
 distributes exceed that. Cold, fresh process per row, the 512-point two-peak signal (marginal fit
@@ -358,3 +407,5 @@ real question is whether `num_workers` should default to `4` at all, or to somet
 that sizes the pool from the work in front of it (`n_active` × measured cost per fit). That changes
 a public default and picks between viable approaches — like item 1, it wants a dev-diary entry as
 its review gate rather than a quiet heuristic.
+
+</details>

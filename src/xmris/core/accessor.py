@@ -744,7 +744,7 @@ class XmrisAccessor(
         g_global: float | bool = 0.0,
         method: str = "least_squares",
         initialize_with_lm: bool = False,
-        num_workers: int = 4,
+        num_workers: int = 1,
         init_fid: np.ndarray | None = None,
         verbose: bool = False,
     ) -> xr.Dataset:

@@ -155,27 +155,35 @@ shipped `num_workers=4`, and all ten fitting call sites across the tutorials and
 passed `num_workers=1` instead. The second time that pattern shows up it stops being a coincidence
 and starts being a measurement.
 
-It is one. Cold, in a fresh process, on the 512-point two-peak signal these pages actually fit:
+It is one — but not the single number it first looked like. On the 512-point two-peak signal these
+pages fit, timed both cold (one fit in a fresh process) and warm (the fourth consecutive fit in the
+same session):
 
-| spectra | `num_workers=1` | `num_workers=4` |
-|---|---|---|
-| 1 | 0.99 s | 2.04 s |
-| 2 | 0.80 s | 2.10 s |
-| 8 | 0.94 s | 2.25 s |
+| spectra | cold, serial | cold, `-1` | warm, serial | warm, `-1` |
+|---|---|---|---|---|
+| 2 | 0.79 s | 2.17 s | 0.06 s | 0.09 s |
+| 8 | 0.94 s | 2.68 s | 0.20 s | 0.08 s |
+| 32 | 1.64 s | 3.14 s | 0.81 s | 0.19 s |
+| 64 | 3.21 s | 3.25 s | 2.45 s | 0.50 s |
 
-The pool costs a flat ~1.3 s before it fits anything — four processes each re-importing NumPy, SciPy
-and pyAMARES, because macOS spawns rather than forks. Against a marginal fit of ~30 ms that is
-roughly **fifty** spectra before the pool has earned back its own startup. Every example in this
-documentation sits far below fifty, which is precisely why every example turned it off.
+Two break-evens, an order of magnitude apart. Cold, the pool pays ~1.5–2 s before it fits anything
+— ten processes each re-importing NumPy, SciPy and pyAMARES, because macOS spawns rather than forks
+— and does not draw level until about **64** spectra. Warm, loky keeps its executor alive between
+calls, so that startup is paid once and the pool is ahead from about **8**.
 
-Fifty is not a number to hardcode, though. A real ³¹P fit — more peaks, more points — runs 0.5–2 s,
-where break-even drops to a handful of voxels. The threshold moves with the data, and that is the
-smaller half of the problem. The larger half is that `fit_amares` cannot see the *machine*: not the
-container's CPU quota, not the SLURM allocation, not the outer pool it may already be running
-inside. `os.cpu_count()` still reports the host's twenty cores from inside a container limited to
-two. A default that starts processes is a decision made without the information the decision needs
-— which is why SciPy ships `workers=1`, scikit-learn `n_jobs=None`, and joblib `n_jobs=1`. The
-caller knows the machine; the library does not.
+Which of the two should a *default* serve? The cold one. A fitting script is a process that starts,
+fits, and exits: it pays the startup and never amortizes it. And the person who *is* fitting
+repeatedly in a long session — the one the warm column rewards — is precisely the person in a
+position to type `num_workers=-1` once and mean it.
+
+Neither number is hardcoded anywhere, because both move with the data: a real ³¹P fit, more peaks
+over more points, runs 0.5–2 s per spectrum and drags both crossovers down to a handful of voxels.
+That the threshold moves is the smaller half of the problem. The larger half is that `fit_amares`
+cannot see the *machine*: not the container's CPU quota, not the SLURM allocation, not the outer
+pool it may already be running inside. `os.cpu_count()` still reports the host's twenty cores from
+inside a container limited to two. A default that starts processes is a decision made without the
+information the decision needs — which is why SciPy ships `workers=1`, scikit-learn `n_jobs=None`,
+and joblib `n_jobs=1`. The caller knows the machine; the library does not.
 
 So fitting joins them. `num_workers` defaults to **1** and fits in-process, and the pool is one
 keyword away in joblib's spelling:
@@ -186,6 +194,20 @@ ds = grid.xmr.fit_amares(pk, num_workers=-1)  # every core
 ds = grid.xmr.fit_amares(pk, num_workers=-2)  # all but one
 ```
 
+Those negative spellings already worked, by inheritance — `num_workers` has always been handed
+straight to joblib's `n_jobs` — but nothing named or tested them, so they were a feature only a
+reader of the source could find. Making them the official opt-in meant pinning them, and pinning
+them turned up that the knob was never bounded by the work: asking for eight workers to fit two
+spectra started eight processes, six of which would never receive a task. Dispatch now resolves the
+count through `effective_n_jobs` *first* and then caps it at the spectra that actually have signal,
+so `-1` on a two-voxel grid starts two workers rather than ten, and a request that resolves to a
+single worker collapses into the in-process loop instead of paying a startup it cannot use. That
+last case now also catches `-1` on a single-core host, which the earlier `n == 1` collapse did not.
+
+One count is refused outright: `num_workers=0`, which joblib would otherwise reject from deep inside
+dispatch with `"n_jobs == 0 in Parallel has no meaning"` — after the entire setup had been paid for,
+and a plausible typo now that `1` is the default.
+
 :::{warning}
 `-1` means *every core this process can see* — which, inside a container, a SLURM job or an
 enclosing pool, is the number the new default exists to avoid guessing. It is the right answer on
@@ -193,25 +215,25 @@ your own workstation and the wrong one on a shared node. On a real grid the win 
 it deliberately.
 :::
 
+The timings above are macOS `spawn` figures. Linux `fork` is cheaper today and Python 3.14 moves it
+to `forkserver`, so the cold column should shrink there — by how much is unmeasured, which is the
+one claim on this page that rests on a single platform.
+
 :::{dropdown} Why not size the pool automatically?
 The tempting version times the first fit and starts a pool only if the remaining ones would outrun
 its startup — self-calibrating, and the first fit isn't wasted. But it calibrates the *work* when
-the missing information is the *machine*, so it would still oversubscribe a two-CPU container.
-It also makes which code path ran depend on how loaded the host was, and
-`test_two_active_voxels_still_use_the_pool` exists to pin exactly that branch. A knob the caller
-sets in one keystroke beats a heuristic nobody can predict or test.
+the missing information is the *machine*, so it would still oversubscribe a two-CPU container. It
+also makes which code path ran depend on how loaded the host was, and the branch is precisely what
+`test_two_active_voxels_still_use_the_pool` and `test_pool_is_capped_at_active_spectra` exist to
+pin. A knob the caller sets in one keystroke beats a heuristic nobody can predict or test.
 :::
 
-:::{attention} Assumptions to verify
-- `num_workers=-1` / `-2` reach joblib untouched and give results identical to the serial path.
-  They work today by inheritance, not by design — nothing tests or documents them.
-- Capping the pool at the number of spectra that actually have signal is a pure win: nothing relies
-  on `num_workers` being taken literally when it exceeds the work available.
-- Nothing outside the fitting notebooks depends on the parallel default.
-  `03_plotting_1dfid.md` has a `num_workers=4` cell, but it is `skip-execution`.
-- The ~1.3 s startup is a macOS `spawn` figure. Linux `fork` is cheaper today, and Python 3.14
-  moves it to `forkserver` — neither is measured here.
-:::
+As with the optimizer, the pins came out with the default: nineteen `num_workers=1` arguments across
+the architecture suite and six across the fitting notebooks, every one of them now redundant. Both
+now exercise the shipped path rather than a configuration no user would have. Two pins stayed on
+purpose — the parallel-equivalence tests need a pool to compare against, and
+`TestFittingVerbosity`'s `warnings.catch_warnings` can only observe warnings raised in its own
+process, so that one documents a real dependency rather than a habit.
 
 (diary-amares-fitting-domain)=
 ## Fit a FID or a spectrum
@@ -319,6 +341,13 @@ the Dataset it returns. The guarantees above are pinned by `TestFittingDomain` i
   [The Two Domains](../explanation/domains.md) — fitting demands a FID, the transform stays
   explicit. Overturning it meant rewriting that page and Commandment 6 as part of this arc,
   not just changing `fit_amares`.
+- **"The pool is slower" turned out to be half a sentence.** The worker-pool decision was proposed
+  on a single measured break-even — around fifty short spectra before a pool repays its startup —
+  which made it look like plain arithmetic. Timing repeat fits in one process showed a second
+  regime: loky keeps its executor alive between calls, so a warm session is ahead from about eight
+  spectra while a cold one needs about sixty-four. The default did not change, but the reason it is
+  right did. It rests on which regime a *default* should serve, and on the library's inability to
+  see the machine — not on one number that happened to favour serial.
 - **The explainer folded back in.** The plan put the reasoning above on a separate page,
   `docs/explanation/fitting.md` ("Fitting on Real Data"). It shipped and was read — and
   turned out to be a decision record wearing an explainer's clothes, duplicating this entry

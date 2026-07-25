@@ -164,29 +164,30 @@ pk = {
 
 Now the part that would otherwise be a `for` loop. `fit_amares` flattens every non-time dimension
 into a single list of spectra, scans it for the highest-SNR one to initialize the pyAMARES template
-from, hands the list to a pool of worker processes, and reassembles the results onto the axes you
-started with.
+from, fits each in turn, and reassembles the results onto the axes you started with.
 
 ```{mermaid}
 graph LR
     A["DataArray<br>dims: voxel, time"] --> B("flatten to a list of spectra")
-    B --> C{"worker pool"}
-    C -->|"worker 1"| D["AMARES fit<br>voxel 0"]
-    C -->|"worker N"| E["AMARES fit<br>voxel N"]
+    B --> C{"fit each"}
+    C -->|"spectrum 0"| D["AMARES fit<br>voxel 0"]
+    C -->|"spectrum N"| E["AMARES fit<br>voxel N"]
     D --> F("reassemble on the original axes")
     E --> F
     F --> G["Dataset<br>signals on time<br>parameters on metabolite"]
 ```
 
 ```{code-cell} ipython3
-ds = grid.xmr.fit_amares(pk, num_workers=1)
+ds = grid.xmr.fit_amares(pk)
 ```
 
 Two arguments worth knowing about, neither of them required:
 
-- **`num_workers`** sizes that pool, four by default. We ask for `1` — which fits in-process
-  instead — because for eight 512-point spectra the pool costs more to start than the fits cost to
-  run. Leave the default on a real grid, where the arithmetic reverses sharply.
+- **`num_workers`** decides whether those fits are spread over worker processes. It defaults to `1`
+  — everything in-process — because a pool costs a second or two to start, which eight 512-point
+  spectra never earn back. On a real grid the arithmetic reverses: pass `-1` for every core, or
+  `-2` to leave one free. The [diary entry](#diary-amares-fitting-workers) has the measurements,
+  including the two very different break-even points, and the reason the *default* stays serial.
 - **`method`** picks the optimizer, and the default `"least_squares"` (SciPy's trust-region solver)
   is the one to keep. `"leastsq"` — Levenberg–Marquardt — is faster per fit, but on drifted data
   like this it has a second, shallower minimum it settles into unpredictably, so the same signal
@@ -224,9 +225,7 @@ assert "MHz" not in grid.attrs
 _pk_path = Path("example_pk.csv")
 _pk_path.write_text(build_prior_knowledge(pk))
 try:
-    _ds_file = grid.isel(voxel=0).xmr.fit_amares(
-        _pk_path, num_workers=1
-    )
+    _ds_file = grid.isel(voxel=0).xmr.fit_amares(_pk_path)
 finally:
     _pk_path.unlink(missing_ok=True)
 np.testing.assert_allclose(
@@ -542,7 +541,7 @@ fits where the tolerance behaves, and rescales:
 
 ```{code-cell} ipython3
 scanner_scale = (grid.isel(voxel=0) * 1e7).assign_attrs(grid.attrs)
-ds_scaled = scanner_scale.xmr.fit_amares(pk, num_workers=1)
+ds_scaled = scanner_scale.xmr.fit_amares(pk)
 
 print("unit scale :", ds["amplitude"].isel(voxel=0).values.round(4))
 print("x 1e7      :", ds_scaled["amplitude"].values)
@@ -555,7 +554,7 @@ a phased spectrum in ppm. Hand that over and `fit_amares` round-trips it for you
 
 ```{code-cell} ipython3
 as_ppm = grid.isel(voxel=0).xmr.to_spectrum().xmr.to_ppm()
-ds_ppm = as_ppm.xmr.fit_amares(pk, num_workers=1)
+ds_ppm = as_ppm.xmr.fit_amares(pk)
 
 print("fitted from a FID     :", ds["amplitude"].isel(voxel=0).values.round(4))
 print("fitted from a spectrum:", ds_ppm["amplitude"].values.round(4))

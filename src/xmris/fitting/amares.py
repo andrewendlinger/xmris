@@ -13,7 +13,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 import xarray as xr
-from joblib import Parallel, delayed
+from joblib import Parallel, delayed, effective_n_jobs
 from pyAMARES import (
     initialize_FID,
     multieq6,
@@ -215,7 +215,8 @@ def _run_parallel_fitting_optimal(
     initial_params,
     method="least_squares",
     initialize_with_lm=False,
-    num_workers=8,
+    *,
+    num_workers,
     verbose=False,
 ):
     """
@@ -244,8 +245,10 @@ def _run_parallel_fitting_optimal(
     initialize_with_lm : bool, optional
         If True, an internal Levenberg-Marquardt initializer is executed before
         the main fitting routine. Defaults to False.
-    num_workers : int, optional
-        The number of concurrent worker processes to spawn. Defaults to 8.
+    num_workers : int
+        The size of the worker pool. Required, and always a concrete positive
+        count: :func:`fit_amares` resolves joblib's negative spellings and caps
+        the pool at the number of spectra before dispatching here.
     verbose: bool, optional
         If True, sets logging level to INFO and prints timing. Default is False.
 
@@ -401,7 +404,7 @@ def fit_amares(
     g_global: float | bool = 0.0,
     method: str = "least_squares",
     initialize_with_lm: bool = False,
-    num_workers: int = 4,
+    num_workers: int = 1,
     init_fid: np.ndarray | None = None,
     verbose: bool = False,
 ) -> xr.Dataset:
@@ -471,9 +474,14 @@ def fit_amares(
         Run an internal Levenberg-Marquardt initializer before fitting. Defaults to
         False (True can diverge on real data).
     num_workers : int, optional
-        Number of parallel processes to spawn. Defaults to 4. Ignored when only one
-        spectrum has signal: a pool cannot parallelize a single fit, so it is fit
-        in-process instead of paying the pool's startup.
+        Size of the worker pool. Defaults to 1 — every spectrum is fitted
+        in-process, which beats starting a pool until roughly 64 short fits in
+        a fresh process (nearer 8 if the same session fits repeatedly, since
+        the pool is then started only once). Pass a positive count, or joblib's
+        negative spellings (``-1`` every core, ``-2`` all but one), to opt in.
+        Whatever you ask for is capped at the number of spectra that actually
+        have signal, and a pool that resolves to one worker collapses to the
+        in-process loop rather than paying a startup it cannot use.
     init_fid : np.ndarray, optional
         A 1D complex array to use as the template for pyAMARES initialization. If None,
         the function automatically selects the spectrum with the highest SNR.
@@ -489,6 +497,17 @@ def fit_amares(
         also carries a per-spectrum ``fit_status`` flag (0=fitted, 1=no_signal, 2=failed).
     """
     _set_verbosity(verbose)
+
+    # Guard the one worker count with no meaning before any work happens — joblib would
+    # otherwise raise "n_jobs == 0 in Parallel has no meaning" from deep inside dispatch,
+    # after the whole setup has been paid for. A plausible typo now that 1 is the default.
+    if num_workers == 0:
+        raise ValueError(
+            f"num_workers={num_workers} has no meaning: a pool of zero workers cannot fit.\n\n"
+            f"To fix this, pass a positive count, or joblib's negative spellings:\n"
+            f"    >>> ds = da.xmr.fit_amares(prior_knowledge, num_workers=1)   # in-process\n"
+            f"    >>> ds = da.xmr.fit_amares(prior_knowledge, num_workers=-1)  # every core"
+        )
 
     # 1. Domain handling: obtain a FID to fit and remember how to restore the input.
     da_fid, dim, restore_state = _resolve_fit_domain(da, dim)
@@ -619,17 +638,24 @@ def fit_amares(
         )
 
     if active_idx.size:
-        # A worker pool for a *single* spectrum has nothing to parallelize across, so
-        # its startup is pure loss: loky costs a flat ~1.3 s to spin up where one
-        # 512-point two-peak fit takes ~30 ms. Collapse to the in-process loop
-        # regardless of `num_workers` — the results are identical either way. Note this
-        # also catches a grid whose empty voxels leave only one spectrum with signal.
-        if active_idx.size == 1 and num_workers != 1:
+        # A pool never needs more workers than it has spectra to hand them: 8 workers for
+        # 2 fits pays six startups that never receive a task. `effective_n_jobs` resolves
+        # joblib's negative spellings (-1 every core, -2 all but one) to a real count
+        # first, so the cap covers those too and what we log is what we started.
+        pool_size = min(effective_n_jobs(num_workers), active_idx.size)
+        # A pool of one has nothing to parallelize across, so its startup is pure loss:
+        # loky costs a flat ~1.5-2 s to spin up where one 512-point two-peak fit takes
+        # ~30 ms. Collapse to the in-process loop — the results are identical either way.
+        # This catches a lone FID, a grid whose empty voxels leave one spectrum with
+        # signal, and `-1` on a single-core machine.
+        if pool_size == 1 and num_workers != 1:
             logger.info(
-                "Only one spectrum has signal; fitting in-process instead of starting %d workers.",
+                "Fitting %d spectra in-process: num_workers=%d resolves to a single worker, "
+                "which has nothing to parallelize across.",
+                active_idx.size,
                 num_workers,
             )
-        if num_workers == 1 or active_idx.size == 1:
+        if pool_size == 1:
             fitted = [
                 _fit_dataset_safe(
                     fid_norm[i, :],
@@ -650,7 +676,7 @@ def fit_amares(
                 initial_params=shared_obj.initialParams,
                 method=method,
                 initialize_with_lm=initialize_with_lm,
-                num_workers=num_workers,
+                num_workers=pool_size,
                 verbose=verbose,
             )
         # Scatter back to absolute indices: `fitted` is in *active* order, while

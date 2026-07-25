@@ -1637,8 +1637,9 @@ class TestFittingDomain:
 
     Fitting runs in the time domain, but a spectrum is accepted and the
     time-domain outputs (`data`/`fit`/`residuals`) are returned in the input's
-    representation (ppm in -> ppm out). Uses tiny 1-D synthetic data and
-    ``num_workers=1`` to stay fast. Requires the optional pyAMARES package.
+    representation (ppm in -> ppm out). Uses tiny 1-D synthetic data, and takes
+    the shipped ``num_workers`` default so the arch suite exercises the path
+    users get. Requires the optional pyAMARES package.
     """
 
     _MHZ = 120.0
@@ -1688,7 +1689,7 @@ class TestFittingDomain:
         )
 
     def _fit(self, da, pk_path):
-        return da.xmr.fit_amares(prior_knowledge=pk_path, num_workers=1)
+        return da.xmr.fit_amares(prior_knowledge=pk_path)
 
     def test_fid_in_returns_time_domain(self, fid, pk_path):
         """A FID fits directly; outputs stay time-domain and carry the vocab."""
@@ -1722,7 +1723,7 @@ class TestFittingDomain:
         """A real-valued spectrum has no FID behind it — refused, not fitted."""
         real_spec = fid.xmr.to_spectrum().real
         with pytest.raises(ValueError, match="real-valued"):
-            real_spec.xmr.fit_amares(prior_knowledge=pk_path, num_workers=1)
+            real_spec.xmr.fit_amares(prior_knowledge=pk_path)
 
     def test_strict_mode_refuses_with_recipe(self, fid, pk_path):
         """Under auto_convert=False a spectrum fit raises the explicit to_fid recipe."""
@@ -1731,7 +1732,7 @@ class TestFittingDomain:
         spec = fid.xmr.to_spectrum()
         with set_options(auto_convert=False):
             with pytest.raises(ValueError, match="to_fid"):
-                spec.xmr.fit_amares(prior_knowledge=pk_path, num_workers=1)
+                spec.xmr.fit_amares(prior_knowledge=pk_path)
 
     def test_scale_trap_defeated(self, fid, pk_path):
         """A Bruker-scale FID (x1e7) converges and rescales — it doesn't echo the prior."""
@@ -1751,7 +1752,7 @@ class TestFittingDomain:
     def test_parallel_path_matches_serial(self, fid, pk_path):
         """The loky parallel branch (num_workers>1) matches the serial fit exactly.
 
-        Every other fitting test forces ``num_workers=1``, so this is the only test
+        Every other fitting test runs the serial default, so this is the only test
         that drives ``_run_parallel_fitting_optimal`` (the joblib/loky pool) — it
         guards both the parallel dispatch and the generator's result-to-index
         ordering. The two voxels are made *distinct* (v1 at half scale) so a
@@ -1800,7 +1801,7 @@ class TestFittingDomain:
 
     def test_dict_prior_knowledge_fits(self, fid):
         """A fit runs straight from an in-memory dict — no CSV the user must write."""
-        ds = fid.xmr.fit_amares(prior_knowledge=self._DICT_PK, num_workers=1)
+        ds = fid.xmr.fit_amares(prior_knowledge=self._DICT_PK)
         assert list(ds[DIMS.metabolite].values) == ["PCr", "ATP"]
         amps = ds[VARS.amplitude].values
         assert np.all(np.isfinite(amps))
@@ -1808,7 +1809,7 @@ class TestFittingDomain:
 
     def test_dict_and_path_agree(self, fid, pk_path):
         """The builder reproduces the hand-written fixture: identical fits."""
-        by_dict = fid.xmr.fit_amares(prior_knowledge=self._DICT_PK, num_workers=1)
+        by_dict = fid.xmr.fit_amares(prior_knowledge=self._DICT_PK)
         by_path = self._fit(fid, pk_path)
         np.testing.assert_allclose(
             by_dict[VARS.amplitude].values, by_path[VARS.amplitude].values, rtol=1e-6
@@ -1817,7 +1818,7 @@ class TestFittingDomain:
     def test_missing_path_raises(self, fid):
         """A nonexistent prior-knowledge path fails clearly, not deep inside pyAMARES."""
         with pytest.raises(FileNotFoundError, match="not found"):
-            fid.xmr.fit_amares(prior_knowledge="/no/such/pk.csv", num_workers=1)
+            fid.xmr.fit_amares(prior_knowledge="/no/such/pk.csv")
 
     # --- per-parameter uncertainties: Shape B (workstream D) ---
 
@@ -1849,11 +1850,11 @@ class TestFittingDomain:
 
     def test_g_global_forwarded(self, fid, pk_path):
         """g_global reaches pyAMARES: a Gaussian lineshape changes the fit."""
-        lor = fid.xmr.fit_amares(prior_knowledge=pk_path, num_workers=1, g_global=0.0)
-        gau = fid.xmr.fit_amares(prior_knowledge=pk_path, num_workers=1, g_global=1.0)
+        lor = fid.xmr.fit_amares(prior_knowledge=pk_path, g_global=0.0)
+        gau = fid.xmr.fit_amares(prior_knowledge=pk_path, g_global=1.0)
         assert not np.allclose(lor[VARS.amplitude].values, gau[VARS.amplitude].values, rtol=1e-3)
         # `False` (fit each peak's g) is accepted and yields a valid fit.
-        free = fid.xmr.fit_amares(prior_knowledge=pk_path, num_workers=1, g_global=False)
+        free = fid.xmr.fit_amares(prior_knowledge=pk_path, g_global=False)
         assert np.all(np.isfinite(free[VARS.amplitude].values))
 
     def test_carrier_enables_absolute_ppm(self, pk_path):
@@ -1874,12 +1875,12 @@ class TestFittingDomain:
             seed=0,
         )
         # carrier auto-read from carrier_ppm=2.0 -> absolute shifts recovered.
-        ds = fid.xmr.fit_amares(prior_knowledge=pk_path, num_workers=1)
+        ds = fid.xmr.fit_amares(prior_knowledge=pk_path)
         np.testing.assert_allclose(ds[VARS.chem_shift].values, [0.0, -7.5], atol=0.1)
         np.testing.assert_allclose(ds[VARS.amplitude].values, [10.0, 5.0], rtol=0.05)
 
         # carrier=0 override reads carrier-relative -> the abs-ppm peaks miss (pinned).
-        rel = fid.xmr.fit_amares(prior_knowledge=pk_path, num_workers=1, carrier=0.0)
+        rel = fid.xmr.fit_amares(prior_knowledge=pk_path, carrier=0.0)
         assert not np.allclose(rel[VARS.chem_shift].values, [0.0, -7.5], atol=0.1)
 
     def test_no_domain_marker(self):
@@ -1906,7 +1907,7 @@ class TestFittingDomain:
             coords={DIMS.time: t},
             attrs={str(ATTRS.reference_frequency): self._MHZ, str(ATTRS.carrier_ppm): 0.0},
         )
-        ds = fid.xmr.fit_amares(prior_knowledge=pk_path, num_workers=1)
+        ds = fid.xmr.fit_amares(prior_knowledge=pk_path)
         assert ds[VARS.fit].sizes[DIMS.time] == n  # length-exact; pre-fix raised ValueError
 
     def test_fit_keeps_referencing_attrs(self, fid, pk_path):
@@ -1919,7 +1920,7 @@ class TestFittingDomain:
     def test_stack_dim_name_collision(self, fid, pk_path):
         """An input dim literally named 'spectrum' fits without a stack-name collision."""
         stack = xr.concat([fid, fid], dim="spectrum").assign_attrs(fid.attrs)
-        ds = stack.xmr.fit_amares(prior_knowledge=pk_path, num_workers=1)
+        ds = stack.xmr.fit_amares(prior_knowledge=pk_path)
         assert ds[VARS.amplitude].sizes["spectrum"] == 2
 
     def test_coord_long_names(self, fid, pk_path):
@@ -1936,17 +1937,17 @@ class TestFittingDomain:
 
         csv = build_prior_knowledge(self._DICT_PK)
         df_index = pd.read_csv(io.StringIO(csv), index_col=0)  # canonical: labels as index
-        ds = fid.xmr.fit_amares(prior_knowledge=df_index, num_workers=1)
+        ds = fid.xmr.fit_amares(prior_knowledge=df_index)
         assert np.all(np.isfinite(ds[VARS.amplitude].values))
         df_range = pd.read_csv(io.StringIO(csv))  # RangeIndex — labels in a column
         with pytest.raises(ValueError, match="row labels as its index"):
-            fid.xmr.fit_amares(prior_knowledge=df_range, num_workers=1)
+            fid.xmr.fit_amares(prior_knowledge=df_range)
 
     def test_all_nan_signal_no_crash(self, fid, pk_path):
         """An all-NaN (fully masked) input degrades to NaN, not an `nanargmax` crash."""
         nan_fid = xr.full_like(fid, np.nan)
         stack = xr.concat([nan_fid, nan_fid], dim="voxel").assign_attrs(fid.attrs)
-        ds = stack.xmr.fit_amares(prior_knowledge=pk_path, num_workers=1)  # must not raise
+        ds = stack.xmr.fit_amares(prior_knowledge=pk_path)  # must not raise
         assert np.all(np.isnan(ds[VARS.amplitude].values))
 
     # --- empty voxels are never dispatched (PR #105 follow-up, item 2) ---
@@ -1976,7 +1977,7 @@ class TestFittingDomain:
             return real(fid_current, *args, **kwargs)
 
         monkeypatch.setattr(amares_mod, "_fit_dataset_safe", _counting)
-        ds = gapped_stack.xmr.fit_amares(prior_knowledge=pk_path, num_workers=1)
+        ds = gapped_stack.xmr.fit_amares(prior_knowledge=pk_path)
         assert len(dispatched) == 2, f"the empty voxel was fitted anyway: {dispatched}"
         assert all(m > 0 for m in dispatched)
         # The output is unchanged by the skip: still no_signal, still NaN.
@@ -2047,7 +2048,7 @@ class TestFittingDomain:
         noisy = [ln for ln in result.stderr.splitlines() if "Warning" in ln]
         assert not noisy, f"the empty voxel leaked onto stderr: {noisy}"
 
-    # --- one spectrum never starts a pool (PR #105 follow-up, item 4) ---
+    # --- the pool is opt-in, and sized to the work (PR #105 follow-up, item 4) ---
 
     @pytest.fixture
     def no_pool_allowed(self, monkeypatch):
@@ -2055,15 +2056,46 @@ class TestFittingDomain:
         from xmris.fitting import amares as amares_mod
 
         def _forbidden(*args, **kwargs):
-            raise AssertionError("the worker pool was started for a single spectrum")
+            raise AssertionError("the worker pool was started")
 
         monkeypatch.setattr(amares_mod, "_run_parallel_fitting_optimal", _forbidden)
 
+    @pytest.fixture
+    def pool_spy(self, monkeypatch):
+        """Record the pool size each dispatch asks for, then run the real thing.
+
+        Yields the list of recorded sizes, so `[] == never dispatched`.
+        """
+        from xmris.fitting import amares as amares_mod
+
+        calls: list[int] = []
+        real = amares_mod._run_parallel_fitting_optimal
+
+        def _counting(*args, **kwargs):
+            calls.append(kwargs["num_workers"])
+            return real(*args, **kwargs)
+
+        monkeypatch.setattr(amares_mod, "_run_parallel_fitting_optimal", _counting)
+        return calls
+
+    def test_default_num_workers_is_serial(self, fid, pk_path, no_pool_allowed):
+        """The shipped default fits in-process, however many spectra there are.
+
+        The pool costs a flat ~1.3 s to start against a ~30 ms fit, and xmris cannot
+        see the CPU quota, cluster allocation or enclosing pool that would decide
+        whether spawning is wise — so parallelism is opt-in, as it is in SciPy
+        (`workers=1`), scikit-learn (`n_jobs=None`) and joblib. Three voxels is well
+        past the `n == 1` collapse, so only the *default* can keep this off the pool.
+        """
+        grid = xr.concat([fid, 0.5 * fid, 0.25 * fid], dim="voxel").assign_attrs(fid.attrs)
+        ds = grid.xmr.fit_amares(prior_knowledge=pk_path)
+        assert np.all(np.isfinite(ds[VARS.amplitude].values))
+
     def test_single_spectrum_skips_the_pool(self, fid, pk_path, no_pool_allowed):
-        """A lone 1-D FID fits in-process even at `num_workers=4`.
+        """A lone 1-D FID fits in-process even when a pool is asked for.
 
         Starting loky costs a flat ~1.3 s where this fit takes ~30 ms, and there is
-        nothing to parallelize across — so the default `num_workers` must not be taken
+        nothing to parallelize across — so an explicit `num_workers` must not be taken
         literally for one spectrum. The results are the serial ones either way.
         """
         ds = fid.xmr.fit_amares(prior_knowledge=pk_path, num_workers=4)
@@ -2084,30 +2116,81 @@ class TestFittingDomain:
         np.testing.assert_array_equal(ds[VARS.fit_status].values, [1, 0, 1])
         assert np.all(np.isfinite(ds[VARS.amplitude].isel(voxel=1).values))
 
-    def test_two_active_voxels_still_use_the_pool(self, fid, pk_path):
-        """Two spectra still go to the pool — the collapse is exactly `n == 1`.
+    def test_two_active_voxels_still_use_the_pool(self, fid, pk_path, pool_spy):
+        """Two spectra still go to the pool — the collapse is exactly one worker.
 
         Guards the other side of the branch: a threshold that crept upward would
         silently turn `num_workers` into a suggestion.
         """
-        from xmris.fitting import amares as amares_mod
+        stack = xr.concat([fid, 0.5 * fid], dim="voxel").assign_attrs(fid.attrs)
+        ds = stack.xmr.fit_amares(prior_knowledge=pk_path, num_workers=2)
+        assert pool_spy == [2], "two active spectra should have gone to the pool"
+        assert np.all(np.isfinite(ds[VARS.amplitude].values))
+
+    def test_pool_is_capped_at_active_spectra(self, fid, pk_path, pool_spy):
+        """A pool never starts more workers than it has fits to hand them.
+
+        Four voxels, two of them empty and so never dispatched: asking for eight
+        workers must start two, not eight, or six processes pay loky's startup to
+        receive no task at all.
+        """
+        empty = xr.zeros_like(fid)
+        grid = xr.concat([fid, empty, 0.5 * fid, empty], dim="voxel").assign_attrs(fid.attrs)
+        ds = grid.xmr.fit_amares(prior_knowledge=pk_path, num_workers=8)
+        assert pool_spy == [2], "the pool should be capped at the two active spectra"
+        np.testing.assert_array_equal(ds[VARS.fit_status].values, [0, 1, 0, 1])
+
+    @pytest.mark.parametrize("num_workers", [-1, -2])
+    def test_negative_num_workers_uses_the_pool(self, fid, pk_path, pool_spy, num_workers):
+        """The negative joblib spellings are the documented opt-in, so they are pinned.
+
+        ``-1`` is every core and ``-2`` all but one. They reach `n_jobs` through
+        `effective_n_jobs`, which resolves them to a real count *before* the
+        active-spectra cap — so on any multi-core host this dispatches a pool of two.
+        Skipped where the host cannot supply two workers, since there the collapse to
+        the in-process loop is the correct answer and there is no pool to observe.
+        """
+        from joblib import effective_n_jobs
+
+        if effective_n_jobs(num_workers) < 2:
+            pytest.skip(f"num_workers={num_workers} resolves to a single worker on this host")
 
         stack = xr.concat([fid, 0.5 * fid], dim="voxel").assign_attrs(fid.attrs)
-        calls = []
-        real = amares_mod._run_parallel_fitting_optimal
+        ds = stack.xmr.fit_amares(prior_knowledge=pk_path, num_workers=num_workers)
+        assert pool_spy == [2], "a negative count should resolve, then cap at the spectra"
+        np.testing.assert_allclose(
+            ds[VARS.amplitude].values,
+            self._fit(stack, pk_path)[VARS.amplitude].values,
+            rtol=1e-6,
+            equal_nan=True,
+        )
 
-        def _counting(*args, **kwargs):
-            calls.append(kwargs.get("num_workers"))
-            return real(*args, **kwargs)
+    def test_zero_num_workers_raises(self, fid, pk_path):
+        """`num_workers=0` is refused up front, with the fix (C10).
 
-        monkeypatch = pytest.MonkeyPatch()
-        monkeypatch.setattr(amares_mod, "_run_parallel_fitting_optimal", _counting)
-        try:
-            ds = stack.xmr.fit_amares(prior_knowledge=pk_path, num_workers=2)
-        finally:
-            monkeypatch.undo()
-        assert calls == [2], "two active spectra should have gone to the pool"
-        assert np.all(np.isfinite(ds[VARS.amplitude].values))
+        joblib would otherwise raise its own opaque "n_jobs == 0 in Parallel has no
+        meaning" from deep inside dispatch, after the whole setup has been paid for —
+        and 0 is a plausible typo now that 1 is the default.
+        """
+        with pytest.raises(ValueError, match="num_workers=0 has no meaning") as excinfo:
+            fid.xmr.fit_amares(prior_knowledge=pk_path, num_workers=0)
+        assert ">>> ds = da.xmr.fit_amares(prior_knowledge, num_workers=-1)" in str(excinfo.value)
+
+    def test_num_workers_default_matches_the_free_function(self):
+        """The accessor copies the free function's `num_workers` default verbatim (C9).
+
+        Nothing checks delegator signature parity automatically, and this default is
+        the one a user is most likely to inherit without ever naming it.
+        """
+        import inspect
+
+        from xmris.core.accessor import XmrisAccessor
+        from xmris.fitting.amares import fit_amares
+
+        accessor = inspect.signature(XmrisAccessor.fit_amares).parameters["num_workers"].default
+        free = inspect.signature(fit_amares).parameters["num_workers"].default
+        assert accessor == 1
+        assert free == accessor
 
     # --- the optimizer default is basin-stable (PR #105 follow-up, item 1) ---
 
@@ -2157,10 +2240,7 @@ class TestFittingDomain:
         basin-stable, not bit-identical (its chi-square agrees only to ~1e-12).
         """
         fid, pk = self._bistable_case()
-        runs = [
-            fid.xmr.fit_amares(prior_knowledge=pk, num_workers=1)[VARS.amplitude].values
-            for _ in range(10)
-        ]
+        runs = [fid.xmr.fit_amares(prior_knowledge=pk)[VARS.amplitude].values for _ in range(10)]
         for i, amps in enumerate(runs[1:], start=1):
             np.testing.assert_allclose(
                 amps,
@@ -2189,7 +2269,7 @@ class TestFittingDomain:
 
     def test_leastsq_remains_available(self, fid, pk_path):
         """`leastsq` is still one keyword away — the escape hatch must not rot."""
-        ds = fid.xmr.fit_amares(prior_knowledge=pk_path, method="leastsq", num_workers=1)
+        ds = fid.xmr.fit_amares(prior_knowledge=pk_path, method="leastsq")
         assert int(ds[VARS.fit_status]) == 0
         assert np.all(np.isfinite(ds[VARS.amplitude].values))
 

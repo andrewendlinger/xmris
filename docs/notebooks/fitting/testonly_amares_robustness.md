@@ -20,8 +20,9 @@ test suite (nbmake) but never rendered on the docs site — so it speaks in conf
 singletons and asserts rather than reader-facing prose. Its unit-level companions are
 `TestFittingDomain` and `TestPriorKnowledgeBuilder` in `tests/test_core.py`; here the
 same guarantees are exercised through the whole public pipeline at once, with
-`simulate_fid` standing in for a scanner. Every fit uses `num_workers=1` (loky under
-nbmake's `-n auto` xdist would nest parallel pools).
+`simulate_fid` standing in for a scanner. Every fit takes the default `num_workers=1`,
+which is also what keeps this page safe under nbmake's `-n auto` xdist — asking for a
+loky pool here would nest parallel pools inside the xdist workers.
 
 ```{code-cell} ipython3
 import contextlib
@@ -68,7 +69,7 @@ pk = {
     "PCr": {"amplitude": 3.0, "chem_shift": 0.0, "linewidth": 15.0},
     "ATP": {"amplitude": 3.0, "chem_shift": -7.5, "linewidth": 20.0},
 }
-ds = fid.xmr.fit_amares(prior_knowledge=pk, num_workers=1)
+ds = fid.xmr.fit_amares(prior_knowledge=pk)
 ```
 
 ```{code-cell} ipython3
@@ -100,7 +101,7 @@ values cannot.
 ```{code-cell} ipython3
 # Stack the real FID with an all-zero voxel.
 stack = xr.concat([fid, xr.zeros_like(fid)], dim="voxel").assign_attrs(fid.attrs)
-ds_stack = stack.xmr.fit_amares(prior_knowledge=pk, num_workers=1)
+ds_stack = stack.xmr.fit_amares(prior_knowledge=pk)
 ```
 
 ```{code-cell} ipython3
@@ -172,7 +173,7 @@ _logger = logging.getLogger("xmris.fitting")
 _logger.addHandler(_handler)
 try:
     with contextlib.redirect_stdout(_out), contextlib.redirect_stderr(_out):
-        _ = fid.xmr.fit_amares(prior_knowledge=pk, num_workers=1, verbose=False)
+        _ = fid.xmr.fit_amares(prior_knowledge=pk, verbose=False)
 finally:
     _logger.removeHandler(_handler)
 _captured = _out.getvalue() + _log.getvalue()
