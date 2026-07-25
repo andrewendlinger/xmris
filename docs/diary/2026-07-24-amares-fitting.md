@@ -1,7 +1,7 @@
 (diary-amares-fitting)=
 # pyAMARES now behaves like the rest of the pipeline
 
-<span style="color: gray; font-size: 0.9em;">Last edited: 2026-07-24 · #105</span>
+<span style="color: gray; font-size: 0.9em;">Last edited: 2026-07-25 · #105</span>
 
 Quantifying a spectrum in xmris means `da.xmr.fit_amares(...)`: one accessor method that
 wraps [pyAMARES](https://github.com/HawkMRS/pyAMARES), fits every voxel of an N-dimensional
@@ -89,6 +89,66 @@ It beat a boolean (there are three states, not two) and beat overloading the flo
 with a second sentinel (the outcome is categorical, not numeric). Because it rides beside
 the science variables rather than inside them, consumers that select by name
 (`plot_qc_grid`, `plot_trajectory`) were untouched.
+
+(diary-amares-fitting-optimizer)=
+## Two minima, and the default that picks one
+
+A `NaN` tells you when a number is missing. It cannot tell you when a number is *wrong* —
+and one was. Fit the same ³¹P signal twice, byte for byte identical, and γ-ATP comes back
+either 5.00 or 6.12: one input, a 22 % spread, both runs reporting *converged*. Again the
+difference between a publishable number and a wrong one, this time arriving with no
+warning at all.
+
+Everything above was an xmris-shaped fix, so the adapter is where we looked. It is not
+there. Hashing every argument that reaches the optimizer across six calls — the FID, the
+parameter values, bounds, `vary` flags, names, the time axis, `MHz`/`sw`/`deadtime` —
+gives one distinct hash apiece, all six times. That clears the normalization factor, the
+temporary prior-knowledge CSV and the verbosity context, and separate runs clear BLAS
+threading, the global NumPy RNG, and a loose stopping tolerance (the shallow minimum
+survives at `xtol = 1e-14`, so it is a real minimum, not an early exit). Handed those
+bit-identical inputs and freshly copied parameters, raw `lmfit` still returns χ² = 0.004
+or χ² = 3.71, unpredictably. The coin flip lives inside MINPACK — in
+`scipy.optimize.leastsq` itself, which xmris cannot repair from the outside.
+
+Which leaves no bug to fix and a default to choose. `"least_squares"` — SciPy's
+trust-region solver, which handles the parameter bounds natively where Levenberg–Marquardt
+reaches them through a transform — lands in the deep basin on every run measured:
+
+| | `"leastsq"` (was) | `"least_squares"` (now) |
+|---|---|---|
+| 8 runs, ill-conditioned 2-peak signal | 3 distinct answers | 1 |
+| γ-ATP amplitude (true: 5.0) | 5.00 **or** 6.12 | 5.00 |
+| cost per fit (512 points) | ~28 ms | ~44 ms |
+| 8-voxel grid, wall clock | 0.16 s | 0.16 s |
+
+Both fitting tutorials had already pinned `method="least_squares"` at every call site, and
+a default that every page in the docs overrides is the wrong default. So it moved. It buys
+stability for about half again per fit on a clean signal — and for nothing measurable
+across a grid, where process setup dominates. `"leastsq"` is still one keyword away.
+
+:::{warning}
+Basin-stable is not bit-identical. `least_squares` still jitters in the last digits (χ²
+agrees run to run to ~1e-12), so the guarantee is *the same minimum*, and the test that
+pins it uses `assert_allclose`, never `==`.
+:::
+
+:::{dropdown} Why not keep LM and fit twice, keeping the better χ²?
+It turns an unpredictable answer into a predictable one at double the cost — and only if
+there are exactly two minima. Nothing promises that. On a real ³¹P spectrum with seven
+peaks and heavier overlap there may be more, and "best of two" would then be quietly
+choosing among several wrong ones while looking just as convergent. A solver that does not
+flip basins is both cheaper and honest about what it guarantees.
+:::
+
+:::{attention} Assumptions to verify
+- **No rendered number moves.** Measured only on the quick-start signal, where both
+  solvers agree to every printed digit on amplitudes, CRLB, `sd` and SNR. The notebook
+  suite and the architecture tests that call the default have not been re-run yet.
+- **The ~1.5× per-fit cost holds.** Measured on one clean 512-point two-peak synthetic;
+  unmeasured on real multi-peak ³¹P data at scanner scale.
+- **The acceptance test bites.** Ten consecutive default-method fits agreeing is only
+  evidence if the same test fails against `"leastsq"` — assumed until run both ways.
+:::
 
 (diary-amares-fitting-domain)=
 ## Fit a FID or a spectrum
