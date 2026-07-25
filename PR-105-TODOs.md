@@ -9,7 +9,51 @@ Never run fitting under the local coverage tracer (`--no-cov`); CI is the covera
 
 ---
 
-## 1. `method="leastsq"` fits are not reproducible — HIGH
+## 1. `method="leastsq"` fits are not reproducible — ~~HIGH~~ **DONE 2026-07-25**
+
+Resolved as a decision, not a bug fix: `fit_amares`'s default `method` moved from `"leastsq"` to
+`"least_squares"`, in the free function, the accessor delegator and both private helpers. The
+nondeterminism itself is untouched — it is inside MINPACK (see the investigation below) and
+`"leastsq"` still reaches it on request. Recorded in the #105 diary entry as
+[Two minima, and the default that picks one](docs/diary/2026-07-24-amares-fitting.md), which was
+committed first as the review gate.
+
+Measured on this branch, `num_workers=1`, warm process:
+
+| | `"leastsq"` | `"least_squares"` |
+|---|---|---|
+| repro below, 8 runs | **3 distinct answers** — `(10.0044, 5.0007)`, `(10.1196, 6.1019)`, `(10.1198, 6.1211)` | **1** — `(10.0044, 5.0007)`, the true minimum |
+| quick-start signal, 8 runs | 1 — `(10.0171, 4.9679)` | 1 — identical, to every printed digit |
+| CRLB / `sd` / SNR | — | identical to 3–4 digits |
+| cost per fit (512 pts, 2 peaks) | 27–30 ms | 41–48 ms (~1.5×) |
+| 8-voxel grid, wall clock | 0.16 s | 0.16 s (setup-dominated) |
+| degenerate voxel (`fid * 1e-30`) | fits, `fit_status=0` | fits, `fit_status=0` |
+
+So the switch costs ~1.5× per fit on a clean signal, nothing measurable across a grid, and moves no
+rendered number in the docs.
+
+Pinned by `TestFittingDomain::{test_default_method_is_reproducible,
+test_method_default_matches_the_free_function, test_leastsq_remains_available}`. The first is the
+acceptance test below and was verified non-vacuous: forced back to `"leastsq"` it fails on run 4,
+`[10.0044, 5.0007]` vs `[10.1198, 6.1211]`.
+
+Three things the fix turned up:
+
+- **The 22% spread understates it.** Eight runs found *three* distinct answers, not two — the
+  shallow basin itself has visible jitter (`6.1019` vs `6.1211`), so "two minima" is the shape of
+  the problem, not a count to rely on. That is also why "fit twice, keep the better χ²" was
+  rejected: nothing promises there are only two.
+- **The docs were already voting.** Every `fit_amares` call in both fitting tutorials and in
+  `03_plotting_1dfid.md` passed `method="least_squares"` explicitly. A default that every page in
+  the docs overrides is the wrong default; those 10 call sites are now plain again, and the deep
+  dive's `method` bullet explains the default instead of apologizing for it.
+- **`TestFittingDomain` was testing the wrong path.** Its `_fit` helper and 10 other call sites
+  pinned `least_squares`, so the shipped default went unexercised by the arch suite. They now call
+  the default. `TestFittingVerbosity::test_fit_silent_when_not_verbose` deliberately keeps its
+  explicit `method=` — its warning trigger depends on that solver specifically.
+
+<details>
+<summary>Original report</summary>
 
 The default optimizer returns **one of two different minima, unpredictably**, for byte-identical
 input. On the 31P test signal below the two answers differ by 22% in ATP amplitude — the difference
@@ -97,7 +141,7 @@ ill-conditioned two-peak problem. The remaining work is a **decision, not a bug 
 public default and picks between viable approaches, so it wants a dev-diary entry as its review
 gate.
 
-### Workaround already in place
+### Workaround already in place (now the default)
 
 `method="least_squares"` (SciPy trust-region) is **basin-stable**: 10 consecutive `fit_amares`
 calls on the repro above all land on the true minimum, and 5/5 on the 8-voxel grid in
@@ -112,6 +156,8 @@ does not claim bit-identity.
 Ten consecutive `fit_amares` calls on the repro above, with the default `method`, agree on the
 minimum — asserted with `assert_allclose`, **not** exact equality, since not even the stable path
 is bit-reproducible. Ideally pinned by a test in `TestFittingDomain`.
+
+</details>
 
 ---
 
