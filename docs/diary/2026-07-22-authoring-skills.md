@@ -1,7 +1,7 @@
 (diary-authoring-skills)=
 # The skills remember the rules so you don't
 
-<span style="color: gray; font-size: 0.9em;">Last edited: 2026-07-25 · #103, #104</span>
+<span style="color: gray; font-size: 0.9em;">Last edited: 2026-07-25 · #103, #104, #114</span>
 
 Every change to xmris has to clear the same stack of contracts at once. A new function, for
 example, has to honour
@@ -72,5 +72,11 @@ them down ([#104](https://github.com/andrewendlinger/xmris/issues/104)) was wort
 because of what it bought — at zero, `exit 1` became trustworthy, and the checker moved into
 `ci-fast.yml` as the **`Docs style`** job. The rules now hold the way the Commandments do: a
 missing target is a red build, not a note in a review.
+
+That job turned out to be the first of three layers rather than the whole answer. It measures what
+`myst build` never mentions; `--strict` covers what the build *does* report and used to exit 0 on
+anyway; and neither can tell you whether a page reads right, which is what a rendered per-pull-request
+preview is for — [Every pull request publishes the page it changes](#diary-docs-previews) tells that
+story.
 
 New here? The [Contribute](#contribute-home) section is the map — start there.
