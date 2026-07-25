@@ -10,6 +10,11 @@ project:
     - "notebooks/**/*.ipynb"
   bibliography:
     - assets/references.bib
+    # Frozen metadata for every DOI linked in the docs, regenerated with
+    # `myst build --doi-bib`. Without it each build re-resolves those DOIs
+    # against doi.org, and under --strict one rate-limited lookup fails the
+    # whole build. Declaring `bibliography` at all means only listed files load.
+    - myst.doi.bib
   toc:
     - file: index.md
 
