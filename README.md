@@ -1,5 +1,7 @@
 <div align="center">
-<img height="200" alt="fid_showpiece_logo_always_light" src="https://github.com/user-attachments/assets/d05d3a2b-5742-4b7e-8623-b5fdab885a6f" />
+  <a href="https://andrewendlinger.github.io/xmris/">
+    <img height="200" alt="fid_showpiece_logo_always_light" src="https://github.com/user-attachments/assets/d05d3a2b-5742-4b7e-8623-b5fdab885a6f" />
+  </a>
 
   <!-- <img src="https://raw.githubusercontent.com/andrewendlinger/xmris/main/docs/assets/logo.svg" alt="xmris logo" width="300" /> -->
   
@@ -19,7 +21,7 @@
 
 ## 01. Documentation
 
-Documentation, tutorials, and API reference can be found **[here](https://andrewendlinger.github.io/xmris/)**.
+**[Explore the official documentation](https://andrewendlinger.github.io/xmris/)** for tutorials, complete API references, and advanced usage guides.
 
 
 
