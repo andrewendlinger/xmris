@@ -9,6 +9,9 @@ kernelspec:
   name: python3
 ---
 
+(fft)=
+# FFT Basics
+
 ```{code-cell} ipython3
 :tags: [remove-cell]
 
