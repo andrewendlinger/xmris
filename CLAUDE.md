@@ -56,5 +56,5 @@ Ruff: line length 100, NumPy docstring convention. Public functions need fully-t
 
 ## Commits & releases
 
-- Conventional Commits (`feat:`, `fix:`, `chore:`, `docs:`, `add:`). Work on `main`.
-- Release (see `/release`): never bump version until CI is green. Releases go through a `release/vX.Y.Z` branch (full test matrix); a `vX.Y.Z` tag triggers the PyPI publish. Bump with `uv version --bump patch|minor`.
+- Conventional Commits (`feat:`, `fix:`, `chore:`, `docs:`, `add:`). Branch, then PR — `main` takes no direct pushes and requires four checks green (`Docs style`, `build`, `test (3.10)`, `test (3.13)`). PRs are squash-merged, so the **PR title** is the commit subject on `main`. The user merges; see @docs/contributing/pull_requests.md.
+- Release (see `/release`): never bump version until CI is green. Releases go through a `release/vX.Y.Z` branch (full test matrix), then the bump lands on `main` via a PR — and only *then* is `vX.Y.Z` tagged on the merged commit, which triggers the PyPI publish. Tagging before the merge would leave the tag outside `main`'s history. Bump with `uv version --bump patch|minor`.
