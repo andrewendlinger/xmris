@@ -56,6 +56,10 @@ zero errors — do not be the change that reopens the backlog.
   inserting one section silently renumbers every anchor below it and breaks deep links.
 - **Never link `.ipynb`.** `myst.yml` excludes `notebooks/**/*.ipynb`, so the link resolves to
   `null` and dies — with no build warning. Use `[text](#explicit-target)` or a relative `.md` path.
+- **A new `doi.org` link must be frozen** into `docs/myst.doi.bib` (`cd docs && uv run myst build
+  --doi-bib`, then commit it). mystmd resolves DOI links against the network at build time, so an
+  unfrozen one makes the build fail whenever a runner's lookup is rate-limited — on somebody else's
+  pull request. Link text is irrelevant; `[paper](https://doi.org/…)` is resolved just like `[](…)`.
 - **TOC entry in `docs/myst.yml` is mandatory** (except `testonly_`). The sidebar shows the TOC
   title — keep it consistent with the H1. A page missing from the TOC never renders.
 - **Reader-facing cells use plain strings** (`"time"`, `"frequency"`) — the low entrance barrier is
@@ -123,6 +127,7 @@ Two pathspec traps, both of which produced wrong answers while auditing this rep
 - [ ] `(target)=` + single H1 is the very first content; a target above every header
 - [ ] Reader-facing cells use plain dim strings; config singletons only in hidden cells
 - [ ] TOC entry in `docs/myst.yml` (unless `testonly_`); no `.ipynb` links
+- [ ] New `doi.org` link frozen into `docs/myst.doi.bib` (`myst build --doi-bib`) and committed
 - [ ] `check_docs.py` passes on the page (0 errors)
 - [ ] Tutorial only: single-notebook nbmake run is green
 - [ ] Only the `.md` staged

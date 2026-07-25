@@ -52,6 +52,7 @@ Ruff: line length 100, NumPy docstring convention. Public functions need fully-t
 - `pyamares` comes from a git fork (`[tool.uv.sources]`, branch `xmris-compatible`), not PyPI. For local pyAMARES dev, swap the `git` line for the commented `path` line. Publish builds use `uv build --no-sources`.
 - Jupytext syncs `.md` ↔ `.ipynb`; edit either, but commit ONLY `.md` — `docs/**/*.ipynb` are gitignored. The frozen kernel label is `display_name: Python 3 (xmris)` (jupytext has no `--display-name` flag). To bulk-fix drifted kernels, register the venv kernelspec once with `uv run python -m ipykernel install --sys-prefix --name python3 --display-name "Python 3 (xmris)"`, then `uv run jupytext --set-kernel python3 ./docs/notebooks/**/*.md`.
 - Python is capped at ≤3.13 (pyamares constraint). The pins `xarray<2025.11.0`, `griffe<0.40.0`, `pytest-cov<7.0` are deliberate — don't unpin without a reason.
+- mystmd resolves every `doi.org` link against the network at build time, and the docs build runs `--strict`, so an unfrozen DOI fails CI whenever a runner is rate-limited. Freeze new ones with `cd docs && uv run myst build --doi-bib` and commit `docs/myst.doi.bib` — it only takes effect because it is listed in `myst.yml`'s `bibliography` (declaring that key makes mystmd load *only* the listed files). `check_docs.py` enforces this.
 
 ## Commits & releases
 
