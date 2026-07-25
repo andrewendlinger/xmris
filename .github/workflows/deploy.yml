@@ -4,40 +4,61 @@ on:
   push:
     branches: [main]
   # Build (execute) the docs on PRs too, so a docs-breaking or kernel-hanging
-  # dependency is caught pre-merge instead of only surfacing after landing on main.
+  # dependency is caught pre-merge instead of only surfacing after landing on
+  # main -- and publish the result as a preview the reviewer can read.
+  # `closed` is not optional: it is the event that removes a merged/abandoned
+  # PR's preview directory from the gh-pages branch.
   pull_request:
     branches: [main]
+    types: [opened, synchronize, reopened, closed]
+  # External link rot is checked weekly, off the PR path: a dead third-party URL
+  # is no reason to redden a PR that never touched it.
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
 
-env:
-  BASE_URL: /xmris
+# Supersede a stale build for the same PR (each one is ~4 min and ends in a
+# publish, so racing two of them wastes minutes and can land the older site).
+# Keyed per PR, falling back to the ref, so a main deploy is never cancelled by
+# PR activity.
+concurrency:
+  group: docs-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
-# Minimal default token; only the deploy job (main-only) elevates to Pages scopes.
+# Minimal default token; only the build job elevates, and only far enough to
+# push the built site and comment the preview link.
 permissions:
   contents: read
 
 jobs:
-  # Always runs (PR + push). Executes every notebook via `myst build --execute`,
-  # which is the check that a docs dependency didn't break/hang the build.
+  # Runs on PR + push. Executes every notebook via `myst build --execute`, which
+  # is the check that a docs dependency didn't break/hang the build, then
+  # publishes: main to the gh-pages root, a PR to its own subdirectory.
   build:
+    if: github.event_name != 'schedule' && github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
     # A healthy build is ~2 min. This bound is the key guard: it turns a hung
     # kernel into a fast, visible failure instead of a 6h burn at GitHub's ceiling.
     timeout-minutes: 20
+    permissions:
+      contents: write       # push the built site to the gh-pages branch
+      pull-requests: write  # comment the preview link
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v7
 
-      - name: Setup GitHub Pages
-        # Bakes the Pages base path into the built site; only needed for real deploys.
-        if: github.event_name == 'push'
-        uses: actions/configure-pages@v6
-
+      # The expensive steps are skipped on `closed` -- there is nothing to build,
+      # only a preview to remove. Guarding the STEPS rather than the job keeps
+      # this job reporting on every PR event, which matters because its name is a
+      # required status check.
       - name: Setup uv
+        if: github.event.action != 'closed'
         uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
 
       - name: Install system dependencies
+        if: github.event.action != 'closed'
         run: |
           sudo apt-get update
           sudo apt-get install -y libegl1
@@ -45,37 +66,77 @@ jobs:
       - name: Install dependencies
         # Syncing the WHOLE project ensures 'xmris' is installed in editable
         # mode so the notebooks can find it during execution.
+        if: github.event.action != 'closed'
         run: uv sync --all-extras
 
       - name: Build MyST Site
+        if: github.event.action != 'closed'
+        env:
+          # BASE_URL is baked into every asset path at build time, so a preview
+          # has to be built for the subdirectory it will be served from --
+          # otherwise every stylesheet and script 404s.
+          BASE_URL: ${{ github.event_name == 'pull_request' && format('/xmris/pr-preview/pr-{0}', github.event.number) || '/xmris' }}
         run: |
           uv run docs-api
           cd docs
-          uv run myst build --html --execute
+          uv run myst build --html --execute --strict
 
-      - name: Upload Build Artifacts
-        # Only publish the artifact on main; PR runs are build-only smoke tests.
-        if: github.event_name == 'push'
-        uses: actions/upload-pages-artifact@v5
-        with:
-          path: 'docs/_build/html'
+      - name: Disable Jekyll
+        # gh-pages is served from a BRANCH, which runs Jekyll -- and Jekyll drops
+        # every _-prefixed path, which here means build/_assets, build/_shared and
+        # build/routes/_index-*: the entire CSS and JS of the site. Neither deploy
+        # action below writes this file, so the build must.
+        if: github.event.action != 'closed'
+        run: touch docs/_build/html/.nojekyll
 
-  # Deploy only from main (push). PRs never reach this job.
-  deploy:
-    if: github.event_name == 'push'
-    needs: build
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    concurrency:
-      group: 'pages'
-      cancel-in-progress: false
-    steps:
       - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v5
+        if: github.event_name == 'push'
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: docs/_build/html
+          branch: gh-pages
+          clean-exclude: pr-preview/  # never wipe a live preview
+          force: false                # rebase instead of force-pushing, so a
+                                      # concurrent preview write is not clobbered
+
+      - name: Deploy PR preview
+        # Fork PRs get a read-only token, so they cannot publish. They still
+        # build above as a smoke test -- a contributor's first PR should not open
+        # with a red X it has no way to fix.
+        if: >-
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name == github.repository
+        uses: rossjrw/pr-preview-action@v1
+        with:
+          source-dir: docs/_build/html
+          preview-branch: gh-pages
+          umbrella-dir: pr-preview
+          action: auto  # deploy on open/reopen/sync, remove on close
+
+  # Weekly (and on demand): the same build with external link checking. Kept out
+  # of `build` so it can never gate a PR, and skips --execute since links are
+  # read from the source, not from cell output.
+  links:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v7
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --all-extras
+
+      - name: Check external links
+        # --strict is what makes this job able to fail: an unresolvable link is
+        # reported as an error ("Site has 1 error ... stopping build"), and myst
+        # exits 0 on errors without it.
+        run: |
+          uv run docs-api
+          cd docs
+          uv run myst build --html --check-links --strict

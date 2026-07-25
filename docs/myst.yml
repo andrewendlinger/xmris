@@ -10,6 +10,11 @@ project:
     - "notebooks/**/*.ipynb"
   bibliography:
     - assets/references.bib
+    # Frozen metadata for every DOI linked in the docs, regenerated with
+    # `myst build --doi-bib`. Without it each build re-resolves those DOIs
+    # against doi.org, and under --strict one rate-limited lookup fails the
+    # whole build. Declaring `bibliography` at all means only listed files load.
+    - myst.doi.bib
   toc:
     - file: index.md
 
@@ -157,6 +162,8 @@ project:
           title: The authoring skills
         - file: diary/2026-07-23-architecture-contract.md
           title: The Architecture Contract
+        - file: diary/2026-07-25-docs-previews.md
+          title: Per-PR docs previews
 
     # 8. Contribute — organised by kind of change
     - title: Contribute
