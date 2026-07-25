@@ -147,6 +147,72 @@ choosing among several wrong ones while looking just as convergent. A solver tha
 flip basins is both cheaper and honest about what it guarantees.
 :::
 
+(diary-amares-fitting-workers)=
+## The worker pool that made fitting slower
+
+The optimizer default had a tell: every page in the docs overrode it. So did this one. `fit_amares`
+shipped `num_workers=4`, and all ten fitting call sites across the tutorials and the test suite
+passed `num_workers=1` instead. The second time that pattern shows up it stops being a coincidence
+and starts being a measurement.
+
+It is one. Cold, in a fresh process, on the 512-point two-peak signal these pages actually fit:
+
+| spectra | `num_workers=1` | `num_workers=4` |
+|---|---|---|
+| 1 | 0.99 s | 2.04 s |
+| 2 | 0.80 s | 2.10 s |
+| 8 | 0.94 s | 2.25 s |
+
+The pool costs a flat ~1.3 s before it fits anything — four processes each re-importing NumPy, SciPy
+and pyAMARES, because macOS spawns rather than forks. Against a marginal fit of ~30 ms that is
+roughly **fifty** spectra before the pool has earned back its own startup. Every example in this
+documentation sits far below fifty, which is precisely why every example turned it off.
+
+Fifty is not a number to hardcode, though. A real ³¹P fit — more peaks, more points — runs 0.5–2 s,
+where break-even drops to a handful of voxels. The threshold moves with the data, and that is the
+smaller half of the problem. The larger half is that `fit_amares` cannot see the *machine*: not the
+container's CPU quota, not the SLURM allocation, not the outer pool it may already be running
+inside. `os.cpu_count()` still reports the host's twenty cores from inside a container limited to
+two. A default that starts processes is a decision made without the information the decision needs
+— which is why SciPy ships `workers=1`, scikit-learn `n_jobs=None`, and joblib `n_jobs=1`. The
+caller knows the machine; the library does not.
+
+So fitting joins them. `num_workers` defaults to **1** and fits in-process, and the pool is one
+keyword away in joblib's spelling:
+
+```python
+ds = grid.xmr.fit_amares(pk)                  # in-process — the default
+ds = grid.xmr.fit_amares(pk, num_workers=-1)  # every core
+ds = grid.xmr.fit_amares(pk, num_workers=-2)  # all but one
+```
+
+:::{warning}
+`-1` means *every core this process can see* — which, inside a container, a SLURM job or an
+enclosing pool, is the number the new default exists to avoid guessing. It is the right answer on
+your own workstation and the wrong one on a shared node. On a real grid the win is large; ask for
+it deliberately.
+:::
+
+:::{dropdown} Why not size the pool automatically?
+The tempting version times the first fit and starts a pool only if the remaining ones would outrun
+its startup — self-calibrating, and the first fit isn't wasted. But it calibrates the *work* when
+the missing information is the *machine*, so it would still oversubscribe a two-CPU container.
+It also makes which code path ran depend on how loaded the host was, and
+`test_two_active_voxels_still_use_the_pool` exists to pin exactly that branch. A knob the caller
+sets in one keystroke beats a heuristic nobody can predict or test.
+:::
+
+:::{attention} Assumptions to verify
+- `num_workers=-1` / `-2` reach joblib untouched and give results identical to the serial path.
+  They work today by inheritance, not by design — nothing tests or documents them.
+- Capping the pool at the number of spectra that actually have signal is a pure win: nothing relies
+  on `num_workers` being taken literally when it exceeds the work available.
+- Nothing outside the fitting notebooks depends on the parallel default.
+  `03_plotting_1dfid.md` has a `num_workers=4` cell, but it is `skip-execution`.
+- The ~1.3 s startup is a macOS `spawn` figure. Linux `fork` is cheaper today, and Python 3.14
+  moves it to `forkserver` — neither is measured here.
+:::
+
 (diary-amares-fitting-domain)=
 ## Fit a FID or a spectrum
 
