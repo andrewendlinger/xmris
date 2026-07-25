@@ -157,6 +157,8 @@ project:
           title: The authoring skills
         - file: diary/2026-07-23-architecture-contract.md
           title: The Architecture Contract
+        - file: diary/2026-07-25-docs-previews.md
+          title: Per-PR docs previews
 
     # 8. Contribute — organised by kind of change
     - title: Contribute
