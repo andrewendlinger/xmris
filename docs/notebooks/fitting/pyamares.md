@@ -167,6 +167,7 @@ into a single list of spectra, scans it for the highest-SNR one to initialize th
 from, fits each in turn, and reassembles the results onto the axes you started with.
 
 ```{mermaid}
+%%{init: {'flowchart': {'htmlLabels': false}}}%%
 graph LR
     A["DataArray<br>dims: voxel, time"] --> B("flatten to a list of spectra")
     B --> C{"fit each"}
