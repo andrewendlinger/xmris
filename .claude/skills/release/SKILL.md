@@ -1,6 +1,6 @@
 ---
 name: release
-description: Cut an xmris release — bump the version, run the full CI matrix via a release branch, and tag to trigger the PyPI publish. User-triggered only.
+description: Cut an xmris release — run the full CI matrix via a release branch, land the bump on main through a PR, then tag the merged commit to trigger the PyPI publish. User-triggered only.
 disable-model-invocation: true
 ---
 
@@ -31,14 +31,22 @@ Pushing branches and tags triggers CI and an irreversible PyPI publish. **Confir
    git push origin release/vX.Y.Z
    gh pr create --base main --title "chore: bump version to X.Y.Z"
    ```
-   Drive its four checks green; the user merges it (squash).
+   Drive its four checks green; the user merges it (squash). Expect **two** CI cycles here: pushing
+   the bump re-triggers the full matrix on `release/**` (harmless, and it does test the bumped tree),
+   while the PR's four fast checks are the actual merge gate — do not wait on the matrix to merge.
 
 5. **Tag & publish.** Tag the *merged* commit on `main` — **never the release branch**. PRs are squash-merged, so a tag cut before the merge would sit on a commit that never enters `main`'s history, leaving `git describe` on `main` blind to the release:
    ```
    git checkout main && git pull
+   git log --oneline -1          # MUST be the bump commit -- see below
+   uv version                    # MUST print X.Y.Z
    git tag vX.Y.Z
    git push origin vX.Y.Z
    ```
+   Check that tip before tagging: anything merged into `main` between the bump and the tag ships in
+   this release without ever having seen the pre-flight matrix. If something did land, decide
+   deliberately — either ship it (the tag re-runs the full matrix anyway) or tag the bump commit
+   explicitly by SHA.
    The tag re-runs the full matrix and then triggers `uv build --no-sources` + `uv publish` to PyPI via OIDC. Watch the publish run to confirm success. Delete the release branch afterwards.
 
 6. **Wrap up.** Confirm the new version is live on PyPI and `main` is in the expected state. Summarize what shipped.
