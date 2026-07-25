@@ -35,7 +35,10 @@ jobs:
   # is the check that a docs dependency didn't break/hang the build, then
   # publishes: main to the gh-pages root, a PR to its own subdirectory.
   build:
-    if: github.event_name != 'schedule' && github.event_name != 'workflow_dispatch'
+    # Everything but the weekly link check. A manual run rebuilds and republishes
+    # the live site, which is the only way to recover from a bad deploy without
+    # pushing a commit to main.
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     # A healthy build is ~2 min. This bound is the key guard: it turns a hung
     # kernel into a fast, visible failure instead of a 6h burn at GitHub's ceiling.
@@ -86,11 +89,16 @@ jobs:
         # every _-prefixed path, which here means build/_assets, build/_shared and
         # build/routes/_index-*: the entire CSS and JS of the site. Neither deploy
         # action below writes this file, so the build must.
-        if: github.event.action != 'closed'
+        #
+        # Root deploys only: Pages honours .nojekyll at the published root, so a
+        # copy inside pr-preview/pr-N/ does nothing -- and worse, it is stranded
+        # there forever, because the removal rsync adds `--exclude .nojekyll`
+        # whenever the (empty) source folder lacks one.
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
         run: touch docs/_build/html/.nojekyll
 
       - name: Deploy to GitHub Pages
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
         uses: JamesIves/github-pages-deploy-action@v4
         with:
           folder: docs/_build/html
