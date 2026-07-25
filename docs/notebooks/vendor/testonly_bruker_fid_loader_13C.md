@@ -9,6 +9,7 @@ kernelspec:
   display_name: Python 3 (xmris)
 ---
 
+(bruker-13c)=
 # Internal Test: Bruker 13C Slab Reshaping and Validation
 
 ```{code-cell} ipython3
@@ -31,10 +32,12 @@ plt.rcParams["figure.dpi"] = 150
 xr.set_options(display_expand_data=False)
 ```
 
+(bruker-13c-validation)=
 ## Internal Validation: 13C NSPECT Slab Data
 
 **Goal:** Strictly validate the Bruker data loader, memory reshaping, and coordinate calculation against a known ground-truth dataset (`nspect_slab_13C`). This ensures that future refactors to `xmris` do not break raw Paravision parsing or shift physical coordinate definitions.
 
+(bruker-13c-ground-truth)=
 ## 1. Load Ground Truth
 
 We dynamically load the exact acquisition parameters and expected spectral peak locations derived from the `ground_truth.toml` file.
@@ -53,6 +56,7 @@ print(f"Loaded Ground Truth for: {gt_13c['dataset_name']}")
 print(f"System: {gt_13c['system']} ({gt_13c['vendor_version']})")
 ```
 
+(bruker-13c-reshape)=
 ## 2. Load and Reshape Data
 
 Load the continuous 1D complex array and pass it through the `xmris` Bruker reshaping utilities.
@@ -75,6 +79,7 @@ print(f"Dimensions: {fid_xr.dims}")
 print(f"Minimal Attributes: {fid_xr.attrs}")
 ```
 
+(bruker-13c-metadata)=
 ## 3. Metadata Assertions
 
 Verify that `build_fid` accurately mapped the minimal required physical metadata to the `xarray` attributes by comparing them directly against the values in the TOML file.
@@ -97,6 +102,7 @@ assert fid_xr.sizes[DIMS.time] == params["general"]["acq_points"]["value"], "Acq
 print("✅ Minimal metadata and dimension assertions passed.")
 ```
 
+(bruker-13c-coordinates)=
 ## 4. Pipeline & Coordinate Validation
 
 Apply the standard `xmris` processing pipeline. This validates that the `remove_digital_filter`, `to_spectrum`, and `to_ppm` accessors execute correctly using the minimal metadata map.
@@ -121,6 +127,7 @@ spectrum_hz = (
 spectrum_ppm = spectrum_hz.xmr.to_ppm()
 ```
 
+(bruker-13c-visual-check)=
 ## 5. Visual Peak Sanity Check
 
 Visually verify that the peaks align with our expected ground truth markers in both the `Hz` and `ppm` domains.
@@ -156,6 +163,7 @@ plt.tight_layout()
 plt.show()
 ```
 
+(bruker-13c-peak-assertions)=
 ## 6. Quantitative Peak Assertions
 
 Finally, we programmatically verify that the maximum signal intensities lie within a very narrow tolerance ($\pm 2.5$ Hz and $\pm 0.1$ ppm) of the declared ground truth coordinates. This guarantees the coordinate math inside `to_spectrum` and `to_ppm` is exact.
@@ -187,6 +195,7 @@ for peak_name, locs in gt_13c["spectrum_view"].items():
 print("\n🚀 All pipeline and coordinate assertions passed.")
 ```
 
+(bruker-13c-group-delay)=
 ## 7. Group-Delay Estimator Sanity Check
 
 Validate `estimate_group_delay` against the real acquisition. There is no ground-truth "true" delay for this probe, so we assert conservatively: the measured delay is physically plausible and, being the residual-phase minimiser over the search window, never leaves *more* residual phase than the vendor header value.

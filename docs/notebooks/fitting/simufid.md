@@ -9,6 +9,7 @@ kernelspec:
   name: python3
 ---
 
+(simufid)=
 # Simulating NMR Spectra with xmris
 
 In this tutorial, we will use the `xmris.processing.simulation` module to generate synthetic Free Induction Decay (FID) signals. Generating synthetic data is a critical step for validating fitting algorithms, building test suites, and understanding the physical parameters that govern magnetic resonance spectroscopy (MRS).
@@ -19,6 +20,7 @@ We will generate two distinct datasets with realistic parameters and physical no
 
 +++
 
+(simufid-theory)=
 ## Theory: The AMARES Simulation Model
 
 The signal generation in `xmris` is grounded in the AMARES (Advanced Method for Accurate, Robust, and Efficient Spectral fitting) algorithm, originally introduced by Vanhamme, van den Boogaart, and Van Huffel in 1997.
@@ -39,6 +41,7 @@ Where the parameters for each peak $k$ are defined as:
 
 +++
 
+(simufid-setup)=
 ## 1. Environment Setup
 
 First, let's import the necessary libraries. We will use `numpy` for array math, `xarray` for data structures, `matplotlib.pyplot` for figure management, and our updated `simulate_fid` function.
@@ -52,6 +55,7 @@ import matplotlib.pyplot as plt
 from xmris.fitting.simulation import simulate_fid
 ```
 
+(simufid-proton)=
 ## 2. Simulating a Noisy 1H (Proton) Spectrum
 
 Proton spectroscopy in tissue is dominated by the massive water peak and the lipid backbone resonances. For this simulation, we assume a 3T clinical scanner (Larmor frequency ~127.7 MHz). We will also inject a realistic noise floor using our `target_snr` feature.
@@ -124,6 +128,7 @@ ax.text(0.9, 2, "-CH3", ha='center', va='bottom', fontsize=10)
 plt.show()
 ```
 
+(simufid-carbon)=
 ## 3. Simulating a 13C (Carbon-13) Spectrum with Carrier Offsets
 
 Carbon-13 MRS spans a much wider chemical shift range. We will simulate the downstream metabolites of [1-13C]pyruvate. If we simulated this relative to 0 ppm, the massive frequency offsets would violate the Nyquist limit at standard sampling rates, causing the peaks to wrap (alias) to the wrong side of the spectrum.

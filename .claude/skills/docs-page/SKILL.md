@@ -27,6 +27,7 @@ example so you copy rather than reinvent.
 **Two paths never route here:**
 
 - `docs/diary/` belongs to the **`dev-diary`** skill. Hand off; do not write an entry from here.
+  (`check_docs.py` still checks entries — the structural rules in §2 bind every page in the tree.)
 - `docs/api_reference/` is **generated and gitignored**. `docs_api()` clears the directory before
   regenerating, so a hand edit there is destroyed with no git history to recover it. Fix the
   docstring in `src/` instead.
@@ -39,8 +40,9 @@ guide makes it worse.
 
 ## 2. Rules that survive genre
 
-Every one of these is enforced by `check_docs.py`, and every one is currently violated somewhere
-in the repo — the build is silent about all of them.
+Every one of these is enforced by `check_docs.py`, which the `Docs style` CI job runs over the
+whole tree on every PR. The build is silent about all of them; the gate is not. The tree is at
+zero errors — do not be the change that reopens the backlog.
 
 - **Frontmatter is exact**, and `display_name: Python 3 (xmris)` is the frozen project label. If
   your local Jupyter rewrites it (to `.venv`, `Python 3 (ipykernel)`, …), fix it back before
@@ -69,10 +71,11 @@ Background an expert would skip goes in a `:::{dropdown}`, off the main line.
 
 Most doc work is editing, and the house rules make thinning **expected work, not scope creep**.
 
-- Run the checker on the page *before* you start. Pre-existing errors are not yours to fix
-  silently, but say what you found — several pages carry them today.
-- Adding a `(target)=` above a header **changes its slug**. Grep for inbound links first:
-  `git grep -nF "#old-slug" -- docs`.
+- Run the checker on the page *before* you start. It should already be at zero errors; if it is
+  not, you inherited a broken page and CI will blame your PR for it — fix it and say so.
+- Every header already carries a target, so the live risk is **renaming** one: targets are
+  page-global in MyST, and a rename breaks every deep link to it. Grep first —
+  `git grep -nF "#old-slug" -- docs` — and prefer adding a new section over re-keying an old one.
 - Consolidating across pages is the *one home per concept* rule doing its job. Say what you moved
   in the PR body, and keep the orienting recap on the page you thinned.
 
@@ -82,7 +85,8 @@ Most doc work is editing, and the house rules make thinning **expected work, not
 uv run python .claude/skills/docs-page/check_docs.py docs/<path>/<page>.md
 ```
 
-Errors are render-breaking and exit 1; warnings are drift and exit 0. Then, for a **tutorial or an
+Errors are render-breaking and exit 1 — the same exit code the `Docs style` CI job gates on, so
+this run is the gate, locally. Warnings are drift and exit 0. Then, for a **tutorial or an
 explainer** — `test-gen` walks `docs/notebooks/` *and* `docs/explanation/`, so both are in the
 pytest suite:
 

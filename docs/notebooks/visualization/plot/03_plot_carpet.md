@@ -9,12 +9,14 @@ kernelspec:
   name: python3
 ---
 
+(carpet)=
 # Carpet Plots
 
 As a quantitative alternative to the 2D waterfall plot (see [2. Waterfall Plots](./02_plot_waterfall.md)), carpet plots provide a top-down, 2D image representation of stacked spectra . They are 2D rasterized visualizations of 1D time-series data, effectively "rolling out" the time-domain flat on the floor. This approach eliminates visual occlusion, allowing for direct observation of signal intensities and frequency shifts across the stacking dimension (e.g., time or repetitions).
 
 In `xmris`, this visualization is built around the `CarpetConfig` object, which includes specialized logic for truncating colormaps so your data never gets lost in absolute white or absolute black on printed paper.
 
+(carpet-data-requirements)=
 ## 1. Data Requirements
 
 Before plotting, your `xarray.DataArray` must meet the following criteria:
@@ -22,6 +24,7 @@ Before plotting, your `xarray.DataArray` must meet the following criteria:
 * **X-Axis (Horizontal):** The accessor automatically searches for `chemical_shift` or `frequency`. 
 * **Y-Axis (Vertical):** The accessor automatically assigns the remaining dimension to the y-axis (e.g., `kinetic_time`, `average`, or `repetition`).
 
+(carpet-simulate)=
 ## 2. Generating Synthetic Data
 
 To ensure a 1:1 comparison with the waterfall plot, we will generate the exact same synthetic kinetic time-course. We simulate a hyperpolarized 13C experiment where Pyruvate decays and Lactate grows over 60 seconds.
@@ -71,6 +74,7 @@ da_kinetic = da_kinetic_fid.xmr.to_spectrum().xmr.to_ppm().real
 
 :::
 
+(carpet-basic-usage)=
 ## 3. Basic Usage
 
 Because `plot.carpet()` shares the same intelligent dimension parser as `plot.waterfall()`, you can call it without any dimension arguments.
@@ -81,6 +85,7 @@ ax = da_kinetic.sel(chemical_shift=slice(160, 190)).xmr.plot.carpet()
 plt.show()
 ```
 
+(carpet-config)=
 ## 4. Advanced Configuration
 
 Instantiating the `CarpetConfig` reveals specialized controls for the 2D grid. Notice how the default setting (`grid_on=True`) utilizes a subtle overlaid grid and inward-facing ticks to make reading exact coordinates effortless.
@@ -103,6 +108,7 @@ ax = da_kinetic.sel(chemical_shift=slice(160, 190)).xmr.plot.carpet(config=CFG_C
 plt.show()
 ```
 
+(carpet-subplots)=
 ## 5. Subplot Integration
 
 Because our plotting functions return standard `matplotlib.Axes` objects, we can easily build a comprehensive, multi-panel figure combining the qualitative intuition of the Waterfall Plot with the quantitative rigor of the Carpet Plot.

@@ -22,6 +22,7 @@ Which raises the obvious question the moment you bring your own data:
 
 That single question shapes the whole vocabulary design. Let's follow it.
 
+(vocabulary-dialect)=
 ## Your data speaks a different dialect
 
 MR data arrives under a hundred naming conventions. A Bruker export, a Siemens twix file, a labmate's
@@ -43,6 +44,7 @@ fid.xmr.to_ppm()
 The frequency is *right there* under `spec_freq` — xmris simply refuses to assume `spec_freq` means
 what it hopes. Fair enough. But how should it let you fix that?
 
+(vocabulary-tempting-answer)=
 ## The tempting answer (and why we didn't)
 
 The friendly-looking move is to teach xmris your names: let each term carry a little table of aliases
@@ -70,6 +72,7 @@ at all.
 
 ❌ **The road not taken:** bend the vocabulary to fit the data.
 
+(vocabulary-bend-the-data)=
 ## The xmris way: bend the data to fit the vocabulary
 
 So we flipped it. The vocabulary stays fixed and small; *you* translate your data onto it, once, at
@@ -116,6 +119,7 @@ ecosystem rather than invented from scratch:
 you like (every function takes a `dim=` argument); it's only when xmris creates a name itself — the
 `chemical_shift` coordinate from `to_ppm()`, say — that it is guaranteed lowercase.
 
+(vocabulary-why-strict)=
 ## Why the vocabulary can afford to be this strict
 
 All of this only works because the vocabulary is a *fixed point* you can trust. So we make it one,
@@ -150,6 +154,7 @@ one concept across two places; `pint` is the right tool for *unit math* but the 
 does the job. (Full deliberation: [issue #65](https://github.com/andrewendlinger/xmris/issues/65).)
 :::
 
+(vocabulary-adding-a-word)=
 ## Adding a word
 
 Extending xmris and need a name that isn't there yet? Add it to `xmris.core.config` — never reach for

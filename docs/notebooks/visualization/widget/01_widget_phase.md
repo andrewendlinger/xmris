@@ -36,6 +36,7 @@ import xarray as xr
 import xmris
 ```
 
+(widget-phase-simulate)=
 ## 1. Generating Unphased Data
 
 Let's generate the same ruined synthetic spectrum we used in the pipeline documentation.
@@ -61,6 +62,7 @@ da_spec = da_fid.xmr.to_spectrum()
 da_ruined = da_spec.xmr.phase(p0=120.0, p1=-45.0)
 ```
 
+(widget-phase-launch)=
 ## 2. Launching the Widget
 
 You can launch the interactive viewer directly from the `xmris` package. Pass your complex-valued 1D frequency-domain `DataArray` to the `phase_spectrum` function.
@@ -88,6 +90,7 @@ export_widget_static(
 )
 ```
 
+(widget-phase-controls)=
 ### Using the Widget
 
 Once the widget is rendered in your notebook, you can interact with it using the following controls:
@@ -97,6 +100,7 @@ Once the widget is rendered in your notebook, you can interact with it using the
 * **Fine-Tuning:** You can manually type exact degree values into the input boxes in the control bar.
 * **Visual Feedback:** The real component is rendered in blue, and the imaginary component is rendered in red. Your goal is usually to maximize the symmetry and positivity of the blue peaks while zeroing out the red dispersive twists at the peak centers.
 
+(widget-phase-extract)=
 ## 3. Extracting the Parameters
 
 Interactive widgets are great for exploration, but they are generally bad for reproducible science if the parameters stay trapped in the UI.

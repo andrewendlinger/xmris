@@ -54,7 +54,7 @@ filled with the spectral dimension actually present (`frequency` [Hz] or
 `autophase` is a **funnel** operation — you phase in order to inspect the
 spectrum, so the result lands there:
 
-```mermaid
+```{mermaid}
 flowchart TD
     A["fid.xmr.autophase()"] --> B{"@ensures_domain(SPECTRAL_DIMS)"}
     B -- "time-domain FID" --> C["auto-FFT → spectrum"]
@@ -116,6 +116,7 @@ def plot_real(spectra, title):
 
 :::
 
+(domain-agnostic-autophase-fid)=
 ## Hand it a raw FID
 
 We simulate a noisy, **time-domain** FID with a 65° zero-order phase error baked in.
@@ -180,6 +181,7 @@ assert ATTRS.phase_p1 in phased.attrs
 assert np.real(phased).max() > np.real(raw_spectrum).max()
 ```
 
+(domain-agnostic-autophase-spectrum)=
 ## Already a spectrum? No extra FFT.
 
 The same call on data that is *already* spectral is a no-op on the domain — the

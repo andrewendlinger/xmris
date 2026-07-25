@@ -9,6 +9,7 @@ kernelspec:
   name: python3
 ---
 
+(widget-scroller)=
 # Interactive Spectra Scrolling Widget
 
 ```{code-cell} ipython3
@@ -35,6 +36,7 @@ import xarray as xr
 import xmris
 ```
 
+(widget-scroller-simulate)=
 ## 1. Generating a 2D Time Series
 
 Let's generate a synthetic 2D dataset representing 50 transient repetitions. We will simulate a decaying signal (e.g., relaxation) and inject a massive motion artifact at repetition #25.
@@ -82,6 +84,7 @@ da_series = xr.DataArray(
 )
 ```
 
+(widget-scroller-launch)=
 ## 2. Launching the Widget
 
 You can launch the interactive viewer directly from the `.xmr.widget` accessor. Pass your 2D `DataArray` to the `scroll_spectra` function.
@@ -112,6 +115,7 @@ export_widget_static(
 )
 ```
 
+(widget-scroller-controls)=
 ### Using the Widget
 
 Once rendered in your notebook, you can interact with the dataset using the following controls:
@@ -121,6 +125,7 @@ Once rendered in your notebook, you can interact with the dataset using the foll
 * **Playback:** Click the `▶` button (or press the `Spacebar`) to animate the sequence automatically. This is incredibly useful for spotting transient motion artifacts that flash on screen.
 * **History Trails:** Toggle the "History Trails" checkbox and adjust the "Depth" slider to show fading previous traces (in lighter blue) behind the active trace. This provides instant visual context for signal decay or growth.
 
+(widget-scroller-extract)=
 ## 3. Extracting a Target Slice
 
 While scrolling, you will likely notice the massive artifact we injected halfway through the acquisition.

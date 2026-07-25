@@ -1,8 +1,10 @@
+(setup)=
 # Recommended Setup
 
 
 We use modern, Rust-based tooling to keep the development environment blisteringly fast, completely reproducible, and free of dependency conflicts.
 
+(setup-uv)=
 ### 1. `uv` (Environment & Package Management)
 
 `uv` replaces `pip`, `virtualenv`, and `poetry`. It manages our dependencies, locks versions, and ensures perfectly isolated virtual environments.
@@ -12,6 +14,7 @@ We use modern, Rust-based tooling to keep the development environment blistering
 * **Run commands:** Always prefix development commands with `uv run` to ensure they execute inside the isolated environment (e.g., `uv run pytest` or `uv run jupyter lab`).
 * **Add dependencies:** If your contribution requires a new package, do not use `pip install`. Instead, run `uv add <package_name>`. This automatically updates the `pyproject.toml` and lockfile.
 
+(setup-ruff)=
 ### 2. `ruff` (Linting & Formatting)
 
 `ruff` is our single source of truth for code style, replacing `black`, `flake8`, and `isort` with a single tool that runs in milliseconds.
@@ -20,6 +23,7 @@ We use modern, Rust-based tooling to keep the development environment blistering
 * **Lint code:** Run `uv run ruff check .`
 * **Auto-fix issues:** Run `uv run ruff check . --fix` (This automatically fixes safe issues like unused imports or variables).
 
+(setup-vscode)=
 ### 3. VS Code Configuration
 
 To ensure a seamless, "it-just-works" experience, we use the official **Ruff extension**. This configuration enables "Format on Save" and organizes imports automatically using the project's specific `ruff` rules.

@@ -9,6 +9,7 @@ kernelspec:
   name: python3
 ---
 
+(apodization)=
 # FID - Apodization
 
 ```{code-cell} ipython3
@@ -37,6 +38,7 @@ import xarray as xr
 import xmris
 ```
 
+(apodization-simulate)=
 ## 1. Generating Synthetic Data
 
 Let's generate a synthetic FID consisting of a single decaying resonance with added Gaussian noise. We pack this into an `xarray.DataArray` to preserve physical coordinates and metadata.
@@ -75,6 +77,7 @@ plt.show()
 
 ---
 
+(apodization-exponential)=
 ## 2. Exponential Apodization (Line Broadening)
 
 A common filter function is the decreasing mono-exponential weighting: $f_{filter}(t) = e^{-t/T_L}$.
@@ -175,6 +178,7 @@ assert da_exp.attrs.get("apodization_lb") == _lb, "Lineage failed: missing lb fa
 
 ---
 
+(apodization-lorentz-gauss)=
 ## 3. Lorentzian-to-Gaussian Transformation
 
 The Lorentzian-to-Gaussian filter converts a standard Lorentzian line shape into a Gaussian line shape, which decays to the baseline in a narrower frequency range. A standard Lorentzian shape produces longer "tails", which is a disadvantage when trying to accurately integrate overlapping resonance lines.

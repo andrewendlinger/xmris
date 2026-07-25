@@ -9,6 +9,7 @@ kernelspec:
   name: python3
 ---
 
+(hz-ppm)=
 # Spectrum - Coordinate Transformations (Hz to ppm)
 
 ```{code-cell} ipython3
@@ -30,6 +31,7 @@ To compare spectra across different scanners (e.g., 1.5T vs 3T vs 7T), we conver
 
 `xmris` provides dedicated methods to swap between these coordinate systems seamlessly while tracking the physical metadata.
 
+(hz-ppm-physics)=
 ## The Physics & Math
 
 The conversion relies on two critical pieces of metadata that must be stored in your `xarray.DataArray.attrs`:
@@ -43,7 +45,7 @@ $$ \text{ppm} = \text{carrier\_ppm} + \left( \frac{\text{Hz}}{\text{reference\_f
 
 $$ \text{Hz} = (\text{ppm} - \text{carrier\_ppm}) \times \text{reference\_frequency} $$
 
-```mermaid
+```{mermaid}
 flowchart LR
 
     freq[/"<b>Frequency</b><br>Hz"/]
@@ -77,6 +79,7 @@ import xarray as xr
 import xmris
 ```
 
+(hz-ppm-simulate)=
 ## 1. Generating a Synthetic Spectrum
 
 Let's generate a mock frequency-domain spectrum (in Hz) acquired on a 3T scanner. We must stamp the required physics metadata into the `.attrs`.
@@ -119,6 +122,7 @@ plt.show()
 
 ---
 
+(hz-ppm-to-ppm)=
 ## 2. Converting to Chemical Shift (ppm)
 
 Using `.xmr.to_ppm()`, `xmris` calculates the new chemical shift coordinates, creates a properly labeled axis, and automatically swaps the primary dimension of the DataArray from `"frequency"` to `"chemical_shift"`.
@@ -145,6 +149,7 @@ This strict validation guarantees that your physical conversions are always root
 
 ---
 
+(hz-ppm-to-hz)=
 ## 3. Converting back to Frequency (Hz)
 
 The operation is perfectly invertible using `.xmr.to_hz()`.
