@@ -324,6 +324,37 @@ Ordered roughly by value.
 - **`ruff format` drift on two untouched files**: `src/xmris/processing/fourier.py` and
   `src/xmris/visualization/widget/_static_exporter.py` (`uv run ruff format --check .`). Pre-existing
   on `main`; a formatting-only commit would clear it.
-- **`fit_amares(pk)` on a single 1-D FID starts a 4-process pool by default**, costing ~2.0 s where
-  the serial path takes ~0.2 s. Worth considering whether `num_workers` should collapse to serial
-  when there is only one spectrum to fit.
+- ~~**`fit_amares(pk)` on a single 1-D FID starts a 4-process pool by default**~~ — **DONE
+  2026-07-25.** `num_workers` now collapses to the in-process loop when exactly one spectrum has
+  signal, since a pool has nothing to parallelize across. Measured cold in a fresh process, single
+  512-point FID: **2.04 s → 0.97 s** for the first fit, **1.24 s → 0.03 s** for each fit after it
+  (the pool was re-paying dispatch every call, not just startup once). Results are unchanged — it is
+  the same per-spectrum code path. The collapse counts *active* voxels, so a grid whose empty voxels
+  leave one signal-bearing spectrum takes it too. Pinned by `TestFittingDomain::{test_single_spectrum_skips_the_pool,
+  test_one_active_voxel_in_a_grid_skips_the_pool, test_two_active_voxels_still_use_the_pool}` — the
+  last one guards the other side of the branch, so a threshold cannot creep upward unnoticed.
+
+### New, found while measuring the above: `num_workers=4` is a net loss below ~50 short spectra
+
+The pool costs a flat **~1.3 s** to start and only overtakes the serial loop once the fits it
+distributes exceed that. Cold, fresh process per row, the 512-point two-peak signal (marginal fit
+~30 ms):
+
+| spectra | `num_workers=1` | `num_workers=4` |
+|---|---|---|
+| 1 | 0.99 s | 2.04 s (now 0.97 s — collapsed) |
+| 2 | 0.80 s | 2.10 s |
+| 4 | 0.83 s | 2.20 s |
+| 8 | 0.94 s | 2.25 s |
+
+Extrapolating from a ~30 ms marginal fit and an ideal 4× speedup, break-even sits near **50–60
+spectra** for signals this size — and higher in practice, since each task also pays to pickle the
+shared pyAMARES object. Every example in the docs is far below that, which is why
+`docs/notebooks/fitting/pyamares.md` is right to pass `num_workers=1` for its 8-voxel grid.
+
+The threshold is signal-dependent, though: a real ³¹P fit with more peaks and points takes ~0.5–2 s,
+where break-even drops to a handful of voxels. So this is **not** a matter of hardcoding 50. The
+real question is whether `num_workers` should default to `4` at all, or to something like `"auto"`
+that sizes the pool from the work in front of it (`n_active` × measured cost per fit). That changes
+a public default and picks between viable approaches — like item 1, it wants a dev-diary entry as
+its review gate rather than a quiet heuristic.

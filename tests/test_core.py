@@ -2047,6 +2047,68 @@ class TestFittingDomain:
         noisy = [ln for ln in result.stderr.splitlines() if "Warning" in ln]
         assert not noisy, f"the empty voxel leaked onto stderr: {noisy}"
 
+    # --- one spectrum never starts a pool (PR #105 follow-up, item 4) ---
+
+    @pytest.fixture
+    def no_pool_allowed(self, monkeypatch):
+        """Make any use of the worker pool a loud failure."""
+        from xmris.fitting import amares as amares_mod
+
+        def _forbidden(*args, **kwargs):
+            raise AssertionError("the worker pool was started for a single spectrum")
+
+        monkeypatch.setattr(amares_mod, "_run_parallel_fitting_optimal", _forbidden)
+
+    def test_single_spectrum_skips_the_pool(self, fid, pk_path, no_pool_allowed):
+        """A lone 1-D FID fits in-process even at `num_workers=4`.
+
+        Starting loky costs a flat ~1.3 s where this fit takes ~30 ms, and there is
+        nothing to parallelize across — so the default `num_workers` must not be taken
+        literally for one spectrum. The results are the serial ones either way.
+        """
+        ds = fid.xmr.fit_amares(prior_knowledge=pk_path, num_workers=4)
+        np.testing.assert_allclose(
+            ds[VARS.amplitude].values, self._fit(fid, pk_path)[VARS.amplitude].values, rtol=1e-6
+        )
+
+    def test_one_active_voxel_in_a_grid_skips_the_pool(self, fid, pk_path, no_pool_allowed):
+        """The collapse counts *active* voxels, not input ones.
+
+        Empty voxels are never dispatched, so a grid with one signal-bearing voxel is
+        a single fit wearing a grid's shape — it must take the in-process path too,
+        and still report the empty voxels as `no_signal`.
+        """
+        empty = xr.zeros_like(fid)
+        stack = xr.concat([empty, fid, empty], dim="voxel").assign_attrs(fid.attrs)
+        ds = stack.xmr.fit_amares(prior_knowledge=pk_path, num_workers=4)
+        np.testing.assert_array_equal(ds[VARS.fit_status].values, [1, 0, 1])
+        assert np.all(np.isfinite(ds[VARS.amplitude].isel(voxel=1).values))
+
+    def test_two_active_voxels_still_use_the_pool(self, fid, pk_path):
+        """Two spectra still go to the pool — the collapse is exactly `n == 1`.
+
+        Guards the other side of the branch: a threshold that crept upward would
+        silently turn `num_workers` into a suggestion.
+        """
+        from xmris.fitting import amares as amares_mod
+
+        stack = xr.concat([fid, 0.5 * fid], dim="voxel").assign_attrs(fid.attrs)
+        calls = []
+        real = amares_mod._run_parallel_fitting_optimal
+
+        def _counting(*args, **kwargs):
+            calls.append(kwargs.get("num_workers"))
+            return real(*args, **kwargs)
+
+        monkeypatch = pytest.MonkeyPatch()
+        monkeypatch.setattr(amares_mod, "_run_parallel_fitting_optimal", _counting)
+        try:
+            ds = stack.xmr.fit_amares(prior_knowledge=pk_path, num_workers=2)
+        finally:
+            monkeypatch.undo()
+        assert calls == [2], "two active spectra should have gone to the pool"
+        assert np.all(np.isfinite(ds[VARS.amplitude].values))
+
     # --- the optimizer default is basin-stable (PR #105 follow-up, item 1) ---
 
     @staticmethod

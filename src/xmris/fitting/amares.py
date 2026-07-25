@@ -426,7 +426,8 @@ def fit_amares(
     `NaN` — never a spurious zero — for both an empty (no-signal) spectrum and a failed
     fit; the ``fit_status`` variable (0=fitted, 1=no_signal, 2=failed) tells the two apart.
     Empty spectra are skipped rather than fitted, so an MRSI grid costs only its
-    signal-bearing voxels.
+    signal-bearing voxels — and when just one of them has signal, the fit runs
+    in-process rather than starting a worker pool it cannot use.
 
     Parameters
     ----------
@@ -470,7 +471,9 @@ def fit_amares(
         Run an internal Levenberg-Marquardt initializer before fitting. Defaults to
         False (True can diverge on real data).
     num_workers : int, optional
-        Number of parallel processes to spawn. Defaults to 4.
+        Number of parallel processes to spawn. Defaults to 4. Ignored when only one
+        spectrum has signal: a pool cannot parallelize a single fit, so it is fit
+        in-process instead of paying the pool's startup.
     init_fid : np.ndarray, optional
         A 1D complex array to use as the template for pyAMARES initialization. If None,
         the function automatically selects the spectrum with the highest SNR.
@@ -616,7 +619,17 @@ def fit_amares(
         )
 
     if active_idx.size:
-        if num_workers == 1:
+        # A worker pool for a *single* spectrum has nothing to parallelize across, so
+        # its startup is pure loss: loky costs a flat ~1.3 s to spin up where one
+        # 512-point two-peak fit takes ~30 ms. Collapse to the in-process loop
+        # regardless of `num_workers` — the results are identical either way. Note this
+        # also catches a grid whose empty voxels leave only one spectrum with signal.
+        if active_idx.size == 1 and num_workers != 1:
+            logger.info(
+                "Only one spectrum has signal; fitting in-process instead of starting %d workers.",
+                num_workers,
+            )
+        if num_workers == 1 or active_idx.size == 1:
             fitted = [
                 _fit_dataset_safe(
                     fid_norm[i, :],
