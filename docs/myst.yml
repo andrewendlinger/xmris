@@ -17,6 +17,8 @@ project:
     - myst.doi.bib
   toc:
     - file: index.md
+    - file: roadmap.md
+      title: Roadmap
 
     # 1. GROUP: Core concepts and basic usage
     - title: Basics
@@ -209,6 +211,8 @@ site:
   nav:
     - title: Home
       url: /index
+    - title: Roadmap
+      url: /roadmap
     - title: API
       url: /index-1
 
