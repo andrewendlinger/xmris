@@ -15,36 +15,36 @@ The vision
 :::{div}
 :class: roadmap-statement
 
-xmris is finished when the three lines you write to process a single FID are the same three lines
-that process a whole volume — and when the object they hand back already carries everything a paper
-needs.
+xmris is finished when the three lines you write to process a single spectrum are the same three
+lines that process a whole spectroscopic-imaging dataset — and when the object they hand back can
+answer for every step that produced it.
 :::
 
 :::{div}
 :class: roadmap-tenets
 
-`xarray in, xarray out` `the notebook is the test` `the record travels with the data`
+`xarray in, xarray out` `docs before code` `worry only about your data`
 :::
 ::::
 
-That sentence is closer to true than it looks. Your data stays an `xarray.DataArray` — `.xmr` is an
-accessor, not a container — so the processing chain broadcasts by construction: zero-fill, apodize,
-Fourier, phase and reference run across a coil axis, a repetition series or a voxel grid without
-being told they exist. The fitting keeps up: `fit_amares` takes whatever dimensions you hand it,
-fits every spectrum in parallel, and folds the results back into your layout. The honest remainder
-is small and specific — the simulator builds one FID at a time, automatic phasing picks a single
-phase for the whole array, a fit across a grid still normalises and initialises globally rather
-than per voxel, and past a certain size, memory. That remainder is the far end of this page.
+Three commitments shape everything below. Your data stays an `xarray.DataArray` — `.xmr` adds the
+physics and nothing owns you, so the whole xarray ecosystem keeps working. The documentation comes
+before the code and honestly gets more of the work: every page executes on every pull request, and
+it is written to be *read* — educational, opinionated, occasionally fun — not consulted in defeat.
+And once your data is in, the bookkeeping stops being yours: coordinates, frequency axes, the
+metadata tags scanners breed — xmris carries them, so the focus goes back to the one thing that is
+actually yours.
 
-The near end is less glamorous and more important. Roughly a third of the open tracker sits behind
-five unmade architecture decisions, and the version on PyPI does not install the package this
-documentation describes. So the next two releases are not feature releases: one makes the install
-honest, and one makes the ground stop moving. Features come after the promises hold.
+Where does it stand? Closer to the vision than you might guess: the processing chain broadcasts
+across whatever dimensions you bring, and the fitting keeps up — `fit_amares`, for example, folds
+a grid of spectra through the same call as a single FID. The 1-D holdouts that remain (the
+simulator, per-spectrum autophasing) are tracked as ordinary work items below. The next two
+releases deliberately ship no features at all: first an install that tells the truth, then the
+architecture decisions that let the ground stop moving. Features come after the promises hold.
 
-The last thing on this page is a promise rather than a feature. `v1.0` is not a milestone with an
-item list; it is the point at which the [architecture contract](contributing/contract.md) stops
-moving and the API you wrote against stays where it is. What has to be true first is written in
-the [horizon band](#roadmap-horizon).
+The last thing on this page is a promise rather than a feature. `v1.0` is the point at which the
+[architecture contract](contributing/contract.md) stops moving and the API you wrote against stays
+where it is. What has to be true first is written in the [horizon band](#roadmap-horizon).
 
 :::{note} How to read this page
 Four bands, from what already works to what is still an intention — and the spine beside them loses
@@ -197,10 +197,11 @@ A changelog begins — its first entry is this release
 
 Committed, but not built.
 
-v0.8 is one thing said five ways: the architecture settles. Five design decisions are open, each
-an issue where the choice is argued before any code follows, and roughly a third of the tracker is
-blocked behind them. v0.8 is the last release allowed to move the ground under a user — and saying
-that publicly is most of the value of having a roadmap at all.
+v0.8 is one thing said several ways: the architecture settles. The open design decisions — what a
+vocabulary term is, what the record looks like, what is core and what is an extra, who registers
+what, where the tests live — each get argued in an issue before any code follows, and roughly a
+third of the tracker is blocked behind them. v0.8 is the last release allowed to move the ground
+under a user, and saying that publicly is most of the value of having a roadmap at all.
 
 v0.9 then turns outward: everything a stranger needs that today requires reading the source, or
 knowing the author. Its exit criterion is the JOSS submission.
@@ -209,27 +210,41 @@ knowing the author. Its exit criterion is the JOSS submission.
 ::::{div}
 :class: roadmap-item
 
-Five decisions, then the code that follows
+The decisions, then the code that follows
 
 The questions are argued in their issues, not here — what this page fixes is the order, and that
 they resolve together in one release rather than leaking across several.
 
-:::{dropdown} The five, in dependency order
+:::{dropdown} In dependency order
 - **[#65](https://github.com/andrewendlinger/xmris/issues/65)** — what a vocabulary term *is*
   (today: a `str` subclass carrying metadata), then
   **[#88](https://github.com/andrewendlinger/xmris/issues/88)** — where diagnostic and
   algorithm-output axes live. The cheapest pair, so it goes first.
-- **[#64](https://github.com/andrewendlinger/xmris/issues/64)** — the attrs strategy: does lineage
-  stay flat applied-parameter keys, or become a structured history? The highest-leverage decision
-  on the board — four issues wait on it, Commandment 3 is rewritten by whatever it decides, and it
-  is what turns "the record travels with the data" from a convention into a guarantee: a spectrum
-  that can reconstruct its own methods section.
+- **[#124](https://github.com/andrewendlinger/xmris/issues/124)** — what is core xmris: the
+  extras boundary (`[fitting]` exists; `[plotting]`? vendors?) and the plug-in mechanism that
+  lets a lab in another MR domain add functions *and vocabulary* without forking core. Packaging
+  is a one-way door, so it closes while the ground is still allowed to move.
+- **[#125](https://github.com/andrewendlinger/xmris/issues/125)** — vendor IO: how much xmris
+  owns, and whether NIfTI-MRS becomes the on-ramp instead of N bespoke loaders. Downstream of
+  #124.
+- **[#64](https://github.com/andrewendlinger/xmris/issues/64)** — the attrs strategy: flat
+  applied-parameter keys, or a structured history? The highest-leverage decision on the board —
+  four issues wait on it, Commandment 3 is rewritten by whatever it decides, and it is what turns
+  "the record travels with the data" from a convention into a guarantee.
 - **[#62](https://github.com/andrewendlinger/xmris/issues/62)** — accessor auto-registration and
   which API is canonical, so a free function and its `.xmr` method cannot drift apart again.
+  Resolves together with #124's registration question.
 - **[#66](https://github.com/andrewendlinger/xmris/issues/66)** — the boundary between pytest and
   notebook tests, which decides how the architecture suite gets rebuilt to discover functions
   instead of trusting hand-maintained lists.
 :::
+::::
+
+::::{div}
+:class: roadmap-item roadmap-item--minor
+
+A full review-and-simplify pass opens v0.8 — run before the decisions are argued, so its findings
+feed them [#127](https://github.com/andrewendlinger/xmris/issues/127)
 ::::
 
 ::::{div}
@@ -246,9 +261,10 @@ Ready for a stranger
 
 The first hour of a new user, made survivable without reading the source: a documented path from
 raw vendor data or a bare numpy array into an xmris-ready object
-[#46](https://github.com/andrewendlinger/xmris/issues/46), a README whose quick start actually
-runs, a public API surface with no unreachable corners, and the correctness backlog in fitting and
-plotting paid down.
+[#46](https://github.com/andrewendlinger/xmris/issues/46), a sidebar that separates hands-on
+tutorials from concept explainers [#126](https://github.com/andrewendlinger/xmris/issues/126), a
+README whose quick start actually runs, a public API surface with no unreachable corners, and the
+correctness backlog in fitting and plotting paid down.
 ::::
 
 ::::{div}
@@ -303,7 +319,7 @@ something moves up a band.
 `v1.0` — the point the contract stops moving
 
 Not a feature: a promise — and deliberately not a milestone in the tracker yet, because creating
-one now would fake a certainty nobody has. What has to be true first: the five decisions shipped
+one now would fake a certainty nobody has. What has to be true first: the design decisions shipped
 and the contract stable across two consecutive releases; the stranger's first hour solved; a
 written deprecation policy. When those hold, calling it 1.0 is a formality; until then, calling it
 1.0 would be a lie with a version number.
@@ -316,27 +332,76 @@ MRSI: space and scale
 
 The vocabulary already declares `x`, `y`, `z` and their k-space twins, and nothing uses them yet —
 a placed bet, not dead weight. Cashing it in, in order: CSI-shaped data, spatial plus spectral,
-through the same three lines that process one FID; per-voxel initialisation and normalisation for
-fits across a grid; lazy, chunked processing for volumes that outgrow memory
+through the same three lines that process one FID; per-voxel initialisation for fits across a
+grid; lazy, chunked processing for volumes that outgrow memory
 [#25](https://github.com/andrewendlinger/xmris/issues/25); and image coordinates, so a fitted
 metabolite map can sit on the anatomical image it came from
 [#4](https://github.com/andrewendlinger/xmris/issues/4).
 ::::
 
 ::::{div}
-:class: roadmap-item roadmap-item--minor
+:class: roadmap-item
 
-More vendors than Bruker — Siemens, GE, Philips, NIfTI-MRS
+An xmris someone else can extend
+
+The plug-in mechanism is a v0.8 decision
+([#124](https://github.com/andrewendlinger/xmris/issues/124)); what it enables is horizon work: a
+lab in another MR domain — multi-echo bSSFP, say — publishing its own functions and vocabulary as
+an extension, vendor loaders that ship on their own cadence, and heavy capabilities that never
+weigh down the core install.
 ::::
 
 ::::{div}
 :class: roadmap-item roadmap-item--minor
 
-What xmris is *not*: image reconstruction and quantitative-MRI parameter mapping stay out of
-scope — the *i* in the name is the spectroscopic imaging above, not an MRI toolbox
+More vendors than Bruker — Siemens, GE, Philips, NIfTI-MRS; how much xmris owns is
+[#125](https://github.com/andrewendlinger/xmris/issues/125)'s decision
+::::
+
+::::{div}
+:class: roadmap-item roadmap-item--minor
+
+Core xmris will not do image reconstruction or quantitative-MRI parameter mapping — the door is
+modular rather than closed: if they come, they come as extensions
 ::::
 
 :::::
+
+(roadmap-landscape)=
+## The issue landscape
+
+<span style="color: gray; font-size: 0.9em;">A snapshot taken 2026-07-26 · the
+[milestones](https://github.com/andrewendlinger/xmris/milestones) are the live source</span>
+
+Forty-one issues are open, and their distribution is the argument for the release line above: the
+largest cluster is not missing features — it is unmade decisions, plus the work standing behind
+them.
+
+| Cluster | Issues | Lands in |
+|---|---|---|
+| Unmade design decisions | [#62](https://github.com/andrewendlinger/xmris/issues/62) [#64](https://github.com/andrewendlinger/xmris/issues/64) [#65](https://github.com/andrewendlinger/xmris/issues/65) [#66](https://github.com/andrewendlinger/xmris/issues/66) [#88](https://github.com/andrewendlinger/xmris/issues/88) [#113](https://github.com/andrewendlinger/xmris/issues/113) [#124](https://github.com/andrewendlinger/xmris/issues/124) [#125](https://github.com/andrewendlinger/xmris/issues/125) | v0.8 |
+| Blocked behind them | [#21](https://github.com/andrewendlinger/xmris/issues/21) [#22](https://github.com/andrewendlinger/xmris/issues/22) [#23](https://github.com/andrewendlinger/xmris/issues/23) [#28](https://github.com/andrewendlinger/xmris/issues/28) [#34](https://github.com/andrewendlinger/xmris/issues/34) [#71](https://github.com/andrewendlinger/xmris/issues/71) [#102](https://github.com/andrewendlinger/xmris/issues/102) [#107](https://github.com/andrewendlinger/xmris/issues/107) | v0.8 · the schema #28 in v0.9 |
+| The tag itself | [#10](https://github.com/andrewendlinger/xmris/issues/10) [#115](https://github.com/andrewendlinger/xmris/issues/115) [#116](https://github.com/andrewendlinger/xmris/issues/116) [#122](https://github.com/andrewendlinger/xmris/issues/122) | v0.7 |
+| Quality & tooling | [#87](https://github.com/andrewendlinger/xmris/issues/87) [#108](https://github.com/andrewendlinger/xmris/issues/108) [#111](https://github.com/andrewendlinger/xmris/issues/111) [#117](https://github.com/andrewendlinger/xmris/issues/117) [#127](https://github.com/andrewendlinger/xmris/issues/127) | v0.8 – v0.9 |
+| The front door | [#27](https://github.com/andrewendlinger/xmris/issues/27) [#46](https://github.com/andrewendlinger/xmris/issues/46) [#67](https://github.com/andrewendlinger/xmris/issues/67) [#119](https://github.com/andrewendlinger/xmris/issues/119) [#120](https://github.com/andrewendlinger/xmris/issues/120) [#121](https://github.com/andrewendlinger/xmris/issues/121) [#126](https://github.com/andrewendlinger/xmris/issues/126) | v0.9 |
+| Correctness & capability | [#29](https://github.com/andrewendlinger/xmris/issues/29) [#31](https://github.com/andrewendlinger/xmris/issues/31) [#80](https://github.com/andrewendlinger/xmris/issues/80) [#82](https://github.com/andrewendlinger/xmris/issues/82) [#83](https://github.com/andrewendlinger/xmris/issues/83) [#84](https://github.com/andrewendlinger/xmris/issues/84) [#128](https://github.com/andrewendlinger/xmris/issues/128) | v0.9 |
+| Space & scale | [#4](https://github.com/andrewendlinger/xmris/issues/4) [#25](https://github.com/andrewendlinger/xmris/issues/25) | Horizon |
+
+The decisions are not a flat list. The spine below is v0.8's execution order — it is why the
+vocabulary question goes first and the attrs strategy matters most:
+
+```{mermaid}
+%%{init: {'flowchart': {'htmlLabels': false}}}%%
+flowchart TD
+    n65["#65 what is a vocabulary term?"] --> n88["#88 diagnostic axes"]
+    n65 --> n124["#124 what is core xmris?"]
+    n124 --> n125["#125 vendor IO"]
+    n124 <--> n62["#62 accessor registration"]
+    n62 --> n62d["#34 · parts of #71 #102"]
+    n64["#64 attrs strategy"] --> n64d["#21 #22 #23 · then #28"]
+    n66["#66 pytest vs notebook"] --> n102["#102 test auto-discovery"]
+    n102 --> n107["#107 test restructure"]
+```
 
 :::{div}
 :class: roadmap-end
