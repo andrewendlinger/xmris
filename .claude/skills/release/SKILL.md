@@ -22,7 +22,7 @@ Pushing branches and tags triggers CI and an irreversible PyPI publish. **Confir
 
 2. **Determine the target version.** Show the current version (`uv version`) and the target implied by `$ARGUMENTS` (e.g. `0.2.0`). Confirm with the user — but **do not bump yet**.
 
-3. **Run the full matrix.** Push an *unbumped* `release/vX.Y.Z` branch — this triggers the full Ubuntu/Windows/macOS × Py 3.10–3.13 matrix in `ci-publish.yml`. Wait for it and check results with `gh run watch` / `gh run list`. If a job fails, fix it on the release branch and push again until green. Note: **macOS is allowed to fail** (`continue-on-error`, upstream pyAMARES issue) — a red macOS leg alone does not block the release; everything else must be green.
+3. **Run the full matrix.** Push an *unbumped* `release/vX.Y.Z` branch — this triggers the full Ubuntu/Windows/macOS × Py 3.10–3.13 matrix in `ci-publish.yml`. Wait for it and check results with `gh run watch` / `gh run list`. If a job fails, fix it on the release branch and push again until green. **Every leg blocks, macOS included** — it was `continue-on-error` only while official `pyamares` hard-required `hlsvdpro` (no arm64 wheel); the `fitting` extra now depends on `pyamares-xmris`, whose platform marker skips it, so the exemption was removed in #105.
 
 4. **Bump and merge.** Once the matrix is green, bump on the release branch and land it through a PR — `main` takes no direct pushes:
    ```
