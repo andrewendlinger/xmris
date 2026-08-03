@@ -13,7 +13,7 @@ requires-python = ">=3.10,<=3.13"
 authors = [
     { name = "Andrecho", email = "37243793+andrewendlinger@users.noreply.github.com" }
 ]
-license = "AGPL-3.0-only"
+license = "BSD-3-Clause"
 license-files = ["LICENSE"]
 keywords = ["mri", "mrs", "xarray", "spectroscopy", "nmr"]
 classifiers = [
@@ -23,7 +23,7 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Medical Science Apps.",
-    "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
+    "License :: OSI Approved :: BSD License",
     "Operating System :: OS Independent",
     "Framework :: Jupyter",
 ]
