@@ -17,8 +17,16 @@ project:
     - myst.doi.bib
   toc:
     - file: index.md
+    # The roadmap's decision board links one exploration notebook (frozen at
+    # decision time) and later one aimed-solution notebook per decision — they
+    # live in decisions/ and nest under the Roadmap sidebar entry.
     - file: roadmap.md
       title: Roadmap
+      children:
+        - file: decisions/decision_02_attrs_lineage.md
+          title: 02 · Attrs — exploration
+        - file: decisions/decision_02b_physics_constants.md
+          title: 02b · Constants — exploration
 
     # 1. GROUP: Core concepts and basic usage
     - title: Basics

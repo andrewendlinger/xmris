@@ -1,7 +1,7 @@
 (roadmap)=
 # Where xmris is going
 
-<span style="color: gray; font-size: 0.9em;">Last edited: 2026-07-26</span>
+<span style="color: gray; font-size: 0.9em;">Last edited: 2026-08-03</span>
 
 ::::{div}
 :class: roadmap-hero
@@ -9,58 +9,39 @@
 :::{div}
 :class: roadmap-kicker
 
-The vision
+The direction
 :::
 
 :::{div}
 :class: roadmap-statement
 
-xmris is finished when the three lines you write to process a single spectrum are the same three
-lines that process a whole spectroscopic-imaging dataset — and when the object they hand back can
-answer for every step that produced it.
+The same lines that process one spectrum will process a whole spectroscopic-imaging dataset —
+and the result can answer for every step that produced it.
 :::
 
 :::{div}
 :class: roadmap-tenets
 
-`xarray in, xarray out` `docs before code` `worry only about your data`
+`xarray in, xarray out` `docs before code` `the physics travels with the data`
 :::
 ::::
 
-Three commitments shape everything below. Your data stays an `xarray.DataArray` — `.xmr` adds the
-physics and nothing owns you, so the whole xarray ecosystem keeps working. The documentation comes
-before the code and honestly gets more of the work: every page executes on every pull request, and
-it is written to be *read* — educational, opinionated, occasionally fun — not consulted in defeat.
-And once your data is in, the bookkeeping stops being yours: coordinates, frequency axes, the
-metadata tags scanners breed — xmris carries them, so the focus goes back to the one thing that is
-actually yours.
-
-Where does it stand? Closer to the vision than you might guess: the processing chain broadcasts
-across whatever dimensions you bring, and the fitting keeps up — `fit_amares`, for example, folds
-a grid of spectra through the same call as a single FID. The 1-D holdouts that remain (the
-simulator, per-spectrum autophasing) are tracked as ordinary work items below. The next two
-releases deliberately ship no features at all: first an install that tells the truth, then the
-architecture decisions that let the ground stop moving. Features come after the promises hold.
-
-The last thing on this page is a promise rather than a feature. `v1.0` is the point at which the
-[architecture contract](contributing/contract.md) stops moving and the API you wrote against stays
-where it is. What has to be true first is written in the [horizon band](#roadmap-horizon).
+Three commitments shape everything below. Your data stays an `xarray.DataArray` — `.xmr` adds
+the physics, and the whole xarray ecosystem keeps working. The docs come before the code: every
+page executes on every pull request. And the bookkeeping — coordinates, frequency axes, scanner
+metadata — travels with the data.
 
 :::{note} How to read this page
-Four bands, from what already works to what is still an intention — and the spine beside them loses
-its confidence as it descends. There are deliberately **no dates**: this is a one-maintainer
-project beside a PhD, so order is real information and a schedule would be fiction. A milestone
-moves up a band when the work is real, not when a quarter ends.
+Five bands, descending in confidence: from what already works, through the decision board we
+would defend today, to a far end that is more a direction.
 
-The [tracker's milestones](https://github.com/andrewendlinger/xmris/milestones) hold the item
-lists and move faster; this page holds the argument. Version numbers are the release a milestone is
-aimed at, not a commitment to ship it there.
+The page is aligned with the [tracker's milestones](https://github.com/andrewendlinger/xmris/milestones) and is supposed to give a clearer picture of what's ahead / planned for xmris.
 :::
 
 :::{div}
 :class: roadmap-map
 
-[Shipped](#roadmap-phase-shipped) [In motion](#roadmap-phase-motion) [Next](#roadmap-phase-next) [Horizon](#roadmap-phase-horizon)
+[Shipped](#roadmap-phase-shipped) [In motion](#roadmap-phase-motion) [Decisions](#roadmap-phase-decisions) [Outward](#roadmap-phase-outward) [Horizon](#roadmap-phase-horizon)
 :::
 
 :::::{div}
@@ -75,13 +56,40 @@ aimed at, not a commitment to ship it there.
 
 What you can use today.
 
-Real on `main`, documented, and exercised on every pull request — the claims on these cards are
-live notebook cells, so a broken one fails the build rather than quietly ageing.
+Real on `main` and exercised on every pull request — every claim on these cards is a live
+notebook cell, so a broken one fails the build. (`main` runs ahead of PyPI; closing that gap is
+the band below.)
+::::
 
-One honesty note: `main` is ahead of PyPI, and the wheel PyPI serves carries the old, broken
-packaging — closing that gap is the entire point of the band below. Nothing here is a plan. If
-something in this band does not work, that is a bug worth reporting, not a roadmap item waiting
-its turn.
+::::{div}
+:class: roadmap-item
+
+Spectrum processing that reads like the physics
+
+[`zero_fill`](#zero-fill) → [`apodize_exp`](#apodization) → [`autophase`](#autophase-intro) →
+[`baseline_als`](#baseline) → [`to_ppm`](#hz-ppm): each a pure function and an `.xmr` method,
+and the FID-to-spectrum conversion [happens automatically](#domain-contracts) where the chain
+needs it.
+::::
+
+::::{div}
+:class: roadmap-item
+
+Plotting, some of it interactive
+
+Config-based [plotting](#plot-basics) from [waterfall](#waterfall) to [carpet](#carpet) plots,
+plus live widgets for [phasing](#widget-phase), [apodization](#widget-apodization) and
+[scrolling through spectra](#widget-scroller).
+::::
+
+::::{div}
+:class: roadmap-item
+
+pyAMARES fitting that broadcasts
+
+`fit_amares` fits every spectrum across whatever dimensions you bring — data, model, residual
+and per-parameter uncertainties come back aligned on the same axes
+([quick start](#fitting-quickstart), [deep dive](#pyamares)).
 ::::
 
 ::::{div}
@@ -89,46 +97,9 @@ its turn.
 
 An architecture you can hold in your head
 
-Eleven numbered rules — xarray in, xarray out; never mutate the input; the vocabulary is law — are
-written down as [the architecture contract](contributing/contract.md) and *executed* against the
-source on every build. The page quotes the live code it governs, so the contract cannot drift away
-from it.
-::::
-
-::::{div}
-:class: roadmap-item
-
-A processing chain that reads like the physics
-
-`zero_fill` → `apodize_exp` → `to_spectrum` → `autophase` → `baseline_als` → `to_ppm`, each a pure
-function and an `.xmr` method, each preserving the coordinates it was given and appending exactly
-the parameter it applied. Domain mistakes are caught at the door by `@computes_in` and
-`@ensures_domain`: a function handed data in the wrong domain refuses, instead of computing
-something plausible and wrong.
-::::
-
-::::{div}
-:class: roadmap-item
-
-Fitting that broadcasts
-
-`fit_amares` meets your data in either domain, stacks whatever extra dimensions it finds, fits
-every spectrum in parallel, and hands back a Dataset with the data, the model and the residual
-aligned on the same axes — with per-parameter uncertainties, and a per-voxel `fit_status` instead
-of a silent zero where a fit fails.
-::::
-
-::::{div}
-:class: roadmap-item roadmap-item--minor
-
-Interactive widgets for phasing, apodization and scrolling through spectra
-::::
-
-::::{div}
-:class: roadmap-item roadmap-item--minor
-
-Documentation that executes itself — every claim is a live cell, every page previewed per pull
-request
+Eleven rules — xarray in, xarray out; never mutate the input; the vocabulary is law — written
+down as [the contract](contributing/contract.md) and executed against the source on every
+build. The why is the [architecture tour](#architecture).
 ::::
 
 :::::
@@ -186,65 +157,216 @@ A changelog begins — its first entry is this release
 :::::
 
 :::::{div}
-:class: roadmap-band roadmap-band--next
+:class: roadmap-band roadmap-band--decisions
 
-(roadmap-next)=
-## Next <span class="roadmap-ver">v0.8 – v0.9</span>
+(roadmap-decisions)=
+## The decisions <span class="roadmap-ver">v0.8</span>
 
 ::::{div}
-:class: roadmap-phase roadmap-phase--next
-:label: roadmap-phase-next
+:class: roadmap-phase roadmap-phase--decisions
+:label: roadmap-phase-decisions
 
-Committed, but not built.
+The near horizon: the architecture settles, one argued decision at a time.
 
-v0.8 is one thing said several ways: the architecture settles. The open design decisions — what a
-vocabulary term is, what the record looks like, what is core and what is an extra, who registers
-what, where the tests live — each get argued in an issue before any code follows, and roughly a
-third of the tracker is blocked behind them. v0.8 is the last release allowed to move the ground
-under a user, and saying that publicly is most of the value of having a roadmap at all.
+Roughly a third of the tracker is blocked behind the questions on this board, and v0.8 is the
+last release allowed to move the ground under a user — so each question is decided before its
+code is written. The board is ordered by how irreversible each decision is and how soon it
+blocks: the full cards are load-bearing, the one-line rows can wait.
 
-v0.9 then turns outward: everything a stranger needs that today requires reading the source, or
-knowing the author. Its exit criterion is the JOSS submission.
+Every decision leaves a paper trail. It starts as an *exploration notebook* that demonstrates the
+problem live and runs every serious option as code. When one option wins, that notebook freezes
+as the record of *why*, an *aimed-solution notebook* details the *what*, and only then does the
+implementation follow. A decided card links its trail.
 ::::
 
 ::::{div}
 :class: roadmap-item
 
-The decisions, then the code that follows
+01 · The license <span class="roadmap-status roadmap-status--arguing">in discussion</span>
 
-The questions are argued in their issues, not here — what this page fixes is the order, and that
-they resolve together in one release rather than leaking across several.
+xmris is AGPL-3.0-only — the strongest copyleft on PyPI, the quietest gate on who may adopt it,
+and a contradiction of the extension ecosystem this page promises further down. Whether that is a
+value to state and keep, or an accident to fix while there is exactly one copyright holder, is
+under argument now.
+::::
 
-:::{dropdown} In dependency order
-- **[#65](https://github.com/andrewendlinger/xmris/issues/65)** — what a vocabulary term *is*
-  (today: a `str` subclass carrying metadata), then
-  **[#88](https://github.com/andrewendlinger/xmris/issues/88)** — where diagnostic and
-  algorithm-output axes live. The cheapest pair, so it goes first.
-- **[#124](https://github.com/andrewendlinger/xmris/issues/124)** — what is core xmris: the
-  extras boundary (`[fitting]` exists; `[plotting]`? vendors?) and the plug-in mechanism that
-  lets a lab in another MR domain add functions *and vocabulary* without forking core. Packaging
-  is a one-way door, so it closes while the ground is still allowed to move.
-- **[#125](https://github.com/andrewendlinger/xmris/issues/125)** — vendor IO: how much xmris
-  owns, and whether NIfTI-MRS becomes the on-ramp instead of N bespoke loaders. Downstream of
-  #124.
-- **[#64](https://github.com/andrewendlinger/xmris/issues/64)** — the attrs strategy: flat
-  applied-parameter keys, or a structured history? The highest-leverage decision on the board —
-  four issues wait on it, Commandment 3 is rewritten by whatever it decides, and it is what turns
-  "the record travels with the data" from a convention into a guarantee.
-- **[#62](https://github.com/andrewendlinger/xmris/issues/62)** — accessor auto-registration and
-  which API is canonical, so a free function and its `.xmr` method cannot drift apart again.
-  Resolves together with #124's registration question.
-- **[#66](https://github.com/andrewendlinger/xmris/issues/66)** — the boundary between pytest and
-  notebook tests, which decides how the architecture suite gets rebuilt to discover functions
-  instead of trusting hand-maintained lists.
-:::
+::::{div}
+:class: roadmap-item roadmap-item--decided
+
+02 · The lineage record <span class="roadmap-status roadmap-status--decided">decided 2026-08-02</span>
+
+Processing lineage leaves flat attrs keys entirely: every operation appends to one `xmr_history`
+record — the parameters actually applied, in order, written by one central decorator and read
+back as `history()`. Physics and calibration attrs stay flat, typed and individually addressable.
+The repeat-application lie — the data carrying one apodization while the record claims another —
+dies with the flat keys.
+
+The exploration that got here is frozen as [a design notebook](#attrs-nb); the aimed-solution
+notebook comes next, then the implementation.
+[#64](https://github.com/andrewendlinger/xmris/issues/64)
+::::
+
+::::{div}
+:class: roadmap-item roadmap-item--decided
+
+02b · The physical constants <span class="roadmap-status roadmap-status--decided">decided 2026-08-03</span>
+
+The constants a measurement cannot be interpreted without — reference frequency, carrier, group
+delay — move out of droppable attrs into one scalar coordinate, `xmr_acquisition`, with the
+history riding beside it as `xmr_history`. Surviving plain xarray operations becomes structural
+rather than boilerplate; mixed calibrations drop the container whole and fail loudly at the next
+gate; and `explain()` renders every constant with its unit and curated description.
+
+Frozen exploration: [the constants design notebook](#constants-nb); the aimed-solution notebook
+comes next. [#21](https://github.com/andrewendlinger/xmris/issues/21)
+[#22](https://github.com/andrewendlinger/xmris/issues/22)
+::::
+
+::::{div}
+:class: roadmap-item
+
+03 · A data model written down
+
+Which dimensions, coordinates and attributes make an object an xmris FID or spectrum — and what a
+function may assume about one it is handed. The schema is what lets other packages target xmris
+rather than guess at it; with 02 and 02b fixing what the record and the constants look like, it
+is unblocked and next in line.
+[#28](https://github.com/andrewendlinger/xmris/issues/28)
+::::
+
+::::{div}
+:class: roadmap-item
+
+04 · Core and extras
+
+`[fitting]` exists — does `[plotting]`? do vendors? Install lines are a one-way door: the extras
+boundary closes while the ground is still allowed to move, not after.
+[#124](https://github.com/andrewendlinger/xmris/issues/124)
+::::
+
+::::{div}
+:class: roadmap-item
+
+05 · The fit schema, and the fork beneath it
+
+The fit result — one Dataset carrying data, model, residual, parameters and uncertainties — is
+the contract a second fitter would slot into, so it gets frozen deliberately rather than by
+accident. And the liability underneath gets named: today's fitter rides `pyamares-xmris`, a
+self-maintained fork on the critical path, whose exit strategy — upstream, maintain, or replace —
+has never been written down.
+::::
+
+::::{div}
+:class: roadmap-item
+
+06 · The preprocessing middle
+
+The vocabulary declares `average` and `coil`, the Bruker loader emits them, and no function
+consumes them: averaging, coil combination and frequency-drift alignment are the unclaimed gap
+between load and fit. Does xmris own that middle — the physics-aware, lineage-recording versions,
+not the one-line mean — or say honestly that it does not?
+::::
+
+::::{div}
+:class: roadmap-item
+
+07 · The auto-convert default
+
+Today a domain-mismatched call is converted silently by default, while the option's own docstring
+recommends strict mode for quantitative work. Flipping a default after 1.0 is a breaking change,
+so it gets decided now, while it is cheap.
+::::
+
+::::{div}
+:class: roadmap-item
+
+08 · Accessor parity
+
+A free function and its `.xmr` method can drift apart today — signatures, defaults, docstrings.
+The fix is mechanical (an introspection test, a registration decorator, or codegen); the decision
+is which mechanism, and it retires a whole class of bug at once.
+[#62](https://github.com/andrewendlinger/xmris/issues/62)
+[#102](https://github.com/andrewendlinger/xmris/issues/102)
+::::
+
+::::{div}
+:class: roadmap-item
+
+09 · Vendor IO
+
+How much loading xmris owns — "array plus params in, labeled DataArray out", or real file
+readers — and whether NIfTI-MRS becomes the common on-ramp instead of N bespoke loaders.
+[#125](https://github.com/andrewendlinger/xmris/issues/125)
+[#46](https://github.com/andrewendlinger/xmris/issues/46)
 ::::
 
 ::::{div}
 :class: roadmap-item roadmap-item--minor
 
-A full review-and-simplify pass opens v0.8 — run before the decisions are argued, so its findings
-feed them [#127](https://github.com/andrewendlinger/xmris/issues/127)
+10 · What a vocabulary term *is* — the representation behind the strings
+[#65](https://github.com/andrewendlinger/xmris/issues/65)
+[#88](https://github.com/andrewendlinger/xmris/issues/88)
+::::
+
+::::{div}
+:class: roadmap-item roadmap-item--minor
+
+11 · Where tests live — the pytest/notebook boundary, and coverage that discovers instead of
+listing [#66](https://github.com/andrewendlinger/xmris/issues/66)
+[#107](https://github.com/andrewendlinger/xmris/issues/107)
+::::
+
+::::{div}
+:class: roadmap-item roadmap-item--minor
+
+12 · The plug-in promise — a platform, or extensibility by documented convention?
+[#124](https://github.com/andrewendlinger/xmris/issues/124)
+::::
+
+::::{div}
+:class: roadmap-item roadmap-item--minor
+
+13 · The Python ceiling — ≤3.13 for everyone, for the sake of an optional extra
+::::
+
+::::{div}
+:class: roadmap-item roadmap-item--minor
+
+14 · The typing promise — `py.typed` ships with no checker behind it
+::::
+
+::::{div}
+:class: roadmap-item roadmap-item--minor
+
+15 · The MRI non-goal, said exactly — MRSI yes; reconstruction, where is the line?
+::::
+
+:::::
+
+:::::{div}
+:class: roadmap-band roadmap-band--outward
+
+(roadmap-outward)=
+## Then outward <span class="roadmap-ver">v0.8 – v0.9</span>
+
+::::{div}
+:class: roadmap-phase roadmap-phase--outward
+:label: roadmap-phase-outward
+
+Committed, but not built.
+
+v0.8 lands the code the decision board unblocks — roughly a third of the tracker waits there —
+and the decisions resolve together in one release rather than leaking across several.
+
+v0.9 then turns to everything a stranger needs that today requires reading the source, or knowing
+the author. Its exit criterion is the JOSS submission.
+::::
+
+::::{div}
+:class: roadmap-item roadmap-item--minor
+
+A full review-and-simplify pass runs first, so its findings feed the decisions still open above
+[#127](https://github.com/andrewendlinger/xmris/issues/127)
 ::::
 
 ::::{div}
@@ -265,18 +387,6 @@ raw vendor data or a bare numpy array into an xmris-ready object
 tutorials from concept explainers [#126](https://github.com/andrewendlinger/xmris/issues/126), a
 README whose quick start actually runs, a public API surface with no unreachable corners, and the
 correctness backlog in fitting and plotting paid down.
-::::
-
-::::{div}
-:class: roadmap-item
-
-A data model written down
-
-The vocabulary is law inside the library, but the *schema* it forms has never been stated: which
-dimensions and attributes an object must carry to count as an xmris FID or spectrum, and what a
-function may assume about one it is handed. Writing that down — after the attrs decision fixes
-what the record looks like — is what lets other packages target xmris rather than guess at it.
-[#28](https://github.com/andrewendlinger/xmris/issues/28)
 ::::
 
 ::::{div}
@@ -305,12 +415,13 @@ cites 0.x software, so *citable* does not wait for *frozen*.
 
 Direction, not commitment.
 
-This is what xmris is being built *toward*. These may arrive in a different form, in a different
-order, or not at all — the rail fades here because the confidence does.
+This is what xmris is being built *toward* — held loosely on purpose. These may arrive in a
+different form, in a different order, or not at all; the rail fades here because the confidence
+does, and the decision board above is allowed to rewrite any of it.
 
 They are on the page anyway, because a roadmap that only lists the safe things is not telling you
-where it is going. If your work depends on one of them, say so in the tracker: that is the main way
-something moves up a band.
+where it is going. If your work depends on one of them, say so in the tracker: that is the main
+way something moves up a band.
 ::::
 
 ::::{div}
@@ -319,10 +430,10 @@ something moves up a band.
 `v1.0` — the point the contract stops moving
 
 Not a feature: a promise — and deliberately not a milestone in the tracker yet, because creating
-one now would fake a certainty nobody has. What has to be true first: the design decisions shipped
-and the contract stable across two consecutive releases; the stranger's first hour solved; a
-written deprecation policy. When those hold, calling it 1.0 is a formality; until then, calling it
-1.0 would be a lie with a version number.
+one now would fake a certainty nobody has. What has to be true first: the decision board above
+emptied, the contract stable across two consecutive releases, the stranger's first hour solved,
+and a written deprecation policy. When those hold, calling it 1.0 is a formality; until then,
+calling it 1.0 would be a lie with a version number.
 ::::
 
 ::::{div}
@@ -344,25 +455,27 @@ metabolite map can sit on the anatomical image it came from
 
 An xmris someone else can extend
 
-The plug-in mechanism is a v0.8 decision
-([#124](https://github.com/andrewendlinger/xmris/issues/124)); what it enables is horizon work: a
-lab in another MR domain — multi-echo bSSFP, say — publishing its own functions and vocabulary as
-an extension, vendor loaders that ship on their own cadence, and heavy capabilities that never
-weigh down the core install.
+Whether this is promised at all is decision 12 on the board: a plug-in platform is a
+compatibility contract with parties who do not exist yet, and a written data model (decision 03)
+plus documented conventions may serve an outside lab better than an API. If the promise survives,
+it looks like a lab in another MR domain publishing its own functions and vocabulary as an
+extension, vendor loaders that ship on their own cadence, and heavy capabilities that never weigh
+down the core install.
+[#124](https://github.com/andrewendlinger/xmris/issues/124)
 ::::
 
 ::::{div}
 :class: roadmap-item roadmap-item--minor
 
-More vendors than Bruker — Siemens, GE, Philips, NIfTI-MRS; how much xmris owns is
-[#125](https://github.com/andrewendlinger/xmris/issues/125)'s decision
+More vendors than Bruker — Siemens, GE, Philips, NIfTI-MRS; how much xmris owns is decision 09
+[#125](https://github.com/andrewendlinger/xmris/issues/125)
 ::::
 
 ::::{div}
 :class: roadmap-item roadmap-item--minor
 
-Core xmris will not do image reconstruction or quantitative-MRI parameter mapping — the door is
-modular rather than closed: if they come, they come as extensions
+Core xmris will not do image reconstruction or quantitative-MRI parameter mapping — the exact
+wording of that refusal, and the fate of the unused k-space vocabulary, is decision 15
 ::::
 
 :::::
@@ -370,16 +483,19 @@ modular rather than closed: if they come, they come as extensions
 (roadmap-landscape)=
 ## The issue landscape
 
-<span style="color: gray; font-size: 0.9em;">A snapshot taken 2026-07-26 · the
+<span style="color: gray; font-size: 0.9em;">A snapshot taken 2026-08-03 · the
 [milestones](https://github.com/andrewendlinger/xmris/milestones) are the live source</span>
 
 Forty-one issues are open, and their distribution is the argument for the release line above: the
 largest cluster is not missing features — it is unmade decisions, plus the work standing behind
-them.
+them. Two of those decisions are now made (02 and 02b on the board); their tracker issues stay
+open until the implementations land, with
+[#21](https://github.com/andrewendlinger/xmris/issues/21) and
+[#22](https://github.com/andrewendlinger/xmris/issues/22) re-scoped by what was decided.
 
 | Cluster | Issues | Lands in |
 |---|---|---|
-| Unmade design decisions | [#62](https://github.com/andrewendlinger/xmris/issues/62) [#64](https://github.com/andrewendlinger/xmris/issues/64) [#65](https://github.com/andrewendlinger/xmris/issues/65) [#66](https://github.com/andrewendlinger/xmris/issues/66) [#88](https://github.com/andrewendlinger/xmris/issues/88) [#113](https://github.com/andrewendlinger/xmris/issues/113) [#124](https://github.com/andrewendlinger/xmris/issues/124) [#125](https://github.com/andrewendlinger/xmris/issues/125) | v0.8 |
+| Design decisions — the board above | [#62](https://github.com/andrewendlinger/xmris/issues/62) [#64](https://github.com/andrewendlinger/xmris/issues/64) [#65](https://github.com/andrewendlinger/xmris/issues/65) [#66](https://github.com/andrewendlinger/xmris/issues/66) [#88](https://github.com/andrewendlinger/xmris/issues/88) [#113](https://github.com/andrewendlinger/xmris/issues/113) [#124](https://github.com/andrewendlinger/xmris/issues/124) [#125](https://github.com/andrewendlinger/xmris/issues/125) | v0.8 |
 | Blocked behind them | [#21](https://github.com/andrewendlinger/xmris/issues/21) [#22](https://github.com/andrewendlinger/xmris/issues/22) [#23](https://github.com/andrewendlinger/xmris/issues/23) [#28](https://github.com/andrewendlinger/xmris/issues/28) [#34](https://github.com/andrewendlinger/xmris/issues/34) [#71](https://github.com/andrewendlinger/xmris/issues/71) [#102](https://github.com/andrewendlinger/xmris/issues/102) [#107](https://github.com/andrewendlinger/xmris/issues/107) | v0.8 · the schema #28 in v0.9 |
 | The tag itself | [#10](https://github.com/andrewendlinger/xmris/issues/10) [#115](https://github.com/andrewendlinger/xmris/issues/115) [#116](https://github.com/andrewendlinger/xmris/issues/116) [#122](https://github.com/andrewendlinger/xmris/issues/122) | v0.7 |
 | Quality & tooling | [#87](https://github.com/andrewendlinger/xmris/issues/87) [#108](https://github.com/andrewendlinger/xmris/issues/108) [#111](https://github.com/andrewendlinger/xmris/issues/111) [#117](https://github.com/andrewendlinger/xmris/issues/117) [#127](https://github.com/andrewendlinger/xmris/issues/127) | v0.8 – v0.9 |
@@ -387,20 +503,20 @@ them.
 | Correctness & capability | [#29](https://github.com/andrewendlinger/xmris/issues/29) [#31](https://github.com/andrewendlinger/xmris/issues/31) [#80](https://github.com/andrewendlinger/xmris/issues/80) [#82](https://github.com/andrewendlinger/xmris/issues/82) [#83](https://github.com/andrewendlinger/xmris/issues/83) [#84](https://github.com/andrewendlinger/xmris/issues/84) [#128](https://github.com/andrewendlinger/xmris/issues/128) | v0.9 |
 | Space & scale | [#4](https://github.com/andrewendlinger/xmris/issues/4) [#25](https://github.com/andrewendlinger/xmris/issues/25) | Horizon |
 
-The decisions are not a flat list. The spine below is v0.8's execution order — it is why the
-vocabulary question goes first and the attrs strategy matters most:
+The decisions are not a flat list. The spine below is the board's dependency order — the decided
+pair feeds the data model first, and the license decision quietly gates the plug-in promise:
 
 ```{mermaid}
 %%{init: {'flowchart': {'htmlLabels': false}}}%%
 flowchart TD
-    n65["#65 what is a vocabulary term?"] --> n88["#88 diagnostic axes"]
-    n65 --> n124["#124 what is core xmris?"]
-    n124 --> n125["#125 vendor IO"]
-    n124 <--> n62["#62 accessor registration"]
-    n62 --> n62d["#34 · parts of #71 #102"]
-    n64["#64 attrs strategy"] --> n64d["#21 #22 #23 · then #28"]
-    n66["#66 pytest vs notebook"] --> n102["#102 test auto-discovery"]
-    n102 --> n107["#107 test restructure"]
+    d02["02 lineage record ✓"] --> d03["03 data model"]
+    d02b["02b constants ✓"] --> d03
+    d06["06 preprocessing middle"] --> d03
+    d06 --> d15["15 MRI non-goal"]
+    d01["01 license"] --> d12["12 plug-in promise"]
+    d04["04 core & extras"] <--> d12
+    d04 --> d09["09 vendor IO"]
+    d08["08 accessor parity"] --> d11["11 test architecture"]
 ```
 
 :::{div}
@@ -418,7 +534,11 @@ release, and they move faster. A milestone here earns its band from the state of
 the two disagree, the tracker is right and this page is stale — say so by
 [opening an issue](https://github.com/andrewendlinger/xmris/issues/new).
 
+The decision board keeps its paper on this site: each decided card links an exploration notebook,
+frozen the day the decision lands, and an aimed-solution notebook that becomes the spec the
+implementation is checked against. Both live in the sidebar beneath this page.
+
 :::{seealso}
-The [dev diary](diary/about.md) is this page's backward-looking twin: one entry per decision already
-taken, rewritten in place as that decision evolves.
+The [dev diary](diary/about.md) is this page's backward-looking twin: one entry per decision
+already taken, rewritten in place as that decision evolves.
 :::

@@ -24,22 +24,27 @@
    THE ROADMAP PAGE — docs/roadmap.md
    ═══════════════════════════════════════════════════════════════════════════
    Stages the page as a journey from solid ground into fog: a hero, a segmented
-   map, then four bands whose shared vertical rail loses its confidence as it
+   map, then five bands whose shared vertical rail loses its confidence as it
    descends — solid navy for what shipped, flowing rust for what is in flight,
-   dashed slate for what is next, and a dotted grey that masks itself away.
+   dashed slate for the decision board, a paler dash for the outward work, and
+   a dotted grey that masks itself away.
 
    Markup contract — every block is a `{div}` carrying a `:class:`:
 
      .roadmap-hero      the opening panel (kicker / statement / tenets inside)
-     .roadmap-map       four segments; each links to a phase block below
-     .roadmap-band      one confidence horizon, + --shipped|motion|next|horizon
+     .roadmap-map       five segments; each links to a phase block below
+     .roadmap-band      one confidence horizon,
+                        + --shipped|motion|decisions|outward|horizon
        .roadmap-phase     what the band MEANS, + the matching --modifier
-       .roadmap-item      one milestone; add --minor for a one-line entry
+       .roadmap-item      one milestone; add --minor for a one-line entry,
+                          --decided for a decision whose argument is settled
      .roadmap-end       the closing dissolve
 
    Two authoring rules the CSS depends on:
      · the FIRST paragraph of an item or phase block is its title/lead line
-     · issue chips need no markup — a plain link to /issues/ becomes a pill
+     · issue chips need no markup — a plain link to /issues/ becomes a pill;
+       a decision's status chip is a <span class="roadmap-status --decided|--arguing">
+       inside the title line
 
    Theme note — measured against the built site, not assumed. book-theme's
    toggle swaps a `light`/`dark` CLASS on <html>; `data-theme` is never set,
@@ -280,6 +285,9 @@
   --seg: var(--roadmap-slate);
 }
 .roadmap-map > p > *:nth-child(4) {
+  --seg: color-mix(in srgb, var(--roadmap-slate) 55%, var(--roadmap-grey));
+}
+.roadmap-map > p > *:nth-child(5) {
   --seg: var(--roadmap-grey);
 }
 
@@ -298,8 +306,12 @@
 .roadmap-band--motion {
   --roadmap-accent: var(--roadmap-rust);
 }
-.roadmap-band--next {
+.roadmap-band--decisions {
   --roadmap-accent: var(--roadmap-slate);
+  --roadmap-rail: 2px;
+}
+.roadmap-band--outward {
+  --roadmap-accent: color-mix(in srgb, var(--roadmap-slate) 55%, var(--roadmap-grey));
   --roadmap-rail: 2px;
 }
 .roadmap-band--horizon {
@@ -343,11 +355,19 @@
   }
 }
 
-.roadmap-band--next::before {
+.roadmap-band--decisions::before {
   background: repeating-linear-gradient(
     to bottom,
     var(--roadmap-accent) 0 7px,
     transparent 7px 15px
+  );
+}
+
+.roadmap-band--outward::before {
+  background: repeating-linear-gradient(
+    to bottom,
+    var(--roadmap-accent) 0 5px,
+    transparent 5px 14px
   );
 }
 
@@ -391,11 +411,14 @@
 .roadmap-band--motion::after {
   content: "02";
 }
-.roadmap-band--next::after {
+.roadmap-band--decisions::after {
   content: "03";
 }
-.roadmap-band--horizon::after {
+.roadmap-band--outward::after {
   content: "04";
+}
+.roadmap-band--horizon::after {
+  content: "05";
 }
 
 /* Sticky band header: scrolling deep into a band never loses which horizon
@@ -489,8 +512,11 @@
 .roadmap-phase--motion {
   --roadmap-accent: var(--roadmap-rust);
 }
-.roadmap-phase--next {
+.roadmap-phase--decisions {
   --roadmap-accent: var(--roadmap-slate);
+}
+.roadmap-phase--outward {
+  --roadmap-accent: color-mix(in srgb, var(--roadmap-slate) 55%, var(--roadmap-grey));
 }
 .roadmap-phase--horizon {
   --roadmap-accent: var(--roadmap-grey);
@@ -562,10 +588,18 @@
   box-shadow: 0 0 0 3px var(--roadmap-bg);
 }
 
-.roadmap-band--next .roadmap-item::before,
+.roadmap-band--decisions .roadmap-item::before,
+.roadmap-band--outward .roadmap-item::before,
 .roadmap-band--horizon .roadmap-item::before {
   background: var(--roadmap-bg);
   border: 2px solid var(--roadmap-accent);
+}
+
+/* A settled decision gets its node back: solid, like the shipped band's —
+   decided is decided, even while the implementation is still ahead. */
+.roadmap-band--decisions .roadmap-item--decided::before {
+  background: var(--roadmap-accent);
+  border: 0;
 }
 
 .roadmap-band--motion .roadmap-item:not(.roadmap-item--minor)::before {
@@ -658,6 +692,35 @@
 
 .roadmap-item a[href*="/issues/"]:hover {
   background: color-mix(in srgb, var(--roadmap-accent) 24%, transparent) !important;
+}
+
+/* A decision's status chip, sitting inside the card's title line. Colours are
+   borrowed with intent: navy is the shipped band's certainty, rust is the
+   in-motion band's activity. */
+.roadmap-status {
+  display: inline-block;
+  margin-inline-start: 0.45rem;
+  padding: 0.14em 0.6em;
+  border-radius: 999px;
+  vertical-align: 0.12em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.6em;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.roadmap-status--decided {
+  border: 1px solid color-mix(in srgb, var(--roadmap-navy) 40%, transparent);
+  background: color-mix(in srgb, var(--roadmap-navy) 12%, transparent);
+  color: var(--roadmap-navy);
+}
+
+.roadmap-status--arguing {
+  border: 1px solid color-mix(in srgb, var(--roadmap-rust) 40%, transparent);
+  background: color-mix(in srgb, var(--roadmap-rust) 12%, transparent);
+  color: var(--roadmap-rust);
 }
 
 /* An item carrying a dropdown gets a hairline above it, so the disclosure
