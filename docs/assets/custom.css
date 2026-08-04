@@ -41,10 +41,14 @@
      .roadmap-end       the closing dissolve
 
    Two authoring rules the CSS depends on:
-     · the FIRST paragraph of an item or phase block is its title/lead line
+     · the FIRST paragraph of an item or phase block is its title/lead line;
+       a phase block adds exactly ONE more paragraph, of ONE sentence, which
+       shows only in the hover card (see the phase-block section below)
      · issue chips need no markup — a plain link to /issues/ becomes a pill;
        a decision's status chip is a <span class="roadmap-status --decided|--arguing">
-       inside the title line
+       inside the title line; a decided card's lifecycle line is a
+       <span class="roadmap-progress"> as its second-to-last paragraph
+       (done stages carry ✓ and link their artifact; <strong> marks what's next)
 
    Theme note — measured against the built site, not assumed. book-theme's
    toggle swaps a `light`/`dark` CLASS on <html>; `data-theme` is never set,
@@ -389,36 +393,44 @@
    motion that survived is the motion that means something: the in-motion
    band's dashes flow, because that band is the one in flight.
 
-   The ghosted band ordinal. Decoration, but it gives each band a landmark you
-   can scroll to without reading. */
+   The ghosted release label. It repeats the band's `.roadmap-ver` chip at
+   scale, so scrolling gives you the release you are in without reading — and
+   it is a release, not an ordinal, because bare `01`–`05` collided with the
+   hand-typed decision IDs (`03 ·`, `04 ·`) inside the decisions band. Mono, at
+   roughly half the old size, so a five-glyph string occupies about the width
+   two numerals did. A new band renders NO ghost until it gets a rule below. */
 .roadmap-band::after {
   position: absolute;
   z-index: 0;
-  top: -1.1rem;
+  top: -0.35rem;
   inset-inline-end: 0.25rem;
-  font-size: clamp(4rem, 11vw, 7.5rem);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: clamp(2.4rem, 6vw, 4.25rem);
   font-weight: 800;
   line-height: 1;
-  letter-spacing: -0.05em;
+  letter-spacing: -0.02em;
   color: var(--roadmap-accent);
-  opacity: 0.07;
+  opacity: 0.09;
   pointer-events: none;
 }
 
+/* Shipped is `main`, not `v0.6`: the band runs deliberately ahead of PyPI, so a
+   released version number there would be a lie. Outward spans v0.8 – v0.9 — its
+   chip says so precisely; the ghost takes v0.9 to keep the ladder monotonic. */
 .roadmap-band--shipped::after {
-  content: "01";
+  content: "main";
 }
 .roadmap-band--motion::after {
-  content: "02";
+  content: "v0.7";
 }
 .roadmap-band--decisions::after {
-  content: "03";
+  content: "v0.8";
 }
 .roadmap-band--outward::after {
-  content: "04";
+  content: "v0.9";
 }
 .roadmap-band--horizon::after {
-  content: "05";
+  content: "v1.0";
 }
 
 /* Sticky band header: scrolling deep into a band never loses which horizon
@@ -476,11 +488,13 @@
    re-renders the block WITHOUT its `.roadmap-band` wrapper:
 
      in the page   only the first paragraph — a one-line definition
-     in the popup  every paragraph — what the band means and what to do about it
+     in the popup  both paragraphs — the definition, then why the band exists
 
    So the rule below is deliberately ancestor-scoped. Un-scoping it would blank
-   the popup. Authoring contract: FIRST paragraph is the one-liner, the rest is
-   popup-only. */
+   the popup. Authoring contract: FIRST paragraph is the one-liner, and there is
+   exactly ONE more, of exactly ONE sentence — a hover card is read at a glance
+   or not at all, so the whole popup stays under two sentences. Anything longer
+   belongs in the band's own prose or in "How this page changes". */
 .roadmap-band .roadmap-phase > p ~ p {
   display: none;
 }
@@ -721,6 +735,25 @@
   border: 1px solid color-mix(in srgb, var(--roadmap-rust) 40%, transparent);
   background: color-mix(in srgb, var(--roadmap-rust) 12%, transparent);
   color: var(--roadmap-rust);
+}
+
+/* A decided card's lifecycle line: explored → decided → solution spec →
+   implementation. Done stages carry ✓ and link their artifact (the frozen
+   exploration notebook, later the spec), so the line accretes links as the
+   paper trail grows; the <strong> stage is what happens next, in the same
+   navy the decided chip borrows for certainty. */
+.roadmap-progress {
+  display: inline-block;
+  margin-block-start: 0.3rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.74em;
+  letter-spacing: 0.02em;
+  color: color-mix(in srgb, currentColor 55%, transparent);
+}
+
+.roadmap-progress strong {
+  font-weight: 600;
+  color: var(--roadmap-navy);
 }
 
 /* An item carrying a dropdown gets a hairline above it, so the disclosure
