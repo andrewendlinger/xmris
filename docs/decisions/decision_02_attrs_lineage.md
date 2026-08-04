@@ -345,7 +345,8 @@ The wider footprint of the change:
 - **Tests**: `TestAttrsPreservation` survives unchanged (preservation is now structural, the
   test becomes a regression guard); one new test pins the round trip and event order.
 - **`fit_amares`** appends a single `fit_amares` event to the Dataset — `amares_amplitude_scale`
-  becomes one of its params instead of a vocabulary term (dossier 05's side of this coin).
+  becomes one of its params instead of a vocabulary term (the fit-Dataset chapter of the
+  data-model schema, [#28](https://github.com/andrewendlinger/xmris/issues/28)).
 
 :::{dropdown} Fine print — where the prototype cheats
 - **Applied vs. passed.** The decorator records arguments *as bound*. `phase(pivot=None)`
@@ -443,7 +444,10 @@ glance, and the glance is a display problem (`history()`), not a storage problem
 real programmatic consumer of "latest params" appears (re-add the mirror, additively), or if
 CF/NIfTI-MRS interop later wants a timestamped free-text `history` twin.
 
-Deciding this fixes half of dossier 03's schema (attrs = physics + record) and shapes dossier
-05's fit Dataset (one `fit_amares` event). On decision, the Resolution goes into
-`roadmap_issue_02_attrs_lineage.md` — this page then retires.
+Deciding this fixes half of the data-model schema (attrs = physics + record,
+[#28](https://github.com/andrewendlinger/xmris/issues/28)) and shapes its fit-Dataset chapter
+(one `fit_amares` event). Decided 2026-08-02: the resolution is recorded on the
+[decision board](#roadmap-decisions) and in
+[#64](https://github.com/andrewendlinger/xmris/issues/64), which tracks the implementation.
+This page stays frozen as the record of *why*.
 :::

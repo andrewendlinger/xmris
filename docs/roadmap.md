@@ -106,7 +106,7 @@ build. The why is the [architecture tour](#architecture).
 :class: roadmap-band roadmap-band--motion
 
 (roadmap-in-motion)=
-## In motion <span class="roadmap-ver">v0.7</span>
+## In motion <span class="roadmap-ver"><a href="https://github.com/andrewendlinger/xmris/milestone/1">v0.7</a></span>
 
 ::::{div}
 :class: roadmap-phase roadmap-phase--motion
@@ -160,7 +160,7 @@ even be imported [#122](https://github.com/andrewendlinger/xmris/issues/122)
 :class: roadmap-band roadmap-band--decisions
 
 (roadmap-decisions)=
-## The decisions <span class="roadmap-ver">v0.8</span>
+## The decisions <span class="roadmap-ver"><a href="https://github.com/andrewendlinger/xmris/milestone/2">v0.8</a></span>
 
 ::::{div}
 :class: roadmap-phase roadmap-phase--decisions
@@ -268,18 +268,21 @@ listing [#66](https://github.com/andrewendlinger/xmris/issues/66)
 :class: roadmap-item roadmap-item--minor
 
 13 · The Python ceiling — ≤3.13 for everyone, for the sake of an optional extra
+[#133](https://github.com/andrewendlinger/xmris/issues/133)
 ::::
 
 ::::{div}
 :class: roadmap-item roadmap-item--minor
 
 14 · The typing promise — `py.typed` ships with no checker behind it
+[#67](https://github.com/andrewendlinger/xmris/issues/67)
 ::::
 
 ::::{div}
 :class: roadmap-item roadmap-item--minor
 
 15 · The MRI non-goal, said exactly — MRSI yes; reconstruction, where is the line?
+[#136](https://github.com/andrewendlinger/xmris/issues/136)
 ::::
 
 :::::
@@ -288,7 +291,7 @@ listing [#66](https://github.com/andrewendlinger/xmris/issues/66)
 :class: roadmap-band roadmap-band--outward
 
 (roadmap-outward)=
-## Then outward <span class="roadmap-ver">v0.8 – v0.9</span>
+## Then outward <span class="roadmap-ver"><a href="https://github.com/andrewendlinger/xmris/milestone/2">v0.8</a> – <a href="https://github.com/andrewendlinger/xmris/milestone/3">v0.9</a></span>
 
 ::::{div}
 :class: roadmap-phase roadmap-phase--outward

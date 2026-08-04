@@ -28,7 +28,7 @@ Pass one compared boilerplate, an import-time global, and one-coordinate-per-con
 review rejected all three. Pass two elevated **repr readability to a first-class constraint**,
 prototyped the `keep_attrs` ergonomics (scoped sugar, notebook auto-detection), and added two
 structural options — the container coordinate won. This pass folds in the convergence round:
-the **history rides the container block too** (amending dossier 02's storage home, not its
+the **history rides the container block too** (amending decision 02's storage home, not its
 format), both containers are **pinned to the bottom** of the coordinate list with the
 enforcement measured, and the **names** are fixed (`xmr_acquisition`, `xmr_history`).
 :::
@@ -98,14 +98,14 @@ print(ATTRS.reference_frequency.description)
 (constants-nb-class)=
 ## What must travel — and what already does
 
-Not every key on today's objects is a constant this dossier must carry:
+Not every key on today's objects is a constant this decision must carry:
 
-| Key on today's objects | What it is | In this dossier's class? |
+| Key on today's objects | What it is | In this decision's class? |
 |---|---|---|
 | `reference_frequency`, `carrier_ppm`, `group_delay`, `b0_field` | Non-derivable acquisition constants — gates and converters need them | **Yes** |
 | `spectral_width`, `dead_time` | Derivable: the time coordinate's spacing and first sample — `fit_amares` already infers both from it | No — duplication to retire |
 | `units` | Describes the data values (CF-style variable attr) | No — stays an attr |
-| `sim_*`, `target_snr`, `apodization_lb`, … | Lineage — becomes `xmr_history` | No — dossier 02's law |
+| `sim_*`, `target_snr`, `apodization_lb`, … | Lineage — becomes `xmr_history` | No — decision 02's law |
 
 The second row is the thesis in miniature: `spectral_width` never had a travel problem,
 because it is not an annotation *about* the data — it **is structure**, the spacing of a
@@ -304,7 +304,7 @@ that pattern, twice — a two-line block that ends the coordinate list:
 - **`xmr_acquisition`** — attrs are the physical constants, flat and typed as 02's law
   demands; its **value** is a deterministic fingerprint of them, which buys back the honesty
   the attrs side of the matrix loses (xarray compares values, never attrs).
-- **`xmr_history`** — the record rides the same block: dossier 02's JSON envelope, format
+- **`xmr_history`** — the record rides the same block: decision 02's JSON envelope, format
   untouched, but its **home** moves from a droppable object attr into a coordinate whose
   *value is the envelope itself* — so identical histories travel and diverged histories drop
   honestly, by xarray's own rules.
@@ -350,7 +350,7 @@ def mint_containers(da: xr.DataArray) -> xr.DataArray:
 
 def reads_constants(func):
     """Prototype of the gate change: constants are found in the container, then attrs,
-    and the call appends its event to the record (dossier 02's decorator, one day)."""
+    and the call appends its event to the record (decision 02's decorator, one day)."""
 
     @functools.wraps(func)
     def wrapper(da, *args, **kwargs):
@@ -506,7 +506,7 @@ The blend keeps its constants (they still hold) and honestly loses its lineage (
 history describes it) — exactly the right answer in both columns, and nothing in the library
 invented merge semantics to get it. A drifting series promotes the fingerprint to a per-scan
 array — visibly non-uniform, so a gate meeting a non-scalar container can refuse with "this
-series is not uniformly calibrated" (the exact message is dossier 03's schema work):
+series is not uniformly calibrated" (the exact message is decision 03's schema work):
 
 ```{code-cell} ipython3
 drifted = xr.concat(
@@ -554,8 +554,8 @@ grid-mapping shape, self-describing under any tool's `ncdump`, no xmris required
 xmris call re-pins the block.)
 
 :::{dropdown} Fine print — costs and open ends, honestly
-- **The 02 amendment, stated precisely.** Dossier 02 closed the record's *format* (one JSON
-  envelope, versioned, timestamp-free) and named the key `xmr_history`; this dossier moves
+- **The 02 amendment, stated precisely.** Decision 02 closed the record's *format* (one JSON
+  envelope, versioned, timestamp-free) and named the key `xmr_history`; this decision moves
   its *home* from `da.attrs["xmr_history"]` to the coordinate's value — same name, same
   envelope, one line of 02's Resolution to amend at the harvest. Everything else 02 decided
   (write-only for library math, `da.xmr.history()` as the reading surface, no invented merge
@@ -566,7 +566,7 @@ xmris call re-pins the block.)
   makes this safe: a promoted container is *unreadable* until sliced back to one scan —
   `drifted.isel(repetition=0)` — which restores that scan's fingerprint.
 - **Contributor footprint.** Two writers (`simulate_fid`, the Bruker loader) mint the block
-  instead of `assign_attrs`; dossier 02's central decorator gains the re-pin (drop + assign
+  instead of `assign_attrs`; decision 02's central decorator gains the re-pin (drop + assign
   last) and the container read; one reader helper behind `requires_attrs` (and the direct
   `attrs.get` reads in `to_ppm`, `to_hz`, `fit_amares`, `remove_digital_filter`) looks
   container-first-then-attrs, with the attrs fallback kept indefinitely — data written under
@@ -700,7 +700,7 @@ instead of accumulating folklore.
 Two scalar coordinates, pinned as the last entries of every xmris return.
 **`xmr_acquisition`** holds the physical constants as its attrs — flat, typed, one click open
 in the repr — with a deterministic calibration fingerprint as its value, so disagreement is
-dropped honestly instead of first-wins lied about. **`xmr_history`** carries dossier 02's
+dropped honestly instead of first-wins lied about. **`xmr_history`** carries decision 02's
 JSON envelope, format untouched, as its value — the record now travels every plain operation
 the constants do, and diverged histories vanish honestly by xarray's own rules (an amendment
 to 02's storage home, folded at the harvest). Writers mint the block; gates read
@@ -713,14 +713,17 @@ the vocabulary's curation over all of it and audits what falls outside.
 Option P keeps the strictly strongest travel but fails the repr at exactly the scale the
 roadmap targets; option X is beautiful for axis constants and structurally partial;
 `keep_attrs` in every wrapper lies under combination and splits notebook from script. Feeds
-dossier 03 the schema sentence — *an xmris object carries its constants and record in the
+the data-model schema ([#28](https://github.com/andrewendlinger/xmris/issues/28)) the
+sentence — *an xmris object carries its constants and record in the
 pinned `xmr_*` block* — and re-scopes
 [#21](https://github.com/andrewendlinger/xmris/issues/21) (the outside-xmris half becomes
 structural) and [#22](https://github.com/andrewendlinger/xmris/issues/22) (validation targets
 one dict, in one reader). Revisit if xarray flips its default attrs propagation or fixes
 `xr.where`'s coordinate-attrs strip, or if per-scan constants become a first-class workflow
-(a promoted container then wants reading semantics, not a refusal). The Resolution lives in
-`roadmap_issue_02b_physics_attrs.md`; this page retires at the harvest.
+(a promoted container then wants reading semantics, not a refusal). Decided 2026-08-03: the
+resolution is recorded on the [decision board](#roadmap-decisions) and in
+[#21](https://github.com/andrewendlinger/xmris/issues/21), which tracks the implementation.
+This page stays frozen as the record of *why*.
 :::
 
 ```{code-cell} ipython3

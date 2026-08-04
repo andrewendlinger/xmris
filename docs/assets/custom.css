@@ -477,6 +477,17 @@
   text-transform: none;
 }
 
+/* The chip links its GitHub milestone; theme link-blue would fight the band's
+   accent, so the anchor stays chip-colored and only the hover underline says
+   "clickable". */
+.roadmap-ver a {
+  color: inherit;
+  text-decoration: none;
+}
+.roadmap-ver a:hover {
+  text-decoration: underline;
+}
+
 /* ── Phase blocks: one definition, two audiences ────────────────────────── */
 /*
    Each band opens with a `.roadmap-phase` div that the map segment links to. A
