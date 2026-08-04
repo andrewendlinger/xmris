@@ -1,7 +1,7 @@
 (roadmap)=
 # Where xmris is going
 
-<span style="color: gray; font-size: 0.9em;">Last edited: 2026-08-03</span>
+<span style="color: gray; font-size: 0.9em;">Last edited: 2026-08-04</span>
 
 ::::{div}
 :class: roadmap-hero
@@ -15,8 +15,8 @@ The direction
 :::{div}
 :class: roadmap-statement
 
-The same lines that process one spectrum will process a whole spectroscopic-imaging dataset —
-and the result can answer for every step that produced it.
+Metadata neatly tucked away, the same lines that process a single FID process an N-D volume of
+them.
 :::
 
 :::{div}
@@ -178,7 +178,8 @@ decided in writing before its code is written.
 02 · The lineage record <span class="roadmap-status roadmap-status--decided">decided 2026-08-02</span>
 
 Processing history becomes one `xmr_history` record — what each operation actually applied, in
-order. Physics attrs stay flat and typed.
+order, so the result can answer for every step that produced it. Physics attrs stay flat and
+typed.
 
 <span class="roadmap-progress">[explored](#attrs-nb) ✓ → decided ✓ → <strong>next: solution spec</strong> → implementation</span>
 [#64](https://github.com/andrewendlinger/xmris/issues/64)

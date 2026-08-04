@@ -21,8 +21,8 @@ decision landed on 2026-08-02: **option B, the physics/record split**. It is the
 **prototype defined inside this notebook**; nothing here is implemented in the library yet.
 :::
 
-The roadmap makes one hero promise: *the object they hand back can answer for every step that
-produced it*. This notebook holds every candidate attrs strategy against that sentence — first
+The roadmap promises that the object handed back *can answer for every step that produced it*.
+This notebook holds every candidate attrs strategy against that sentence — first
 the problem, demonstrated live against today's `main`; then each option as code, the user
 experience and the contributor's side of the same coin.
 
