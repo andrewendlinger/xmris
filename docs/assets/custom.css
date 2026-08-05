@@ -10,14 +10,804 @@
   background-color: rgba(139, 92, 246, 0.06) !important;
 }
 
-@media (prefers-color-scheme: dark) {
-  .skill-quote {
-    border-inline-start-color: #a78bfa !important;
-    background-color: rgba(167, 139, 250, 0.1) !important;
+/* Dark mode keys off the `dark` CLASS on <html> — see the theme note in the
+   roadmap block below for how that was measured. Do NOT reintroduce a
+   `prefers-color-scheme` variant here: the site's theme toggle overrides the
+   OS preference and persists, so an OS-driven rule renders a dark quote on a
+   light page (this class previously had exactly that bug). */
+:root.dark .skill-quote {
+  border-inline-start-color: #a78bfa !important;
+  background-color: rgba(167, 139, 250, 0.1) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   THE ROADMAP PAGE — docs/roadmap.md
+   ═══════════════════════════════════════════════════════════════════════════
+   Stages the page as a journey from solid ground into fog: a hero, a segmented
+   map, then five bands whose shared vertical rail loses its confidence as it
+   descends — solid navy for what shipped, flowing rust for what is in flight,
+   dashed slate for the decision board, a paler dash for the outward work, and
+   a dotted grey that masks itself away.
+
+   Markup contract — every block is a `{div}` carrying a `:class:`:
+
+     .roadmap-hero      the opening panel (kicker / statement / tenets inside)
+     .roadmap-map       five segments; each links to a phase block below
+     .roadmap-band      one confidence horizon,
+                        + --shipped|motion|decisions|outward|horizon
+       .roadmap-phase     what the band MEANS, + the matching --modifier
+       .roadmap-item      one milestone; add --minor for a one-line entry,
+                          --decided for a decision whose argument is settled
+     .roadmap-end       the closing dissolve
+
+   Two authoring rules the CSS depends on:
+     · the FIRST paragraph of an item or phase block is its title/lead line;
+       a phase block adds exactly ONE more paragraph, of ONE sentence, which
+       shows only in the hover card (see the phase-block section below)
+     · issue chips need no markup — a plain link to /issues/ becomes a pill;
+       a decision's status chip is a <span class="roadmap-status --decided|--arguing">
+       inside the title line; a decided card's lifecycle line is a
+       <span class="roadmap-progress"> as its second-to-last paragraph
+       (done stages carry ✓ and link their artifact; <strong> marks what's next)
+
+   Theme note — measured against the built site, not assumed. book-theme's
+   toggle swaps a `light`/`dark` CLASS on <html>; `data-theme` is never set,
+   so a `:root[data-theme="dark"]` rule is dead. That class is *seeded* from
+   the OS preference on a first visit, but the toggle overrides it and the
+   choice persists in localStorage — so as soon as a reader has toggled,
+   `prefers-color-scheme` no longer describes the page they are looking at.
+   A rule keyed on the OS then paints dark styling onto a light page, or the
+   reverse. Hence: these tokens key ONLY off `.dark`, with plain `:root` as
+   the light default — two rules, no media query, no specificity games.
+
+   book-theme is fetched per build and is NOT pinned by uv.lock, so nothing
+   below targets one of its internal class names.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@property --roadmap-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+:root {
+  --roadmap-navy: #002e7a;
+  --roadmap-rust: #b05418;
+  --roadmap-slate: #5b7ba6;
+  --roadmap-grey: #94a0b0;
+
+  /* Band-shaped defaults, declared at the root on purpose. The theme's
+     hover-card previews re-render a `.roadmap-item` WITHOUT its `.roadmap-band`
+     wrapper, and a var() that resolves to nothing makes the whole declaration
+     invalid at computed-value time — which silently took out the card's
+     background and the issue chips' pills. These keep an out-of-context item
+     coherent. (The node itself is scoped to `.roadmap-band` instead; see below.) */
+  --roadmap-accent: #002e7a;
+  --roadmap-rail: 3px;
+  --roadmap-gutter: 2rem;
+
+  --roadmap-bg: #ffffff;
+  --roadmap-card: #ffffff;
+  --roadmap-card-2: #fafafa;
+  --roadmap-line: rgba(15, 23, 42, 0.11);
+  --roadmap-muted: #64748b;
+  --roadmap-shadow: rgba(15, 23, 42, 0.09);
+}
+
+:root.dark {
+  --roadmap-navy: #7aa2e3;
+  --roadmap-rust: #e08a52;
+  --roadmap-slate: #7f93ad;
+  --roadmap-grey: #6f7a87;
+  --roadmap-accent: #7aa2e3;
+  --roadmap-bg: #1c1917;
+  --roadmap-card: #262322;
+  --roadmap-card-2: #211e1d;
+  --roadmap-line: rgba(255, 255, 255, 0.13);
+  --roadmap-muted: #a8a29e;
+  --roadmap-shadow: rgba(0, 0, 0, 0.45);
+}
+
+/* ── The hero ───────────────────────────────────────────────────────────── */
+
+.roadmap-hero {
+  position: relative;
+  overflow: hidden;
+  margin-block: 1.75rem 2rem;
+  padding: clamp(1.4rem, 3.5vw, 2.4rem);
+  border: 1px solid var(--roadmap-line);
+  border-radius: 18px;
+  background:
+    radial-gradient(
+      120% 120% at 0% 0%,
+      color-mix(in srgb, var(--roadmap-rust) 13%, transparent),
+      transparent 55%
+    ),
+    radial-gradient(
+      120% 120% at 100% 100%,
+      color-mix(in srgb, var(--roadmap-navy) 15%, transparent),
+      transparent 55%
+    ),
+    var(--roadmap-card);
+}
+
+/* A very slow conic sheen. Purely atmospheric — the panel is complete without
+   it, and it never runs for a reader who asked for less motion. */
+.roadmap-hero::before {
+  content: "";
+  position: absolute;
+  inset: -60%;
+  z-index: 0;
+  opacity: 0.55;
+  background: conic-gradient(
+    from var(--roadmap-angle),
+    transparent 0deg,
+    color-mix(in srgb, var(--roadmap-rust) 16%, transparent) 60deg,
+    transparent 140deg,
+    color-mix(in srgb, var(--roadmap-navy) 18%, transparent) 240deg,
+    transparent 330deg
+  );
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .roadmap-hero::before {
+    animation: roadmap-sheen 24s linear infinite;
   }
 }
 
-:root[data-theme="dark"] .skill-quote {
-  border-inline-start-color: #a78bfa !important;
-  background-color: rgba(167, 139, 250, 0.1) !important;
+@keyframes roadmap-sheen {
+  to {
+    --roadmap-angle: 360deg;
+  }
+}
+
+.roadmap-hero > * {
+  position: relative;
+  z-index: 1;
+}
+
+.roadmap-kicker {
+  margin-block-end: 0.75rem !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--roadmap-muted);
+}
+
+.roadmap-kicker::before {
+  content: "";
+  display: inline-block;
+  width: 1.6rem;
+  height: 2px;
+  margin-inline-end: 0.6rem;
+  vertical-align: 0.28em;
+  background: linear-gradient(to right, var(--roadmap-rust), var(--roadmap-navy));
+}
+
+.roadmap-statement > p {
+  margin: 0 !important;
+  font-size: clamp(1.25rem, 2.9vw, 1.85rem);
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+}
+
+.roadmap-tenets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-block-start: 1.5rem;
+}
+
+.roadmap-tenets > p {
+  display: contents;
+}
+
+.roadmap-tenets code {
+  padding: 0.3em 0.75em !important;
+  border: 1px solid var(--roadmap-line);
+  border-radius: 999px;
+  background: var(--roadmap-card-2) !important;
+  font-size: 0.8rem !important;
+  font-weight: 500;
+  color: var(--roadmap-muted) !important;
+}
+
+/* ── The map: five segments, one per band, doubling as jump navigation ──── */
+
+.roadmap-map {
+  display: flex;
+  gap: 0.5rem;
+  margin-block: 0 2.75rem;
+}
+
+.roadmap-map > p {
+  display: contents;
+}
+
+/* The theme wraps cross-reference links in a hover-card <span>, so the anchor
+   is not necessarily the flex item. Style whatever the direct child is, and
+   let a nested anchor fill it — this works wrapped or bare. */
+.roadmap-map > p > * {
+  flex: 1 1 0;
+  border-top: 3px solid var(--seg, var(--roadmap-grey));
+  border-radius: 0 0 8px 8px;
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--seg, var(--roadmap-grey)) 14%, transparent),
+    transparent 85%
+  );
+  color: var(--seg, var(--roadmap-grey));
+  transition: transform 0.16s ease;
+}
+
+.roadmap-map > p > *:hover {
+  transform: translateY(-2px);
+}
+
+.roadmap-map a {
+  display: block;
+  padding: 0.7rem 0.35rem 0.65rem !important;
+  background: none !important;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-align: center;
+  text-transform: uppercase;
+  text-decoration: none !important;
+  color: inherit !important;
+}
+
+/* Hovering a segment opens the phase description, so the segment has to look
+   like it holds something. The dot is the affordance. */
+.roadmap-map a::after {
+  content: "";
+  display: block;
+  width: 4px;
+  height: 4px;
+  margin: 0.4rem auto 0;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.35;
+  transition: opacity 0.16s ease;
+}
+
+.roadmap-map > p > *:hover a::after {
+  opacity: 1;
+}
+
+.roadmap-map > p > *:nth-child(1) {
+  --seg: var(--roadmap-navy);
+}
+.roadmap-map > p > *:nth-child(2) {
+  --seg: var(--roadmap-rust);
+}
+.roadmap-map > p > *:nth-child(3) {
+  --seg: var(--roadmap-slate);
+}
+.roadmap-map > p > *:nth-child(4) {
+  --seg: color-mix(in srgb, var(--roadmap-slate) 55%, var(--roadmap-grey));
+}
+.roadmap-map > p > *:nth-child(5) {
+  --seg: var(--roadmap-grey);
+}
+
+/* ── Bands ──────────────────────────────────────────────────────────────── */
+
+.roadmap-band {
+  --roadmap-accent: var(--roadmap-navy);
+  --roadmap-rail: 3px;
+  --roadmap-gutter: 2rem;
+
+  position: relative;
+  margin-block: 0 3.25rem;
+  padding-inline-start: var(--roadmap-gutter);
+}
+
+.roadmap-band--motion {
+  --roadmap-accent: var(--roadmap-rust);
+}
+.roadmap-band--decisions {
+  --roadmap-accent: var(--roadmap-slate);
+  --roadmap-rail: 2px;
+}
+.roadmap-band--outward {
+  --roadmap-accent: color-mix(in srgb, var(--roadmap-slate) 55%, var(--roadmap-grey));
+  --roadmap-rail: 2px;
+}
+.roadmap-band--horizon {
+  --roadmap-accent: var(--roadmap-grey);
+  --roadmap-rail: 2px;
+}
+
+/* The rail. Drawn as a pseudo-element so the horizon band can dissolve it
+   without touching its own prose. */
+.roadmap-band::before {
+  content: "";
+  position: absolute;
+  inset-block: 0.3rem 0;
+  inset-inline-start: 0;
+  z-index: 0;
+  width: var(--roadmap-rail);
+  border-radius: var(--roadmap-rail);
+  background: var(--roadmap-accent);
+  transform-origin: top;
+}
+
+/* The one band that is in flight is the one whose rail actually moves. */
+.roadmap-band--motion::before {
+  background: repeating-linear-gradient(
+    to bottom,
+    var(--roadmap-accent) 0 10px,
+    color-mix(in srgb, var(--roadmap-accent) 25%, transparent) 10px 20px
+  );
+  background-size: 100% 20px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .roadmap-band--motion::before {
+    animation: roadmap-flow 1.9s linear infinite;
+  }
+}
+
+@keyframes roadmap-flow {
+  to {
+    background-position-y: 20px;
+  }
+}
+
+.roadmap-band--decisions::before {
+  background: repeating-linear-gradient(
+    to bottom,
+    var(--roadmap-accent) 0 7px,
+    transparent 7px 15px
+  );
+}
+
+.roadmap-band--outward::before {
+  background: repeating-linear-gradient(
+    to bottom,
+    var(--roadmap-accent) 0 5px,
+    transparent 5px 14px
+  );
+}
+
+.roadmap-band--horizon::before {
+  background: repeating-linear-gradient(
+    to bottom,
+    var(--roadmap-accent) 0 2px,
+    transparent 2px 10px
+  );
+  -webkit-mask-image: linear-gradient(to bottom, #000 35%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 35%, transparent 100%);
+}
+
+/* Deliberately NOT scroll-drawn. A `animation-timeline: view()` rail that
+   draws itself as the band enters was tried and removed: the spine is the one
+   element carrying the whole "confidence decays downward" argument, and any
+   state where it renders partially — a tall viewport, a deep link landing
+   mid-band, a print — breaks that argument instead of decorating it. The
+   motion that survived is the motion that means something: the in-motion
+   band's dashes flow, because that band is the one in flight.
+
+   The ghosted release label. It repeats the band's `.roadmap-ver` chip at
+   scale, so scrolling gives you the release you are in without reading — and
+   it is a release, not an ordinal, because bare `01`–`05` collided with the
+   hand-typed decision IDs (`03 ·`, `04 ·`) inside the decisions band. Mono, at
+   roughly half the old size, so a five-glyph string occupies about the width
+   two numerals did. A new band renders NO ghost until it gets a rule below. */
+.roadmap-band::after {
+  position: absolute;
+  z-index: 0;
+  top: -0.35rem;
+  inset-inline-end: 0.25rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: clamp(2.4rem, 6vw, 4.25rem);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--roadmap-accent);
+  opacity: 0.09;
+  pointer-events: none;
+}
+
+/* Shipped is `main`, not `v0.6`: the band runs deliberately ahead of PyPI, so a
+   released version number there would be a lie. Outward spans v0.8 – v0.9 — its
+   chip says so precisely; the ghost takes v0.9 to keep the ladder monotonic. */
+.roadmap-band--shipped::after {
+  content: "main";
+}
+.roadmap-band--motion::after {
+  content: "v0.7";
+}
+.roadmap-band--decisions::after {
+  content: "v0.8";
+}
+.roadmap-band--outward::after {
+  content: "v0.9";
+}
+.roadmap-band--horizon::after {
+  content: "v1.0";
+}
+
+/* Sticky band header: scrolling deep into a band never loses which horizon
+   you are in. */
+.roadmap-band > h2 {
+  position: sticky;
+  z-index: 3;
+  top: 3.75rem;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  margin-block: 0 1.5rem !important;
+  padding: 0.35rem 0.85rem 0.35rem 0.7rem !important;
+  border: 1px solid color-mix(in srgb, var(--roadmap-accent) 25%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--roadmap-card) 88%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  font-size: 0.85rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--roadmap-accent) !important;
+}
+
+.roadmap-band > h2::before {
+  content: "";
+  align-self: center;
+  width: 9px;
+  height: 9px;
+  margin-inline-end: 0.1rem;
+  border-radius: 50%;
+  background: var(--roadmap-accent);
+}
+
+.roadmap-ver {
+  padding: 0.1em 0.5em;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--roadmap-accent) 14%, transparent);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.72em;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* The chip links its GitHub milestone; theme link-blue would fight the band's
+   accent, so the anchor stays chip-colored and only the hover underline says
+   "clickable". */
+.roadmap-ver a {
+  color: inherit;
+  text-decoration: none;
+}
+.roadmap-ver a:hover {
+  text-decoration: underline;
+}
+
+/* ── Phase blocks: one definition, two audiences ────────────────────────── */
+/*
+   Each band opens with a `.roadmap-phase` div that the map segment links to. A
+   cross-reference to a LABELLED DIV renders only that div in the theme's
+   hover card (verified against the build), which makes this block the one
+   place a phase is described — no duplicated blurb to drift.
+
+   It shows differently in each place, using the fact that the hover card
+   re-renders the block WITHOUT its `.roadmap-band` wrapper:
+
+     in the page   only the first paragraph — a one-line definition
+     in the popup  both paragraphs — the definition, then why the band exists
+
+   So the rule below is deliberately ancestor-scoped. Un-scoping it would blank
+   the popup. Authoring contract: FIRST paragraph is the one-liner, and there is
+   exactly ONE more, of exactly ONE sentence — a hover card is read at a glance
+   or not at all, so the whole popup stays under two sentences. Anything longer
+   belongs in the band's own prose or in "How this page changes". */
+.roadmap-band .roadmap-phase > p ~ p {
+  display: none;
+}
+
+.roadmap-phase {
+  margin-block: -0.35rem 1.4rem;
+  scroll-margin-top: 7rem; /* clear the sticky band header when jumped to */
+}
+
+.roadmap-phase > p {
+  margin-block: 0 0.7rem;
+}
+
+.roadmap-phase > p:last-child {
+  margin-block-end: 0;
+}
+
+.roadmap-phase > p:first-child {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--roadmap-accent);
+}
+
+/* Phase accents are set OUTSIDE the band scope on purpose, so the popup keeps
+   its band's colour even though it renders with no band around it. */
+.roadmap-phase--shipped {
+  --roadmap-accent: var(--roadmap-navy);
+}
+.roadmap-phase--motion {
+  --roadmap-accent: var(--roadmap-rust);
+}
+.roadmap-phase--decisions {
+  --roadmap-accent: var(--roadmap-slate);
+}
+.roadmap-phase--outward {
+  --roadmap-accent: color-mix(in srgb, var(--roadmap-slate) 55%, var(--roadmap-grey));
+}
+.roadmap-phase--horizon {
+  --roadmap-accent: var(--roadmap-grey);
+}
+
+/* Popup-only presentation: the block is on its own in a small card, so it gets
+   a little more room and a rule under the lead line. */
+.hover-card-content .roadmap-phase > p:first-child {
+  padding-block-end: 0.55rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--roadmap-accent) 30%, transparent);
+  font-size: 1.05rem;
+}
+
+.hover-card-content .roadmap-phase > p {
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+/* ── Milestones ─────────────────────────────────────────────────────────── */
+
+.roadmap-item {
+  --roadmap-node: 13px;
+  --roadmap-edge: 1px; /* own border width — see the node offset below */
+  position: relative;
+  z-index: 1;
+  margin-block: 1rem;
+  padding: 0.95rem 1.15rem;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  /* Gradient edge: the accent bleeds out of the top-left corner and fades. */
+  background:
+    linear-gradient(var(--roadmap-card), var(--roadmap-card)) padding-box,
+    linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--roadmap-accent) 55%, transparent),
+        var(--roadmap-line) 45%
+      )
+      border-box;
+  box-shadow: 0 1px 2px var(--roadmap-shadow);
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.roadmap-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px var(--roadmap-shadow);
+}
+
+/* The node is an artifact OF the rail, so it only exists where the rail does.
+   Scoping it to `.roadmap-band` is what keeps it out of the theme's hover-card
+   previews, which render a bare `.roadmap-item`: there the offset below cannot
+   resolve, `inset-inline-start` falls back to `auto`, and the circle lands on
+   its static position — directly over the first letter of the title. */
+.roadmap-band .roadmap-item::before {
+  content: "";
+  box-sizing: border-box;
+  position: absolute;
+  top: 1.15rem;
+  /* An absolutely positioned child is offset from the PADDING BOX, so only the
+     item's own border counts here — its padding must not be subtracted. */
+  inset-inline-start: calc(
+    var(--roadmap-rail) / 2 - var(--roadmap-gutter) - var(--roadmap-node) / 2 - var(--roadmap-edge)
+  );
+  width: var(--roadmap-node);
+  height: var(--roadmap-node);
+  border-radius: 50%;
+  background: var(--roadmap-accent);
+  box-shadow: 0 0 0 3px var(--roadmap-bg);
+}
+
+.roadmap-band--decisions .roadmap-item::before,
+.roadmap-band--outward .roadmap-item::before,
+.roadmap-band--horizon .roadmap-item::before {
+  background: var(--roadmap-bg);
+  border: 2px solid var(--roadmap-accent);
+}
+
+/* A settled decision gets its node back: solid, like the shipped band's —
+   decided is decided, even while the implementation is still ahead. */
+.roadmap-band--decisions .roadmap-item--decided::before {
+  background: var(--roadmap-accent);
+  border: 0;
+}
+
+.roadmap-band--motion .roadmap-item:not(.roadmap-item--minor)::before {
+  box-shadow:
+    0 0 0 3px var(--roadmap-bg),
+    0 0 0 7px color-mix(in srgb, var(--roadmap-accent) 24%, transparent);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .roadmap-band--motion .roadmap-item:not(.roadmap-item--minor)::before {
+    animation: roadmap-pulse 3.4s ease-in-out infinite;
+  }
+}
+
+@keyframes roadmap-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 3px var(--roadmap-bg),
+      0 0 0 6px color-mix(in srgb, var(--roadmap-accent) 26%, transparent);
+  }
+  50% {
+    box-shadow:
+      0 0 0 3px var(--roadmap-bg),
+      0 0 0 12px color-mix(in srgb, var(--roadmap-accent) 0%, transparent);
+  }
+}
+
+.roadmap-item > p {
+  margin-block: 0 0.55rem;
+}
+
+.roadmap-item > p:last-child {
+  margin-block-end: 0;
+}
+
+/* The first paragraph of an item IS its title. Keep it first when editing. */
+.roadmap-item > p:first-child {
+  margin-block-end: 0.45rem;
+  font-size: 1.08rem;
+  font-weight: 650;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+}
+
+/* Minor milestones drop the card entirely — a one-line row on the same rail,
+   so the size difference is structural rather than just smaller type. */
+.roadmap-item--minor {
+  --roadmap-node: 8px;
+  --roadmap-edge: 0px;
+  margin-block: 0.5rem;
+  padding: 0.15rem 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+
+.roadmap-item--minor::before {
+  top: 0.45rem;
+}
+
+.roadmap-item--minor:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.roadmap-item--minor > p:first-child {
+  font-size: 0.97rem;
+  font-weight: 500;
+  color: var(--roadmap-muted);
+}
+
+/* An issue chip still needs no markup: a plain link to the tracker becomes a
+   pill and inherits its band's accent. */
+.roadmap-item a[href*="/issues/"] {
+  display: inline-block;
+  margin-inline-end: 0.18rem;
+  padding: 0.05em 0.52em;
+  border: 1px solid color-mix(in srgb, var(--roadmap-accent) 34%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--roadmap-accent) 11%, transparent) !important;
+  color: var(--roadmap-accent) !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.76em;
+  font-weight: 600;
+  line-height: 1.7;
+  text-decoration: none !important;
+  transition: background 0.15s ease;
+}
+
+.roadmap-item a[href*="/issues/"]:hover {
+  background: color-mix(in srgb, var(--roadmap-accent) 24%, transparent) !important;
+}
+
+/* A decision's status chip, sitting inside the card's title line. Colours are
+   borrowed with intent: navy is the shipped band's certainty, rust is the
+   in-motion band's activity. */
+.roadmap-status {
+  display: inline-block;
+  margin-inline-start: 0.45rem;
+  padding: 0.14em 0.6em;
+  border-radius: 999px;
+  vertical-align: 0.12em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.6em;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.roadmap-status--decided {
+  border: 1px solid color-mix(in srgb, var(--roadmap-navy) 40%, transparent);
+  background: color-mix(in srgb, var(--roadmap-navy) 12%, transparent);
+  color: var(--roadmap-navy);
+}
+
+.roadmap-status--arguing {
+  border: 1px solid color-mix(in srgb, var(--roadmap-rust) 40%, transparent);
+  background: color-mix(in srgb, var(--roadmap-rust) 12%, transparent);
+  color: var(--roadmap-rust);
+}
+
+/* A decided card's lifecycle line: explored → decided → solution spec →
+   implementation. Done stages carry ✓ and link their artifact (the frozen
+   exploration notebook, later the spec), so the line accretes links as the
+   paper trail grows; the <strong> stage is what happens next, in the same
+   navy the decided chip borrows for certainty. */
+.roadmap-progress {
+  display: inline-block;
+  margin-block-start: 0.3rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.74em;
+  letter-spacing: 0.02em;
+  color: color-mix(in srgb, currentColor 55%, transparent);
+}
+
+.roadmap-progress strong {
+  font-weight: 600;
+  color: var(--roadmap-navy);
+}
+
+/* An item carrying a dropdown gets a hairline above it, so the disclosure
+   reads as a drawer on the card rather than a stray control. */
+.roadmap-item:has(details) details {
+  margin-block: 0.75rem 0 !important;
+  padding-block-start: 0.15rem;
+  border-top: 1px dashed var(--roadmap-line);
+  font-size: 0.93em;
+}
+
+/* ── The closing dissolve ───────────────────────────────────────────────── */
+
+.roadmap-end {
+  margin-block: -1.5rem 2.5rem;
+  padding: 2.5rem 1rem 3.5rem;
+  text-align: center;
+  font-size: 0.95rem;
+  font-style: italic;
+  color: var(--roadmap-muted);
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, transparent 95%);
+  mask-image: linear-gradient(to bottom, #000 0%, transparent 95%);
+}
+
+.roadmap-end > p {
+  margin: 0 !important;
+}
+
+@media (max-width: 640px) {
+  .roadmap-band {
+    --roadmap-gutter: 1.35rem;
+  }
+  .roadmap-item {
+    --roadmap-node: 11px;
+    padding: 0.8rem 0.9rem;
+  }
+  .roadmap-map {
+    flex-wrap: wrap;
+  }
+  /* Same selector as the desktop rule — the flex item is the theme's hover-card
+     wrapper, not the anchor, so `.roadmap-map a` would never override `flex: 1 1 0`
+     and the five segments would stay jammed in one row. */
+  .roadmap-map > p > * {
+    flex: 1 1 45%;
+  }
 }
