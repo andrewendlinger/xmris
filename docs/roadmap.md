@@ -439,10 +439,10 @@ wording of that refusal, and the fate of the unused k-space vocabulary, is decis
 (roadmap-landscape)=
 ## The issue landscape
 
-<span style="color: gray; font-size: 0.9em;">A snapshot taken 2026-08-03 · the
+<span style="color: gray; font-size: 0.9em;">A snapshot taken 2026-08-05 · the
 [milestones](https://github.com/andrewendlinger/xmris/milestones) are the live source</span>
 
-Forty-four issues are open, and their distribution is the argument for the release line above: the
+Forty-seven issues are open, and their distribution is the argument for the release line above: the
 largest cluster is not missing features — it is unmade decisions, plus the work standing behind
 them. Two of those decisions are now made (02 and 02b on the board); their tracker issues stay
 open until the implementations land, with
@@ -451,12 +451,12 @@ open until the implementations land, with
 
 | Cluster | Issues | Lands in |
 |---|---|---|
-| Design decisions — the board above | [#62](https://github.com/andrewendlinger/xmris/issues/62) [#64](https://github.com/andrewendlinger/xmris/issues/64) [#65](https://github.com/andrewendlinger/xmris/issues/65) [#66](https://github.com/andrewendlinger/xmris/issues/66) [#88](https://github.com/andrewendlinger/xmris/issues/88) [#113](https://github.com/andrewendlinger/xmris/issues/113) [#124](https://github.com/andrewendlinger/xmris/issues/124) [#125](https://github.com/andrewendlinger/xmris/issues/125) | v0.8 |
-| Blocked behind them | [#21](https://github.com/andrewendlinger/xmris/issues/21) [#22](https://github.com/andrewendlinger/xmris/issues/22) [#23](https://github.com/andrewendlinger/xmris/issues/23) [#28](https://github.com/andrewendlinger/xmris/issues/28) [#34](https://github.com/andrewendlinger/xmris/issues/34) [#71](https://github.com/andrewendlinger/xmris/issues/71) [#102](https://github.com/andrewendlinger/xmris/issues/102) [#107](https://github.com/andrewendlinger/xmris/issues/107) | v0.8 · the schema #28 in v0.9 |
-| The tag itself | [#10](https://github.com/andrewendlinger/xmris/issues/10) [#115](https://github.com/andrewendlinger/xmris/issues/115) [#116](https://github.com/andrewendlinger/xmris/issues/116) [#122](https://github.com/andrewendlinger/xmris/issues/122) [#131](https://github.com/andrewendlinger/xmris/issues/131) | v0.7 |
+| Design decisions — the board above | [#62](https://github.com/andrewendlinger/xmris/issues/62) [#64](https://github.com/andrewendlinger/xmris/issues/64) [#65](https://github.com/andrewendlinger/xmris/issues/65) [#66](https://github.com/andrewendlinger/xmris/issues/66) [#88](https://github.com/andrewendlinger/xmris/issues/88) [#124](https://github.com/andrewendlinger/xmris/issues/124) [#125](https://github.com/andrewendlinger/xmris/issues/125) [#136](https://github.com/andrewendlinger/xmris/issues/136) | v0.8 |
+| Blocked behind them | [#21](https://github.com/andrewendlinger/xmris/issues/21) [#22](https://github.com/andrewendlinger/xmris/issues/22) [#23](https://github.com/andrewendlinger/xmris/issues/23) [#28](https://github.com/andrewendlinger/xmris/issues/28) [#34](https://github.com/andrewendlinger/xmris/issues/34) [#71](https://github.com/andrewendlinger/xmris/issues/71) [#102](https://github.com/andrewendlinger/xmris/issues/102) [#107](https://github.com/andrewendlinger/xmris/issues/107) | v0.8 |
+| The tag itself | [#10](https://github.com/andrewendlinger/xmris/issues/10) [#80](https://github.com/andrewendlinger/xmris/issues/80) [#82](https://github.com/andrewendlinger/xmris/issues/82) [#115](https://github.com/andrewendlinger/xmris/issues/115) [#116](https://github.com/andrewendlinger/xmris/issues/116) [#122](https://github.com/andrewendlinger/xmris/issues/122) [#131](https://github.com/andrewendlinger/xmris/issues/131) [#137](https://github.com/andrewendlinger/xmris/issues/137) [#138](https://github.com/andrewendlinger/xmris/issues/138) | v0.7 |
 | Quality & tooling | [#87](https://github.com/andrewendlinger/xmris/issues/87) [#108](https://github.com/andrewendlinger/xmris/issues/108) [#111](https://github.com/andrewendlinger/xmris/issues/111) [#117](https://github.com/andrewendlinger/xmris/issues/117) [#127](https://github.com/andrewendlinger/xmris/issues/127) [#133](https://github.com/andrewendlinger/xmris/issues/133) | v0.8 – v0.9 |
 | The front door | [#27](https://github.com/andrewendlinger/xmris/issues/27) [#46](https://github.com/andrewendlinger/xmris/issues/46) [#67](https://github.com/andrewendlinger/xmris/issues/67) [#119](https://github.com/andrewendlinger/xmris/issues/119) [#120](https://github.com/andrewendlinger/xmris/issues/120) [#121](https://github.com/andrewendlinger/xmris/issues/121) [#126](https://github.com/andrewendlinger/xmris/issues/126) | v0.9 |
-| Correctness & capability | [#29](https://github.com/andrewendlinger/xmris/issues/29) [#31](https://github.com/andrewendlinger/xmris/issues/31) [#80](https://github.com/andrewendlinger/xmris/issues/80) [#82](https://github.com/andrewendlinger/xmris/issues/82) [#83](https://github.com/andrewendlinger/xmris/issues/83) [#84](https://github.com/andrewendlinger/xmris/issues/84) [#128](https://github.com/andrewendlinger/xmris/issues/128) [#132](https://github.com/andrewendlinger/xmris/issues/132) | v0.9 |
+| Correctness & capability | [#29](https://github.com/andrewendlinger/xmris/issues/29) [#31](https://github.com/andrewendlinger/xmris/issues/31) [#83](https://github.com/andrewendlinger/xmris/issues/83) [#84](https://github.com/andrewendlinger/xmris/issues/84) [#113](https://github.com/andrewendlinger/xmris/issues/113) [#128](https://github.com/andrewendlinger/xmris/issues/128) [#132](https://github.com/andrewendlinger/xmris/issues/132) | v0.9 |
 | Space & scale | [#4](https://github.com/andrewendlinger/xmris/issues/4) [#25](https://github.com/andrewendlinger/xmris/issues/25) | Horizon |
 
 The decisions are not a flat list. The spine below is the board's dependency order — the decided

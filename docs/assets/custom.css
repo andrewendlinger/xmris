@@ -216,7 +216,7 @@
   color: var(--roadmap-muted) !important;
 }
 
-/* ── The map: four segments, one per band, doubling as jump navigation ──── */
+/* ── The map: five segments, one per band, doubling as jump navigation ──── */
 
 .roadmap-map {
   display: flex;
@@ -804,7 +804,10 @@
   .roadmap-map {
     flex-wrap: wrap;
   }
-  .roadmap-map a {
+  /* Same selector as the desktop rule — the flex item is the theme's hover-card
+     wrapper, not the anchor, so `.roadmap-map a` would never override `flex: 1 1 0`
+     and the five segments would stay jammed in one row. */
+  .roadmap-map > p > * {
     flex: 1 1 45%;
   }
 }
