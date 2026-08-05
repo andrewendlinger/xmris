@@ -120,6 +120,14 @@ v0.7 is the tag that finally makes the band above installable.
 ::::{div}
 :class: roadmap-item roadmap-item--minor
 
+Next in line: the docs get a floor plan — a sidebar you can scan, concepts apart from tutorials,
+and a landing page that says where everything lives
+[#137](https://github.com/andrewendlinger/xmris/issues/137)
+::::
+
+::::{div}
+:class: roadmap-item roadmap-item--minor
+
 This very page — the roadmap you are reading is being written and argued right now
 [#116](https://github.com/andrewendlinger/xmris/issues/116)
 ::::
