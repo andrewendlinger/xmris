@@ -15,7 +15,7 @@
   <a href="https://github.com/astral-sh/uv"><img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json" alt="uv"></a>
   <a href="https://github.com/astral-sh/ruff"><img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json" alt="Ruff"></a>
   <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue.svg" alt="Python Versions"></a>
-  <a href="https://www.gnu.org/licenses/agpl-3.0"><img src="https://img.shields.io/badge/License-AGPL_v3-blue.svg" alt="License: AGPL v3"></a>
+  <a href="https://opensource.org/license/bsd-3-clause"><img src="https://img.shields.io/badge/License-BSD_3--Clause-blue.svg" alt="License: BSD 3-Clause"></a>
 </div>
 
 
@@ -110,6 +110,7 @@ More information can be found in the [contributing guide](https://andrewendlinge
 
 ---
 
-### License & Commercial Use
+### License
 
-`xmris` is licensed under the **GNU Affero General Public License v3.0 (AGPLv3)**.
+`xmris` is licensed under the **BSD 3-Clause License** — see [LICENSE](LICENSE). Use it, build on
+it, ship it, commercially or not; keep the copyright notice.
