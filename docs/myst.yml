@@ -18,19 +18,25 @@ project:
 
   # One directory per chapter, and `folders: true` below turns that directory
   # into the URL prefix -- so the file tree, the sidebar and the address bar all
-  # say the same thing. Every chapter is `- file: <chapter>/index.md` with
-  # children, never a bare `- title:`: a group with a file behind it is a real
-  # article that summarises what is under it, which is the difference between a
-  # menu and a page. Numbering lives here in the `title:` strings and nowhere
-  # else -- renaming a file's word stem moves its URL, renumbering a TOC title
-  # costs nothing.
+  # say the same thing.
+  #
+  # Every chapter is a bare `- title:` group whose FIRST child is its Overview.
+  # Not `- file: <chapter>/index.md` + children: book-theme gives a group with a
+  # file behind it `onClick: () => setOpen(true)` on the title, so one click both
+  # navigates away and force-opens, and the title can never collapse the group
+  # again. Without a file the title is a plain div that only toggles -- opening a
+  # chapter costs nothing, and the overview is the first entry under it.
+  #
+  # Numbering lives here in the `title:` strings and nowhere else -- renaming a
+  # file's word stem moves its URL, renumbering a TOC title costs nothing.
   toc:
     - file: index.md
 
     # 1. Hands-on, in the order the four ideas build on each other.
-    - file: basics/index.md
-      title: Basics
+    - title: Basics
       children:
+        - file: basics/index.md
+          title: Overview
         - file: basics/complex_numbers.md
           title: 1. Complex numbers
         - file: basics/fft.md
@@ -41,9 +47,10 @@ project:
           title: 4. Hz and ppm
 
     # 2. The explainers -- why the library is shaped the way it is.
-    - file: concepts/index.md
-      title: Concepts
+    - title: Concepts
       children:
+        - file: concepts/index.md
+          title: Overview
         - file: concepts/architecture.md
           title: 1. The xmris architecture
         - file: concepts/vocabulary.md
@@ -52,9 +59,10 @@ project:
           title: 3. The two domains
 
     # 3. A chronological processing pipeline.
-    - file: pipeline/index.md
-      title: Processing pipeline
+    - title: Processing pipeline
       children:
+        - file: pipeline/index.md
+          title: Overview
         - file: pipeline/zero_fill.md
           title: 1. Zero filling
         - file: pipeline/apodization.md
@@ -71,9 +79,10 @@ project:
           title: 5. Domain contracts in action
 
     # 4. Quantification -- and the simulator every page in these docs runs on.
-    - file: fitting/index.md
-      title: Fitting & simulation
+    - title: Fitting & simulation
       children:
+        - file: fitting/index.md
+          title: Overview
         - file: fitting/quickstart.md
           title: "1. Quick start: fitting"
         - file: fitting/simufid.md
@@ -84,9 +93,10 @@ project:
           title: 4. Visualizing dynamic fits
 
     # 5. Static config-based plots and interactive widgets, one level deep.
-    - file: visualization/index.md
-      title: Visualization
+    - title: Visualization
       children:
+        - file: visualization/index.md
+          title: Overview
         - file: visualization/plot_basics.md
           title: 1. Config-based plotting
         - file: visualization/plot_waterfall.md
@@ -104,9 +114,10 @@ project:
     # still marked work-in-progress, so it is hidden rather than dropped -- a
     # page outside the TOC is not built at all, and its inbound links would
     # silently degrade into raw .md downloads.
-    - file: vendor/index.md
-      title: Vendor formats
+    - title: Vendor formats
       children:
+        - file: vendor/index.md
+          title: Overview
         - file: vendor/bruker_filter_removal.md
           title: 1. Bruker — group delay
         - file: vendor/bruker_fid_loader.md
@@ -117,9 +128,10 @@ project:
     # by section, so the sidebar lists them flat -- hand-maintained sub-groups
     # here drifted from quartodoc.yml's sections and could not be given landing
     # pages of their own.
-    - file: api/index.md
-      title: API reference
+    - title: API reference
       children:
+        - file: api/index.md
+          title: Overview
         - file: api/processing.fourier.md
           title: Fourier transforms
         - file: api/processing.fid.md
@@ -164,9 +176,10 @@ project:
           title: Validation
 
     # 8. Contribute -- the router page, then one page per kind of change.
-    - file: contribute/index.md
-      title: Contribute
+    - title: Contribute
       children:
+        - file: contribute/index.md
+          title: Overview
         - file: contribute/setup.md
           title: 1. Environment setup
         - file: contribute/contract.md
@@ -199,9 +212,10 @@ project:
           hidden: true
 
     # 10. Dev diary -- intro pinned first, dated entries chronological below it.
-    - file: diary/index.md
-      title: Dev diary
+    - title: Dev diary
       children:
+        - file: diary/index.md
+          title: Overview
         - file: diary/2026-07-22-authoring-skills.md
           title: The authoring skills
         - file: diary/2026-07-23-architecture-contract.md
