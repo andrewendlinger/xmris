@@ -6,7 +6,7 @@
  * widget's own `<name>.js`, and the widget module owns the single
  * `export function render`. Keeping these helpers export-free lets them live in
  * the same module scope as `render` in both live AnyWidget and the static-docs
- * iframe. See `docs/contributing/static_widgets.md`.
+ * iframe. See `docs/contribute/static_widgets.md`.
  */
 
 /* =========================================================================

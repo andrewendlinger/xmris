@@ -128,16 +128,24 @@ flowchart TD
 
 ---
 
-(home-design)=
-## 🏗️ Want to Understand the Design?
-
-If you are curious about *why* xmris is built this way — why metadata lives in `.attrs`, why dimensions are flexible but attributes are strictly guarded, or what the `@requires_attrs` decorator does — read the architecture guide:
-
-* [**The xmris Architecture: Why We Built It This Way**](notebooks/basics/architecture.md)
-
----
-
 (home-where-to-start)=
 ## 🧭 Where do I start?
 
-We recommend going through the example notebooks. They are designed to be read more or less chronologically :)
+The sidebar has ten chapters. Here is what each one is for, so you can go straight to the one you
+need — every chapter title is also a page that summarises what is under it.
+
+| Chapter | What is in it | Go here when |
+|---|---|---|
+| [Basics](#basics) | Complex data, the FFT, the FID↔spectrum round trip, the ppm axis | You are new — start here, in order |
+| [Concepts](#concepts) | The architecture, the controlled vocabulary, the two domains | You want to know *why* xmris is strict about names and metadata |
+| [Processing pipeline](#pipeline) | Zero filling → apodization → phasing → baseline, one page per step | You have a FID and want a spectrum you can read |
+| [Fitting & simulation](#fitting) | AMARES quantification, prior knowledge, `simulate_fid` | You need numbers with error bars, not a picture |
+| [Visualization](#visualization) | Config-based plots and interactive widgets | You are building a figure, or want a slider instead of a scorer |
+| [Vendor formats](#vendor) | Bruker group delay and raw-file loading | Your data is still in whatever the scanner wrote |
+| [API reference](#api-home) | Every public function, generated from the docstrings | You know the function name and want its signature |
+| [Contribute](#contribute-home) | Setup, the Architecture Contract, one page per kind of change | You are opening a pull request |
+| [Dev diary](#diary-about) | One entry per significant decision, told as a story | You found a design choice you cannot explain |
+| [Roadmap](#roadmap) | What is shipped, in motion, and still being argued about | You are wondering whether to wait for something |
+
+Every page in the first six chapters is an executable notebook: the plots and numbers you see were
+produced by the code above them, and they run on every pull request.

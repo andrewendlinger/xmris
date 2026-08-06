@@ -66,7 +66,7 @@ Docs rules now have three enforcers, each because the one above it is blind to s
 
 That middle row is narrower than it sounds, and it matters: mystmd's `--strict` exits non-zero on
 **errors** only, never on warnings. So the quoted-source pins in
-[the Architecture Contract](../contributing/contract.md) stay load-bearing — a renamed decorator
+[the Architecture Contract](#contract) stay load-bearing — a renamed decorator
 would still truncate a `literalinclude` with nothing but a warning to show for it.
 
 Turning that layer on also had a consequence nobody predicted. The first strict build on CI went red

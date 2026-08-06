@@ -1,4 +1,4 @@
-# Tutorial — `docs/notebooks/<area>/`
+# Tutorial — one of the hands-on chapters (`docs/basics/`, `pipeline/`, `fitting/`, `visualization/`, `vendor/`)
 
 The genre where **the documentation is the test suite.** Every page here is executed twice in CI:
 by `uv run test` (jupytext → `tests/autogen_notebooks/*.ipynb` → nbmake, parallel, with coverage)
@@ -95,7 +95,7 @@ makes, linked to its API entry, one line on what it does *here* (not what it doe
 API page says that). Anchors are quartodoc's dotted targets, which are project-global, so a bare
 `#anchor` resolves from any page: `#xmris.fitting.amares.fit_amares` for the free function,
 `#xmris.core.accessor.XmrisAccessor.fit_amares` for the accessor method. Find the exact one with
-`grep -n "^(xmris" docs/api_reference/<module>.md` after `uv run docs-api`. Skip the table on pure
+`grep -n "^(xmris" docs/api/<module>.md` after `uv run docs-api`. Skip the table on pure
 concept pages that call nothing.
 
 ## Hidden assert cells
@@ -127,7 +127,7 @@ Number the assertions to the claims they back, as `domain_agnostic_autophase.md`
 **Synthetic MRS signals come from `simulate_fid`.** Not "prefer" — the checker warns on a
 hand-written damped sinusoid anywhere outside `basics/`, whose subject genuinely *is* raw
 construction. Re-deriving the forward model inline duplicates
-`docs/notebooks/fitting/simufid.md`, drifts from it, and usually does it in the `for` loop the
+`docs/fitting/simufid.md`, drifts from it, and usually does it in the `for` loop the
 package exists to delete.
 
 ```python
@@ -192,7 +192,7 @@ Live exemplar of all of this at once: `fitting/pyamares.md` § 1.
 ## Widget pages only
 
 Static docs have no kernel, so live widgets need the export pattern from
-`docs/contributing/static_widgets.md`:
+`docs/contribute/static_widgets.md`:
 
 1. Show the reader the live call in a cell tagged `remove-output`.
 2. Follow it with a hidden cell tagged `remove-input` that calls

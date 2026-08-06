@@ -78,4 +78,4 @@ Only where they carry the argument — nothing decorative.
 |---|---|
 | Guardrail, one-way door, footgun | `:::{warning}` |
 | An approach *the reader* would naively try | paired ❌ / ✅ code blocks, on the main line |
-| A concept that outgrew the diary | relative link to its `docs/explanation/` page |
+| A concept that outgrew the diary | relative link to its `docs/concepts/` page |

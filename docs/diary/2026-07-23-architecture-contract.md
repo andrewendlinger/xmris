@@ -3,7 +3,7 @@
 
 <span style="color: gray; font-size: 0.9em;">Last edited: 2026-07-23 · #103</span>
 
-The [architecture rules](../contributing/contract.md) are the standing law for everything under
+The [architecture rules](#contract) are the standing law for everything under
 `src/xmris/` — and the law had quietly stopped describing the land. Commandment 3 bans descriptive
 strings from `.attrs`, yet the vocabulary itself blesses `baseline_method="als"`. The module map
 files `processing/` under `core/`, where it does not live. The page's teaching template stacks two

@@ -1,6 +1,6 @@
 ---
 name: docs-page
-description: Create or edit any hand-authored page in the xmris docs — tutorial notebooks (docs/notebooks/), concept explainers (docs/explanation/), or contributor guides (docs/contributing/). Use when adding or restructuring a doc page, writing notebook tests for a function, documenting a new .xmr method, thinning or consolidating existing pages, or fixing a page that renders wrong.
+description: Create or edit any hand-authored page in the xmris docs — hands-on tutorials (docs/basics/, pipeline/, fitting/, visualization/, vendor/), concept explainers (docs/concepts/), or contributor guides (docs/contribute/). Use when adding or restructuring a doc page, writing notebook tests for a function, documenting a new .xmr method, thinning or consolidating existing pages, or fixing a page that renders wrong.
 ---
 
 # Write an xmris docs page
@@ -13,7 +13,7 @@ any of them can reach for live `code-cell`s, real output and plots. What separat
 
 | | **Tutorial** | **Explainer** | **Guide** |
 |---|---|---|---|
-| Lives in | `docs/notebooks/<area>/` | `docs/explanation/` | `docs/contributing/` |
+| Lives in | one of the five hands-on chapters — `docs/basics/`, `pipeline/`, `fitting/`, `visualization/`, `vendor/` | `docs/concepts/` | `docs/contribute/` |
 | Reader wants | to *do* the task | to know *why it is like this* | to contribute |
 | Shape | demonstrate → assert, step by step | motivated narrative, claim → live proof | numbered steps + commands |
 | `uv run test` (nbmake + coverage) | ✅ | ✅ | ❌ |
@@ -28,7 +28,7 @@ example so you copy rather than reinvent.
 
 - `docs/diary/` belongs to the **`dev-diary`** skill. Hand off; do not write an entry from here.
   (`check_docs.py` still checks entries — the structural rules in §2 bind every page in the tree.)
-- `docs/api_reference/` is **generated and gitignored**. `docs_api()` clears the directory before
+- `docs/api/` is **generated and gitignored**. `docs_api()` clears the directory before
   regenerating, so a hand edit there is destroyed with no git history to recover it. Fix the
   docstring in `src/` instead.
 
@@ -91,14 +91,14 @@ uv run python .claude/skills/docs-page/check_docs.py docs/<path>/<page>.md
 
 Errors are render-breaking and exit 1 — the same exit code the `Docs style` CI job gates on, so
 this run is the gate, locally. Warnings are drift and exit 0. Then, for a **tutorial or an
-explainer** — `test-gen` walks `docs/notebooks/` *and* `docs/explanation/`, so both are in the
-pytest suite:
+explainer** — `test-gen` walks the five hands-on chapters *and* `docs/concepts/`, so both are in
+the pytest suite:
 
 ```bash
 uv run test-gen
-uv run pytest "tests/autogen_notebooks/<category>/<name>.ipynb" -n0 --no-cov
-# explainers land flat under explanation/:
-uv run pytest "tests/autogen_notebooks/explanation/<name>.ipynb" -n0 --no-cov
+uv run pytest "tests/autogen_notebooks/<chapter>/<name>.ipynb" -n0 --no-cov
+# the chapter directory is the docs directory: docs/pipeline/baseline.md
+# becomes tests/autogen_notebooks/pipeline/baseline.ipynb
 ```
 
 (`--nbmake` is already in pytest addopts.) A page only joins that suite once it carries a jupytext

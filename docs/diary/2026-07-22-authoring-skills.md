@@ -6,9 +6,9 @@
 Every change to xmris has to clear the same stack of contracts at once. A new function, for
 example, has to honour
 
-- the [Architecture Contract](../contributing/contract.md)'s Commandments
-- the right [domain decorator](../explanation/domains.md)
-- the canonical [config vocabulary](../explanation/vocabulary.md).
+- the [Architecture Contract](#contract)'s Commandments
+- the right [domain decorator](#domains)
+- the canonical [config vocabulary](#vocabulary).
 
 Hold all of that in your head on every edit and something slips — a hardcoded `"time"`, a missing
 target, a boolean flag bloating `.attrs`.

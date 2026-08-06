@@ -62,7 +62,7 @@ _build/
 docs/_build/
 
 # Generated API reference files (if auto-generated)
-docs/api_reference/
+docs/api/
 docs/objects.json
 
 # MyST execution cache (results of code blocks)

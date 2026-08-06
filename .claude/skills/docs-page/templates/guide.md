@@ -1,4 +1,4 @@
-# Guide — `docs/contributing/`
+# Guide — `docs/contribute/`
 
 Procedural pages for people working *on* xmris rather than *with* it: setup, publishing, the
 contributing walkthrough, widget authoring.
