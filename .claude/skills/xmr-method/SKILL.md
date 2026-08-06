@@ -13,9 +13,9 @@ contracts, a fix to the math. Both paths use the same rules; jump to
 
 Two documents own the rules, and this skill routes to them rather than restating:
 
-- **`docs/contributing/contract.md`** — the Architecture Contract: the Commandments, `_check_dims`,
+- **`docs/contribute/contract.md`** — the Architecture Contract: the Commandments, `_check_dims`,
   `as_variable`, and the real exemplars (`apodize_exp`, `to_ppm`) quoted live. All of it applies.
-- **`docs/explanation/domains.md`** — which decorator your function gets. It carries the full
+- **`docs/concepts/domains.md`** — which decorator your function gets. It carries the full
   taxonomy and a mermaid decision tree (§ *For contributors: declaring a function's domain*). Read
   it before choosing; do not guess from the table below.
 
@@ -111,7 +111,8 @@ Three more lists need a hand edit for every new accessor method. They are precis
 
 ## 5. Document it
 
-Math and science are tested in MyST notebooks under `docs/notebooks/`, not `test_*.py`. **Use the
+Math and science are tested in MyST notebooks under the hands-on docs chapters (`docs/basics/`,
+`pipeline/`, `fitting/`, `visualization/`, `vendor/`), not `test_*.py`. **Use the
 `docs-page` skill** (tutorial genre) — it owns the cell structure, the hidden-assert convention,
 and the TOC step. Don't hand-roll a notebook from memory here.
 

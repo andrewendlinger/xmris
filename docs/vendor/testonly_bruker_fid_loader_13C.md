@@ -43,7 +43,13 @@ xr.set_options(display_expand_data=False)
 We dynamically load the exact acquisition parameters and expected spectral peak locations derived from the `ground_truth.toml` file.
 
 ```{code-cell} ipython3
-DATA_DIR = Path("../../../tests/data/")
+# The fixtures live in the repo, and this page runs from two different working
+# directories -- its own folder in the docs build, tests/autogen_notebooks/vendor/
+# under nbmake -- so walk up to the repo root rather than guessing a depth.
+_start = Path.cwd()
+DATA_DIR = next(
+    d / "tests" / "data" for d in [_start, *_start.parents] if (d / "tests" / "data").is_dir()
+)
 TOML_PATH = DATA_DIR / "nspect_slab_13C" / "ground_truth.toml"
 
 with open(TOML_PATH, "rb") as f:

@@ -332,7 +332,7 @@ the release pipeline like every other platform.
 The [pyAMARES tutorial](#pyamares) runs a fit end to end and shows
 the Dataset it returns. The guarantees above are pinned by `TestFittingDomain` in
 `tests/test_core.py` and, end to end through the public pipeline, by
-`docs/notebooks/fitting/testonly_amares_robustness.md`.
+`docs/fitting/testonly_amares_robustness.md`.
 :::
 
 (diary-amares-fitting-changed)=
@@ -354,7 +354,7 @@ the Dataset it returns. The guarantees above are pinned by `TestFittingDomain` i
   right did. It rests on which regime a *default* should serve, and on the library's inability to
   see the machine — not on one number that happened to favour serial.
 - **The explainer folded back in.** The plan put the reasoning above on a separate page,
-  `docs/explanation/fitting.md` ("Fitting on Real Data"). It shipped and was read — and
+  `docs/concepts/fitting.md` ("Fitting on Real Data"). It shipped and was read — and
   turned out to be a decision record wearing an explainer's clothes, duplicating this entry
   closely enough that an answer had to be assembled from two articles. It is now folded
   into this one. The lesson generalizes: *how it works* earns an explainer, *why it works

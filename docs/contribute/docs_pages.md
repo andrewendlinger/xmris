@@ -5,11 +5,12 @@ Every hand-authored page in these docs is a MyST notebook — jupytext frontmatt
 — so any of them can run live `code-cell`s with real output and plots. There are three genres,
 split by reader and by where their cells execute:
 
-- **Tutorials** (`docs/notebooks/`) demonstrate a task step by step, and *are* the test suite:
+- **Tutorials** (the five hands-on chapters — `docs/basics/`, `pipeline/`, `fitting/`,
+  `visualization/`, `vendor/`) demonstrate a task step by step, and *are* the test suite:
   `uv run test` runs their asserts.
-- **Explainers** (`docs/explanation/`) are motivated narrative for *why* something is the way it is
+- **Explainers** (`docs/concepts/`) are motivated narrative for *why* something is the way it is
   — executed too, so their live claims are asserted like any tutorial cell.
-- **Guides** (`docs/contributing/`) are procedural pages like this one; executed on the PR build,
+- **Guides** (`docs/contribute/`) are procedural pages like this one; executed on the PR build,
   and — once they carry a kernelspec — by `uv run test` as well.
 
 The four house-style rules — motivated narrative, one home per concept, every article stands alone,

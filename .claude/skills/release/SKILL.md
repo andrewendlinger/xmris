@@ -7,7 +7,7 @@ disable-model-invocation: true
 # Release xmris
 
 Guided checklist for cutting a release. The full workflow, rationale, and CI/CD diagram live in
-`docs/contributing/publishing.md` — this skill is the operational checklist that runs it.
+`docs/contribute/publishing.md` — this skill is the operational checklist that runs it.
 Publishing is automated via GitHub Actions (`ci-publish.yml`) using PyPI Trusted Publishing (OIDC) — **you never run `uv publish` by hand**; pushing a `vX.Y.Z` tag does it.
 
 `$ARGUMENTS` is the bump level (`patch` | `minor` | `major`) or an explicit version (`0.7.0`). If empty, ask which.

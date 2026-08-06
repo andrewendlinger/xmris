@@ -46,7 +46,13 @@ xr.set_options(display_expand_data=False)
 Raw Bruker data is read as a continuous 1D array. To make it useful, we must reshape it into an N-dimensional C-contiguous array based on the acquisition parameters, and then wrap it in an `xarray.DataArray` with the correct physical coordinates.
 
 ```{code-cell} ipython3
-DATA_DIR = Path("../../../tests/data/")
+# The fixtures live in the repo, and this page runs from two different working
+# directories -- its own folder in the docs build, tests/autogen_notebooks/vendor/
+# under nbmake -- so walk up to the repo root rather than guessing a depth.
+_start = Path.cwd()
+DATA_DIR = next(
+    d / "tests" / "data" for d in [_start, *_start.parents] if (d / "tests" / "data").is_dir()
+)
 FILE_PATH = Path(DATA_DIR / "nspect_slab_1H" / "rawdatajob0.nc")
 
 # Load the raw 1D complex data

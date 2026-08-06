@@ -184,7 +184,7 @@ with xmris.set_options(auto_convert=False):
 
 The contracts above are not conventions to remember — they are declared, one line per function,
 with two decorators sharing one engine (see the
-[validation API](../api_reference/core.validation.md)):
+[validation API](../api/core.validation.md)):
 
 ```python
 @ensures_domain(SPECTRAL_DIMS)          # funnel: coerce in, leave there

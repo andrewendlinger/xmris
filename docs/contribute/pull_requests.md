@@ -148,7 +148,7 @@ from pathlib import Path
 # silently truncate the quote instead of failing the build. This cell fails it.
 #
 # mystmd executes a notebook with the working directory set to the page's own
-# folder (docs/contributing/ here), so walk up to the repo root rather than
+# folder (docs/contribute/ here), so walk up to the repo root rather than
 # guessing a relative depth.
 REL = Path(".github/workflows/deploy.yml")
 start = Path.cwd()

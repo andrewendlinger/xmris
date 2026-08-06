@@ -2,7 +2,7 @@
    Loaded via `site.options.style` in docs/myst.yml. */
 
 /* "Skill quote" — a verbatim, *unrendered* excerpt pulled straight from a Claude Code
-   SKILL.md (see docs/contributing/*), rendered as a `literalinclude` carrying
+   SKILL.md (see docs/contribute/*), rendered as a `literalinclude` carrying
    `:class: skill-quote`. Styled distinctly from the page's own prose so a reader can always
    tell the quoted skill apart from the documentation around it. */
 .skill-quote {

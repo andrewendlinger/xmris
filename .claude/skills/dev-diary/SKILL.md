@@ -30,7 +30,7 @@ Pass 1 exists because the plan file is precise but heavy — right for executing
 **House style lives in `CLAUDE.md` § "Documentation style"** and is not restated here — with one
 carve-out: *one home per concept* binds an entry at the **decision** level, not the concept level.
 Two entries may touch the same concept when their decisions differ; neither is the concept's home.
-When a concept needs a permanent home it graduates into an explainer under `docs/explanation/`,
+When a concept needs a permanent home it graduates into an explainer under `docs/concepts/`,
 which is `docs-page`'s job, not this skill's.
 
 ## 1. Assess the triggers, then ask — always

@@ -1,6 +1,6 @@
 # Template: a transform, end to end
 
-`docs/contributing/contract.md` owns the rules — the numbered Commandments, `_check_dims`,
+`docs/contribute/contract.md` owns the rules — the numbered Commandments, `_check_dims`,
 `as_variable`, the lineage rule — and quotes the real exemplars (`apodize_exp`, `to_ppm`) live
 from the source. **Read that first; it is not repeated here.**
 

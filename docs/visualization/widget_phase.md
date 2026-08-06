@@ -109,7 +109,7 @@ When you have achieved the desired phase, click the **Close** button in the widg
 
 *Note: Screenshot only*
 
-![Screenshot of the widget (part 2)](../../../assets/notebook-assets/screenshot_widget_phase_spectrum_II.png)
+![Screenshot of the widget (part 2)](../assets/notebook-assets/screenshot_widget_phase_spectrum_II.png)
 
 +++
 

@@ -133,15 +133,15 @@ convention = "numpy"
 
 [tool.ruff.lint.per-file-ignores]
 # Ignore line length, unused imports, and import positions in notebooks/scripts
-"docs/notebooks/*.py" = ["E501", "F401", "E402"]
-"docs/notebooks/*.ipynb" = ["E501", "F401", "E402"]
+"docs/**/*.py" = ["E501", "F401", "E402"]
+"docs/**/*.ipynb" = ["E501", "F401", "E402"]
 
 # --- Jupytext ---
 # Tool for automatic two-way syncing between Jupyter Notebooks (.ipynb) and Markdown (.md).
 # We edit in .md (git-friendly) or .ipynb (interactive), but only ever commit .md files.
 [tool.jupytext]
 # To fix missing kernels or sync metadata in bulk, run:
-# uv run jupytext --sync --set-kernel python3 --display-name "Python 3 (xmris)" ./docs/notebooks/**/*.md
+# uv run jupytext --sync --set-kernel python3 --display-name "Python 3 (xmris)" ./docs/**/*.md
 formats = "ipynb,md:myst"
 
 # Include display_name to prevent notebook validation errors

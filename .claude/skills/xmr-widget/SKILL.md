@@ -12,12 +12,12 @@ widget commits touched only existing files. Both paths use the same rules; jump 
 
 ## 0. Read the rules first
 
-**`docs/contributing/static_widgets.md` is the canonical widget reference** and this skill routes
+**`docs/contribute/static_widgets.md` is the canonical widget reference** and this skill routes
 to it rather than restating. It owns the anatomy (§1, with full `.py`, `.js` and accessor-method
 skeletons), the authoring conventions (§2), the docs-rendering pattern (§3), the size limits (§4),
 and testing (§5). Read it before writing anything.
 
-`docs/contributing/contract.md` — the Architecture Contract's Commandments — still applies
+`docs/contribute/contract.md` — the Architecture Contract's Commandments — still applies
 underneath, with one deliberate exception noted below.
 
 ## 1. What routes here
@@ -121,7 +121,7 @@ serialized JSON (`:127-132`). Downsample before syncing if either is close.
 
 ## 6. Document & test
 
-The notebook **is** the test. Add it under `docs/notebooks/visualization/widget/` — **use the
+The notebook **is** the test. Add it under `docs/visualization/` — **use the
 `docs-page` skill** (tutorial genre) for the cell structure and TOC step, and follow
 `static_widgets.md` §3 for the widget-specific two-cell pattern (live call `remove-output`,
 `export_widget_static` `remove-input`).
@@ -155,7 +155,7 @@ The notebook is the real check, so run it first:
 
 ```bash
 uv run test-gen                                                    # .md → .ipynb
-uv run pytest "tests/autogen_notebooks/visualization/widget/<nb>.ipynb" -n0 --no-cov
+uv run pytest "tests/autogen_notebooks/visualization/<nb>.ipynb" -n0 --no-cov
 uv run ruff format . && uv run ruff check . --fix
 uv run mypy src/xmris                                              # fix clear type errors
 uv run pytest tests/test_core.py -n0 --no-cov                      # nothing else broke — not widget coverage

@@ -6,7 +6,7 @@ Run from the repo root::
     uv run python .claude/skills/docs-page/check_docs.py [PATH ...]
 
 With no PATH it checks every hand-authored page: ``docs/**/*.md`` minus the
-generated (``api_reference/``) and built (``_build/``) trees.
+generated (``api/``) and built (``_build/``) trees.
 
 Errors exit 1 -- each one renders wrong or produces a dead link, and
 ``myst build`` is silent about all of them. Warnings exit 0: real drift, but
@@ -25,18 +25,25 @@ from functools import cache
 from pathlib import Path
 
 # --- genre ------------------------------------------------------------------
-# Location is genre: the directory segment under docs/ names it. Writing a diary
-# entry belongs to the `dev-diary` skill, but the structural rules bind it like
-# any other page -- an entry missing from the TOC never renders, and the diary
-# is a review gate that only works if it does. Only api_reference/ escapes:
-# it is generated and gitignored, so there is nothing to hand-fix.
+# Location is genre: the top directory under docs/ names it. Since the chapter
+# restructure that directory is also the sidebar chapter and the URL prefix, so
+# the mapping is spelled out rather than inferred -- a new chapter has to
+# declare which genre its pages are held to. Writing a diary entry belongs to
+# the `dev-diary` skill, but the structural rules bind it like any other page --
+# an entry missing from the TOC never renders, and the diary is a review gate
+# that only works if it does. Only api/ escapes: it is generated and gitignored,
+# so there is nothing to hand-fix.
 GENRES = {
-    "notebooks": "tutorial",
-    "explanation": "explainer",
-    "contributing": "guide",
+    "basics": "tutorial",
+    "pipeline": "tutorial",
+    "fitting": "tutorial",
+    "visualization": "tutorial",
+    "vendor": "tutorial",
+    "concepts": "explainer",
+    "contribute": "guide",
     "diary": "diary",
 }
-SKIP_DIRS = ("_build", "api_reference")
+SKIP_DIRS = ("_build", "api")
 
 KERNEL_DISPLAY_NAME = "Python 3 (xmris)"
 
@@ -303,8 +310,8 @@ def check(page: Page, toc: set[str]) -> tuple[list[str], list[str]]:
         if HANDROLLED_FID_RE.search(code_src) and "simulate_fid" not in code_src:
             warnings.append(f"{rel}:1: hand-rolled FID -- build MRS signals with simulate_fid")
 
-    # Both tutorials and explainers are executed by nbmake (test-gen walks
-    # docs/notebooks/ and docs/explanation/), so either one that runs code
+    # Both tutorials and explainers are executed by nbmake (test-gen walks the
+    # tutorial chapters and docs/concepts/), so either one that runs code
     # without asserting is a doc masquerading as a test.
     if page.genre in ("tutorial", "explainer") and not testonly:
         code = [b for _, i, b in page.cells if i.startswith("{code-cell}")]

@@ -1,4 +1,4 @@
-# Explainer — `docs/explanation/`
+# Explainer — `docs/concepts/`
 
 The genre that answers **"why is it like this?"** — the permanent home of a concept, written as a
 motivated narrative rather than a reference dump. `domains.md` and `vocabulary.md` are the
@@ -23,9 +23,10 @@ strings had drifted, and a decision criterion in a table was simply false. Stati
 notice that. A live cell can.
 
 ```{warning}
-Executed is not the same as *tested*. `test-gen` walks `docs/notebooks/` only, so explainer cells
-run in the docs build with **no nbmake and no coverage**. A cell that merely runs proves the API
-exists and does not raise; proving a *value* still needs an `assert` in a `remove-cell`.
+Executed is not the same as *tested*. `test-gen` picks an explainer up only once it carries a
+jupytext kernelspec — without one it runs in the docs build with **no nbmake and no coverage**.
+And a cell that merely runs proves the API exists and does not raise; proving a *value* still
+needs an `assert` in a `remove-cell`.
 ```
 
 ## Skeleton

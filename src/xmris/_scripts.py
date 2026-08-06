@@ -18,6 +18,13 @@ from xmris.visualization import (
     WaterfallConfig,
 )
 
+# The docs chapters whose pages are executed as tests. One directory per sidebar
+# chapter, mirrored into tests/autogen_notebooks/<chapter>/. Keep in sync with
+# GENRES in .claude/skills/docs-page/check_docs.py -- that file decides which
+# house rules a chapter's pages are held to, this one decides which get run.
+TUTORIAL_CHAPTERS = ("basics", "pipeline", "fitting", "visualization", "vendor")
+CONCEPTS_CHAPTER = "concepts"
+
 # Map configuration classes to their exact Quartodoc function anchors
 CONFIG_MAP: dict[Any, dict[str, str]] = {
     WaterfallConfig: {
@@ -161,7 +168,7 @@ def docs_api() -> None:
         If the `quartodoc build` subprocess fails.
     """
     docs_dir = _get_docs_dir()
-    api_dir = docs_dir / "api_reference"
+    api_dir = docs_dir / "api"
 
     print("-" * 80)
     print("QUARTODOC".center(80, " "))
@@ -266,6 +273,17 @@ def docs_api() -> None:
 
     # Inject our custom dataclass Markdown generator at the end
     docs_config_classes(api_dir)
+
+    # Give the generated landing page a stable MyST target. It is the chapter
+    # entry the sidebar, the header nav and the home-page map all link to, and
+    # quartodoc emits a bare `# Function reference` with no anchor -- so without
+    # this every link into the API chapter would resolve against a URL instead.
+    index_file = api_dir / "index.md"
+    if index_file.exists():
+        index_text = index_file.read_text(encoding="utf-8")
+        if not index_text.startswith("(api-home)="):
+            index_file.write_text(f"(api-home)=\n{index_text.lstrip()}", encoding="utf-8")
+
     print("✅ API Markdown generation complete!")
 
 
@@ -386,11 +404,12 @@ def generate_test_notebooks() -> None:
         If the source directory cannot be found or Jupytext fails during conversion.
     """
     project_root = Path(__file__).resolve().parents[2]
-    source_dir = project_root / "docs" / "notebooks"
+    docs_dir = project_root / "docs"
     test_dir = project_root / "tests" / "autogen_notebooks"
 
-    if not source_dir.exists():
-        print(f"❌ Error: Source notebook directory not found at: {source_dir!s}")
+    missing = [c for c in (*TUTORIAL_CHAPTERS, CONCEPTS_CHAPTER) if not (docs_dir / c).exists()]
+    if missing:
+        print(f"❌ Error: docs chapter directories not found: {', '.join(missing)}")
         sys.exit(1)
 
     print(f"🧹 Clearing old test notebooks in '{test_dir.name}'...")
@@ -398,25 +417,28 @@ def generate_test_notebooks() -> None:
         shutil.rmtree(test_dir)
     test_dir.mkdir(parents=True, exist_ok=True)
 
-    # Tutorials under docs/notebooks/ are the test suite: take every one, so a
-    # notebook that lost its kernelspec fails loud in nbmake rather than silently
-    # dropping out. The tree stays flattened so existing test paths
-    # (autogen_notebooks/<category>/<name>.ipynb) still hold.
-    md_files = [(md, md.relative_to(source_dir)) for md in source_dir.rglob("*.md")]
+    # The tutorial chapters are the test suite: take every page, so one that lost
+    # its kernelspec fails loud in nbmake rather than silently dropping out. Each
+    # chapter keeps its own subtree, so test paths read
+    # autogen_notebooks/<chapter>/<name>.ipynb.
+    md_files = [
+        (md, Path(chapter) / md.relative_to(docs_dir / chapter))
+        for chapter in TUTORIAL_CHAPTERS
+        for md in (docs_dir / chapter).rglob("*.md")
+    ]
 
-    # Explainers under docs/explanation/ join the suite too, but only once they
+    # Explainers under docs/concepts/ join the suite too, but only once they
     # carry a jupytext kernelspec -- a frontmatter-less explainer would convert
-    # to a notebook with no kernel to start. They keep their own subtree.
-    explanation_dir = project_root / "docs" / "explanation"
-    if explanation_dir.exists():
-        md_files += [
-            (md, Path("explanation") / md.relative_to(explanation_dir))
-            for md in explanation_dir.rglob("*.md")
-            if _is_executable_page(md)
-        ]
+    # to a notebook with no kernel to start.
+    concepts_dir = docs_dir / CONCEPTS_CHAPTER
+    md_files += [
+        (md, Path(CONCEPTS_CHAPTER) / md.relative_to(concepts_dir))
+        for md in concepts_dir.rglob("*.md")
+        if _is_executable_page(md)
+    ]
 
     if not md_files:
-        print(f"⚠️  Warning: No .md files found in {source_dir!s}")
+        print(f"⚠️  Warning: No .md files found under {docs_dir!s}")
         return
 
     # Wrap the md_files list in tqdm to generate a clean progress bar

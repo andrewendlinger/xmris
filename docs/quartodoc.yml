@@ -1,6 +1,6 @@
 quartodoc:
   package: xmris
-  dir: api_reference
+  dir: api
 
   sections:
     - title: Signal Processing
