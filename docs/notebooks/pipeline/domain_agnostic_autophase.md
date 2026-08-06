@@ -82,7 +82,7 @@ the FID back, call `.xmr.to_fid()` explicitly.
 
 Domain-preserving operations (`apodize_exp`, `zero_fill`, …) make the opposite
 promise: your representation comes back. See
-[The Two Domains](../../explanation/domains.md) for the design rationale and
+[The Two Domains](#domains) for the design rationale and
 [Domain Contracts in Action](#domain-contracts) for the executable proof.
 :::
 

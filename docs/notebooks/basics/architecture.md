@@ -296,7 +296,7 @@ class attribute — and the entire package updates automatically.
 :::{important}
 As an end user, you **do not need to interact with the config objects**. You simply
 name your dimensions and attributes using the lowercase conventions shown in the
-[Quick Start](../../index.md), and
+[Quick Start](#home), and
 xmris functions will discover them automatically. The config constants are a
 backend safety net — not a user-facing API.
 :::
@@ -304,7 +304,7 @@ backend safety net — not a user-facing API.
 :::{seealso}
 **Bringing data that uses different names?** If your scanner calls the reference frequency `spec_freq`
 or the dynamic axis `dyn`, the dictionary is a *fixed* target you conform your data onto —
-[The Controlled Vocabulary](../../explanation/vocabulary.md) picks up exactly here, with the reasoning
+[The Controlled Vocabulary](#vocabulary) picks up exactly here, with the reasoning
 and the one-line rename that gets you there.
 :::
 
@@ -516,6 +516,6 @@ for hidden state, and explicit arguments for action spaces, `xmris` strives for 
 * **Highly transparent** — docstrings generate themselves from the config; documentation can never drift from code.
 * **Easy to use** — clean, chainable APIs with zero parameter soup.
 
-For a quick-start example, head back to the [Welcome page](../../index.md).
+For a quick-start example, head back to the [Welcome page](#home).
 
 Happy processing!

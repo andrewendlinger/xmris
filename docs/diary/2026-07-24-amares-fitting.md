@@ -256,7 +256,7 @@ ds_spec = fid.xmr.to_spectrum().xmr.fit_amares(pk)    # ...come back as spectra
 ```
 
 This doesn't hide the model — it makes it *legible*. The [domain
-contract](../explanation/domains.md) keeps the domain readable on every axis (the `repr`
+contract](#domains) keeps the domain readable on every axis (the `repr`
 says `time` vs `frequency` vs `chemical_shift`), and an inserted transform is bit-identical
 to the `to_fid()` you would have typed. The model still lives in the time domain; you are
 simply no longer the one shuttling data into it. Prefer to shuttle it yourself?
@@ -329,7 +329,7 @@ arm64 runner, so a red macOS job carried no information. It installs now, so mac
 the release pipeline like every other platform.
 
 :::{seealso}
-The [pyAMARES tutorial](../notebooks/fitting/pyamares.md) runs a fit end to end and shows
+The [pyAMARES tutorial](#pyamares) runs a fit end to end and shows
 the Dataset it returns. The guarantees above are pinned by `TestFittingDomain` in
 `tests/test_core.py` and, end to end through the public pipeline, by
 `docs/notebooks/fitting/testonly_amares_robustness.md`.
@@ -343,7 +343,7 @@ the Dataset it returns. The guarantees above are pinned by `TestFittingDomain` i
   install on an arm64 Mac at all, so the repackage described above is a permanent
   dependency, not a waypoint.
 - **Fitting's domain stance reversed.** The pre-arc position was the one recorded in
-  [The Two Domains](../explanation/domains.md) — fitting demands a FID, the transform stays
+  [The Two Domains](#domains) — fitting demands a FID, the transform stays
   explicit. Overturning it meant rewriting that page and Commandment 6 as part of this arc,
   not just changing `fit_amares`.
 - **"The pool is slower" turned out to be half a sentence.** The worker-pool decision was proposed

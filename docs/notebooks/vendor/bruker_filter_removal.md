@@ -75,7 +75,7 @@ But a causal filter cannot emit its centre tap until its window has filled, so t
 A pure time shift of $d$ samples is a **linear phase** across the spectrum. Over the full sweep width the phase winds through a complete $2\pi$ turn **$d$ times** — for a typical high-resolution delay ($d\approx 76$) that is roughly 76 turns of first-order phase. Left uncorrected, the real spectrum is an unusable corkscrew.
 
 ::: {seealso}
-[Phase Correction](../pipeline/phase.md) derives the zero- and first-order phase "twist" this section relies on. [The FFT](../basics/fft.md) and [FID Transformations](../basics/fid_transformations.md) cover the Fourier transform and the $t=0$ convention.
+[Phase Correction](#phase) derives the zero- and first-order phase "twist" this section relies on. [The FFT](#fft) and [FID Transformations](#fid-transforms) cover the Fourier transform and the $t=0$ convention.
 :::
 
 (bruker-grpdly-simulate)=

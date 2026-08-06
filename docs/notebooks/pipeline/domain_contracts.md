@@ -26,7 +26,7 @@ plt.rcParams["figure.dpi"] = 150
 Every xmris operation makes a **contract about what you get back**: the output
 domain is a pure function of the operation and the input domain — never a
 surprise. This page *proves* the two contracts executable-style; the design
-story lives in [The Two Domains](../../explanation/domains.md).
+story lives in [The Two Domains](#domains).
 
 | You call | on a FID (`time`) | on a spectrum (`frequency`/`chemical_shift`) |
 |---|---|---|
@@ -260,7 +260,7 @@ assert kfilled.sizes["kx"] == 16 and kfilled.sizes["ky"] == 8
 +++
 
 ::: {seealso}
-[The Two Domains](../../explanation/domains.md) — the design rationale, the full
+[The Two Domains](#domains) — the design rationale, the full
 contract table, and the contributor decision tree.
 [Domain-Agnostic Autophase](#domain-agnostic-autophase) — the funnel contract in
 detail.

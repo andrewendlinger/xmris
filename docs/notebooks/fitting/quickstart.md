@@ -51,7 +51,7 @@ from xmris.fitting.simulation import simulate_fid
 (fitting-quickstart-data)=
 ## 1. A spectrum to fit
 
-Real data would come off a scanner — [the Bruker loader](../vendor/bruker_fid_loader.md) hands you
+Real data would come off a scanner — [the Bruker loader](#bruker-fid) hands you
 the same kind of array. Here we simulate a ³¹P FID at 7 T: phosphocreatine (PCr) at 0 ppm and
 γ-ATP at −7.5 ppm, with a realistic noise floor.
 

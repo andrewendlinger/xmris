@@ -22,7 +22,7 @@ This approach provides three major benefits:
 3. **Reproducibility:** You can define a single configuration object at the top of your notebook and pass it to multiple plots to guarantee uniform aesthetics.
 
 ::: {note}
-To get familiar with this concept we will use the [waterfall plot](./02_plot_waterfall.md) as an example here.
+To get familiar with this concept we will use the [waterfall plot](#waterfall) as an example here.
 :::
 
 

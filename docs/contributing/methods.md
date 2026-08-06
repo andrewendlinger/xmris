@@ -7,11 +7,11 @@ touching the free function, its accessor delegator, the package exports, and a n
 proves the math. The rules that hold all of that together are not restated here; they live where
 they can be enforced:
 
-- [**The Architecture Contract**](./contract.md) — the Commandments, `_check_dims`, `as_variable`,
+- [**The Architecture Contract**](#contract) — the Commandments, `_check_dims`, `as_variable`,
   and the real exemplars quoted live from the source. All of it applies.
-- [**The Two Domains**](../explanation/domains.md) — which decorator a function gets (funnel,
+- [**The Two Domains**](#domains) — which decorator a function gets (funnel,
   domain-preserving, or none), with the decision tree.
-- [**The Controlled Vocabulary**](../explanation/vocabulary.md) — why you never hardcode `"time"`,
+- [**The Controlled Vocabulary**](#vocabulary) — why you never hardcode `"time"`,
   and how to grow the vocabulary when it is genuinely missing a term.
 
 Document the maths itself in a notebook, not a `test_*.py` — see [Write a docs

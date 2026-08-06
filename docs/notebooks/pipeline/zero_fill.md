@@ -124,7 +124,7 @@ As a user, you can pass simple strings like `"time"` and `"frequency"` to `xmris
 
 This architecture allows `xmris` to intercept your request and automatically inject physical metadata (like setting the new coordinate units to `Hz` or `s`) or properly extrapolate coordinate values when extending an array with zeros.
 
-For more info see [xmris Architecture: Why We Built It This Way](../basics/architecture.md)
+For more info see [xmris Architecture: Why We Built It This Way](#architecture)
 :::
 
 (zero-fill-interpolation)=

@@ -104,7 +104,7 @@ When `.xmr.to_spectrum()` built the new frequency axis, it intercepted your `"fr
 
 **Bonus:** Because `"time"` and `"frequency"` are declared default dimensions in `xmris`, we could actually drop the arguments completely and just call `da_fid.xmr.to_spectrum()` for the exact same result!
 
-For more info on this design, see [xmris Architecture: Why We Built It This Way](./architecture.md)
+For more info on this design, see [xmris Architecture: Why We Built It This Way](#architecture)
 :::
 
 ```{code-cell} ipython3

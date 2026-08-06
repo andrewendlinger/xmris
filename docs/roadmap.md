@@ -96,7 +96,7 @@ and per-parameter uncertainties come back aligned on the same axes
 An architecture you can hold in your head
 
 Eleven rules — xarray in, xarray out; never mutate the input; the vocabulary is law — written
-down as [the contract](contributing/contract.md) and executed against the source on every
+down as [the contract](#contract) and executed against the source on every
 build. The why is the [architecture tour](#architecture).
 ::::
 
@@ -495,6 +495,6 @@ frozen the day the decision lands, and an aimed-solution notebook that becomes t
 implementation is checked against. Both live in the sidebar beneath this page.
 
 :::{seealso}
-The [dev diary](diary/about.md) is this page's backward-looking twin: one entry per decision
+The [dev diary](#diary-about) is this page's backward-looking twin: one entry per decision
 already taken, rewritten in place as that decision evolves.
 :::

@@ -133,7 +133,7 @@ flowchart TD
 
 If you are curious about *why* xmris is built this way — why metadata lives in `.attrs`, why dimensions are flexible but attributes are strictly guarded, or what the `@requires_attrs` decorator does — read the architecture guide:
 
-* [**The xmris Architecture: Why We Built It This Way**](notebooks/basics/architecture.md)
+* [**The xmris Architecture: Why We Built It This Way**](#architecture)
 
 ---
 

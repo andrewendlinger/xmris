@@ -16,9 +16,9 @@ This page is the law for everything under `src/xmris/`: eleven numbered rules �
 **Commandments** — that every library change must obey. Cite them by number; ordinals 1–8 are
 stable (code and tooling reference them), and 9–11 codify patterns the test suite was already
 enforcing. The *why* lives elsewhere: the
-[architecture tour](../notebooks/basics/architecture.md) motivates the xarray-first design,
-[The Two Domains](../explanation/domains.md) derives the domain decorators, and
-[The Controlled Vocabulary](../explanation/vocabulary.md) explains the config singletons in
+[architecture tour](#architecture) motivates the xarray-first design,
+[The Two Domains](#domains) derives the domain decorators, and
+[The Controlled Vocabulary](#vocabulary) explains the config singletons in
 `xmris.core.config` (which sits beside `validation.py` and `utils.py` under `src/xmris/core/`).
 The authoring skills and `CLAUDE.md` route here; where another contributor page differs from this
 one, this page wins.
@@ -73,7 +73,7 @@ no-bare-strings half — reviewer greps, since an `XmrisTerm` equals its string.
 A `dim` argument defaults to its config constant (`dim: str = DIMS.time`) — *except* it defaults
 to `None` **iff** the function carries a *multi-label* domain decorator (today only
 `SPECTRAL_DIMS`), whose merged resolution fills it at call time. *Enforced: `TestDomainDimRule`.*
-Why: [The Two Domains](../explanation/domains.md).
+Why: [The Two Domains](#domains).
 
 (contract-c6)=
 ### 6. Declare the contract at the door
@@ -87,7 +87,7 @@ round trip (restoring only the signal variables, not the parameter table). Never
 for domain handling, route through the converters. Validate dimensions with
 `_check_dims(da, dim, "func_name")`. *Enforced: `TestDomainRollout` pins every function's
 contract; the semantics under `TestEnsuresDomain`/`TestComputesIn`.* Which decorator: the
-[decision tree in The Two Domains](../explanation/domains.md).
+[decision tree in The Two Domains](#domains).
 
 (contract-c7)=
 ### 7. Coordinates are built by `as_variable`

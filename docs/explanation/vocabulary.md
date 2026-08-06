@@ -12,7 +12,7 @@ kernelspec:
 (vocabulary)=
 # The Controlled Vocabulary
 
-The [architecture guide](../notebooks/basics/architecture.md) introduced xmris's *data dictionary*:
+The [architecture guide](#architecture) introduced xmris's *data dictionary*:
 one canonical name for every dimension, coordinate, and attribute the package understands —
 `reference_frequency`, `time`, `chemical_shift`. Every function reads and writes those exact names.
 
@@ -158,6 +158,6 @@ does the job. (Full deliberation: [issue #65](https://github.com/andrewendlinger
 ## Adding a word
 
 Extending xmris and need a name that isn't there yet? Add it to `xmris.core.config` — never reach for
-a bare string in package code (see [The Architecture Contract](../contributing/contract.md)). One new
+a bare string in package code (see [The Architecture Contract](#contract)). One new
 `XmrisTerm`, and the whole package can speak the new word — with the freeze and the uniqueness check
 keeping it honest from the moment it exists.
