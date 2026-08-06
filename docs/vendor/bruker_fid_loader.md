@@ -12,8 +12,13 @@ kernelspec:
 (bruker-fid)=
 # Visual Verification: FID Loader and Processing Pipeline
 
-```{warning} **Work in Progress 🚧**
-``` 
+```{warning} Work in progress 🚧
+This page is contributor-facing verification, not a user tutorial: it reaches into package
+internals (`reshape_bruker_raw`, `build_fid`) rather than the `.xmr` accessor, and it reads test
+fixtures from the repo, so it does not run outside a checkout. That is why it is kept out of the
+sidebar — [Vendor formats](#vendor) links it, and it will be rewritten as a real "load a Bruker
+dataset" page.
+```
 
 **Goal:** Visually verify the strict 1D-to-ND Bruker memory reshaping, physical coordinate calculation, and the newly refactored `xmris` processing pipeline. We will explicitly use `xarray`'s native plotting to ensure units and axis names are automatically and correctly resolved.
 

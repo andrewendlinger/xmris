@@ -71,6 +71,13 @@
 }
 
 :root {
+  /* book-theme's sticky header height. The theme pins it at 60px (`p-3` padding
+     around an `h-9` logo, and it writes `scroll-padding:60px` onto <html>), and
+     nothing in `site.nav` or `site.actions` is taller than the logo — so this
+     only moves if the logo asset does, or if the nav wraps to a second line.
+     Everything below that has to clear the header reads it from here. */
+  --xmris-nav-h: 3.75rem;
+
   --roadmap-navy: #002e7a;
   --roadmap-rust: #b05418;
   --roadmap-slate: #5b7ba6;
@@ -438,7 +445,7 @@
 .roadmap-band > h2 {
   position: sticky;
   z-index: 3;
-  top: 3.75rem;
+  top: var(--xmris-nav-h);
   display: inline-flex;
   align-items: baseline;
   gap: 0.6rem;
@@ -512,7 +519,8 @@
 
 .roadmap-phase {
   margin-block: -0.35rem 1.4rem;
-  scroll-margin-top: 7rem; /* clear the sticky band header when jumped to */
+  /* clear both the site header and the sticky band header when jumped to */
+  scroll-margin-top: calc(var(--xmris-nav-h) + 3.25rem);
 }
 
 .roadmap-phase > p {
