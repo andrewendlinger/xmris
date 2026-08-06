@@ -175,7 +175,10 @@ project:
         - file: api/core.validation.md
           title: Validation
 
-    # 8. Contribute -- the router page, then one page per kind of change.
+    # 8. Contribute -- the router page, then the four steps of a contribution.
+    # Step 3 nests, because it is the only one that is a choose-one rather than
+    # a do-this: four sibling workflows, each mirroring the Claude Code skill
+    # that automates it.
     - title: Contribute
       children:
         - file: contribute/index.md
@@ -184,34 +187,22 @@ project:
           title: 1. Environment setup
         - file: contribute/contract.md
           title: 2. The Architecture Contract
-        - file: contribute/methods.md
-          title: 3a. Add a processing method
-        - file: contribute/static_widgets.md
-          title: 3b. Add a widget
-        - file: contribute/docs_pages.md
-          title: 3c. Write a docs page
-        - file: contribute/dev_diary.md
-          title: 3d. Write a dev-diary entry
+        - title: 3. Workflow & skills
+          children:
+            - file: contribute/methods.md
+              title: Add a processing method
+            - file: contribute/static_widgets.md
+              title: Add a widget
+            - file: contribute/docs_pages.md
+              title: Write a docs page
+            - file: contribute/dev_diary.md
+              title: Write a dev-diary entry
         - file: contribute/pull_requests.md
           title: 4. Open a pull request
         - file: contribute/publishing.md
           title: 5. Publishing
 
-    # 9. Roadmap -- a plain article, not a dropdown. Its decision notebooks are
-    # niche and reachable from the decision board on the page itself, so they
-    # stay in the TOC (hidden entries are still built and still resolve as link
-    # targets) but out of the sidebar.
-    - file: roadmap.md
-      title: Roadmap
-      children:
-        - file: decisions/decision_02_attrs_lineage.md
-          title: 02 · Attrs — exploration
-          hidden: true
-        - file: decisions/decision_02b_physics_constants.md
-          title: 02b · Constants — exploration
-          hidden: true
-
-    # 10. Dev diary -- intro pinned first, dated entries chronological below it.
+    # 9. Dev diary -- intro pinned first, dated entries chronological below it.
     - title: Dev diary
       children:
         - file: diary/index.md
@@ -224,6 +215,21 @@ project:
           title: AMARES fitting
         - file: diary/2026-07-25-docs-previews.md
           title: Per-PR docs previews
+
+    # 10. Roadmap -- last, and a plain article rather than a dropdown, so it
+    # anchors the end of the sidebar instead of being buried between chapters.
+    # Its decision notebooks are niche and reachable from the decision board on
+    # the page itself, so they stay in the TOC (hidden entries are still built
+    # and still resolve as link targets) but out of the sidebar.
+    - file: roadmap.md
+      title: Roadmap
+      children:
+        - file: decisions/decision_02_attrs_lineage.md
+          title: 02 · Attrs — exploration
+          hidden: true
+        - file: decisions/decision_02b_physics_constants.md
+          title: 02b · Constants — exploration
+          hidden: true
 
 site:
   template: book-theme
@@ -261,12 +267,12 @@ site:
       url: /api
     - title: Project
       children:
-        - title: Roadmap
-          url: /roadmap
-        - title: Dev diary
-          url: /diary
         - title: Contribute
           url: /contribute
+        - title: Dev diary
+          url: /diary
+        - title: Roadmap
+          url: /roadmap
 
   actions:
     - title: GitHub

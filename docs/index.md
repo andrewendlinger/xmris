@@ -144,8 +144,8 @@ need — every chapter title is also a page that summarises what is under it.
 | [Vendor formats](#vendor) | Bruker group delay and raw-file loading | Your data is still in whatever the scanner wrote |
 | [API reference](#api-home) | Every public function, generated from the docstrings | You know the function name and want its signature |
 | [Contribute](#contribute-home) | Setup, the Architecture Contract, one page per kind of change | You are opening a pull request |
-| [Roadmap](#roadmap) | What is shipped, in motion, and still being argued about | You are wondering whether to wait for something |
 | [Dev diary](#diary-about) | One entry per significant decision, told as a story | You found a design choice you cannot explain |
+| [Roadmap](#roadmap) | What is shipped, in motion, and still being argued about | You are wondering whether to wait for something |
 
 Every page in the first six chapters is an executable notebook: the plots and numbers you see were
 produced by the code above them, and they run on every pull request.
