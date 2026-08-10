@@ -1,7 +1,7 @@
 (roadmap)=
 # Where xmris is going
 
-<span style="color: gray; font-size: 0.9em;">Last edited: 2026-08-05</span>
+<span style="color: gray; font-size: 0.9em;">Last edited: 2026-08-10</span>
 
 ::::{div}
 :class: roadmap-hero
@@ -9,27 +9,29 @@
 :::{div}
 :class: roadmap-kicker
 
-The direction
+The vision
 :::
 
 :::{div}
 :class: roadmap-statement
 
-The physics used to live in headers, protocols, and someone's memory. Here it lives in the
-array.
+xmris is finished when the three lines you write to process a single FID are the same three lines
+that process a whole volume — and when the object they hand back already carries everything you
+need.
 :::
 
 :::{div}
 :class: roadmap-tenets
 
-`xarray in, xarray out` `one FID or a volume, the same lines` `docs before code`
+`xarray in, xarray out` `docs before code` `the record travels with the data`
 :::
 ::::
 
 Three commitments shape everything below. Your data stays an `xarray.DataArray` — the physics
 comes to it, never your data into a framework, and the whole xarray ecosystem keeps working. The
-same pure lines process one FID or an N-D volume of them. And the docs come before the code:
-every page executes on every pull request.
+docs come before the code: every page executes on every pull request. And the record travels with
+the data — the reference frequency, the phase that was applied, the prior knowledge a fit was
+given, attached to the object you already hold.
 
 :::{note} How to read this page
 Five bands: from what already works, through the upcoming architecture decisions, to the near
