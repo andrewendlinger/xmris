@@ -66,3 +66,10 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage.xml
           fail_ci_if_error: true
+          # Fetch the uploader from PyPI, not cli.codecov.io. `test` is a required
+          # check, so the binary path's GPG step -- which once hung 4.5 min on a
+          # keyserver fetch and then failed -- could block every merge in the repo
+          # over an outage in a service the PR never touched. PyPI is already a hard
+          # dependency of this job via `uv sync`. Deliberately not `skip_validation`:
+          # that disables the integrity check rather than moving it. See #115.
+          use_pypi: true
