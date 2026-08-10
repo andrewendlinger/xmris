@@ -25,6 +25,38 @@ jobs:
       - name: Check docs style
         run: python3 .claude/skills/docs-page/check_docs.py
 
+  bare-install:
+    name: bare install
+    runs-on: ubuntu-latest
+    # Every other job installs with `uv sync --all-extras --dev`, so the dependency
+    # set a real user receives is exercised nowhere -- which is how #122 shipped a
+    # release whose `import xmris` raised ModuleNotFoundError while CI stayed green.
+    # One Python version is enough: this checks the dependency *set*, not the matrix.
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: "**/pyproject.toml"
+
+      - name: Set up Python
+        run: uv python install 3.13
+
+      # Deliberately no --all-extras and no --dev: installing *only*
+      # [project].dependencies into a clean venv is the entire point of the job.
+      - name: Install the way a user does
+        run: |
+          uv venv /tmp/bare --python 3.13
+          uv pip install --python /tmp/bare/bin/python .
+
+      - name: Import xmris and run the processing chain
+        run: /tmp/bare/bin/python .github/scripts/bare_install_smoke.py
+
   test:
     runs-on: ubuntu-latest
     # A healthy run is ~4 min; bound it so a hung kernel fails fast, not at GitHub's 6h ceiling.

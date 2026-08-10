@@ -13,7 +13,7 @@ kernelspec:
 # Open a pull request
 
 Your change is written and green locally. This page covers everything between that and it being on
-`main`: how to name the commit, what the four checks that gate the merge actually measure, where to
+`main`: how to name the commit, what the five checks that gate the merge actually measure, where to
 read your change rendered as a website before anyone reviews it, and who merges. It applies to every
 kind of change — a processing method, a widget, a docs page, a diary entry.
 
@@ -51,21 +51,28 @@ command above fills in. Nothing downstream cares which route you took.
 Every push to the branch re-runs the checks below and refreshes your preview.
 
 (contribute-pr-checks)=
-## 3. Four checks gate the merge
+## 3. Five checks gate the merge
 
-All four must pass before the merge button works. Each one is reproducible locally with a single
+All five must pass before the merge button works. Each one is reproducible locally with a single
 command — run it there first, since a local failure costs seconds and a CI failure costs minutes:
 
 | Check | What it measures | Reproduce locally |
 |---|---|---|
 | **`Docs style`** | The docs rules `myst build` stays silent about: a header with no explicit target, a dead `.ipynb` link, a drifted kernel label, a page missing from the TOC | `uv run python .claude/skills/docs-page/check_docs.py` |
 | **`build`** | Executes **every** notebook and explainer in the documentation, then fails on any mystmd error — a broken cross-reference, an unresolvable DOI, a directive that did not render | `cd docs && uv run myst build --html --execute --strict` |
+| **`bare install`** | Installs **only** `[project].dependencies` into a clean venv — the set a real user receives — then imports xmris and runs the processing chain | `uv venv /tmp/bare && uv pip install --python /tmp/bare/bin/python . && /tmp/bare/bin/python .github/scripts/bare_install_smoke.py` |
 | **`test (3.10)`** and **`test (3.13)`** | Lint, then the full suite — including the tutorials, which *are* the maths tests — on both ends of the supported Python range | `uv run ruff check .` then `uv run test` |
 
-Two things worth knowing about that table. The `build` check is why a notebook that hangs can never
+Three things worth knowing about that table. The `build` check is why a notebook that hangs can never
 reach `main`: it runs under a 20-minute ceiling, so a stuck kernel fails visibly instead of burning
 six hours. And `--strict` is load-bearing — without it mystmd reports its errors and *still* exits 0,
 which is how a dead link once survived on the site for months.
+
+`bare install` is the odd one out, and deliberately so: every other job installs with `uv sync
+--all-extras --dev`, which means the dependency set an actual `pip install xmris` produces is
+exercised nowhere else. That gap once shipped a release whose `import xmris` raised
+`ModuleNotFoundError` while all four other checks stayed green, so this job installs the way a user
+does and refuses to trust anything the dev environment happens to provide.
 
 Two further jobs report on the pull request without gating it. `publish` assembles and deploys the
 site — that is where your preview comes from — and `links` checks external URLs **weekly on a
@@ -107,7 +114,7 @@ contributor's first pull request should not open with a red X they have no way t
 (contribute-pr-green)=
 ## 5. Drive it green, then hand off
 
-Push fixes until all four checks pass. You do **not** need to keep the branch up to date with `main`
+Push fixes until all five checks pass. You do **not** need to keep the branch up to date with `main`
 — the checks are not configured strictly, so an unrelated merge landing meanwhile will not force you
 to rebase. Rebase only for a real conflict:
 
