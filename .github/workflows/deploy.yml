@@ -121,6 +121,10 @@ jobs:
       - name: Assemble the site from current state
         env:
           GH_TOKEN: ${{ github.token }}
+          # This job never checks the repository out -- it only moves artifacts
+          # around -- so `gh` has no git remote to infer the repository from and
+          # every subcommand but `gh api` dies with "not a git repository".
+          GH_REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
 
@@ -187,6 +191,7 @@ jobs:
         if: github.event_name == 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}  # no checkout here either
           PR: ${{ github.event.number }}
           SITE: ${{ steps.deployment.outputs.page_url }}
           SHA: ${{ github.event.pull_request.head.sha }}
