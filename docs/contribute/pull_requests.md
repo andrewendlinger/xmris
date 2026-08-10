@@ -67,8 +67,10 @@ reach `main`: it runs under a 20-minute ceiling, so a stuck kernel fails visibly
 six hours. And `--strict` is load-bearing — without it mystmd reports its errors and *still* exits 0,
 which is how a dead link once survived on the site for months.
 
-A fifth job, `links`, checks external URLs — but it runs **weekly on a schedule**, not on your pull
-request, because a third-party URL rotting is not your fault and should not redden your branch.
+Two further jobs report on the pull request without gating it. `publish` assembles and deploys the
+site — that is where your preview comes from — and `links` checks external URLs **weekly on a
+schedule** rather than on your branch, because a third-party URL rotting is not your fault and
+should not redden your pull request.
 
 (contribute-pr-preview)=
 ## 4. Read your change on its own website
@@ -89,18 +91,18 @@ implementation begins.
 %%{init: {'flowchart': {'htmlLabels': false}}}%%
 flowchart LR
     P["Push to the PR"] --> B["Build: execute + strict"]
-    B --> V["Publish to pr-preview/pr-N"]
-    V --> C["Bot comments the link"]
-    C --> M["Merge"]
-    M --> R["Site rebuilds from main"]
-    M --> X["Preview removed"]
+    B --> U["Upload preview-pr-N"]
+    U --> A["Assemble: main + every open PR"]
+    A --> D["Deploy the whole site"]
+    D --> C["Bot comments the link"]
+    M["Merge or close"] --> X["Dropped from the next assembly"]
 ```
 
-Two caveats. The link lags the green check by a minute or two, because GitHub then runs its own
-Pages deployment on top of ours. And a pull request from a **fork** gets no preview: its token is
-read-only by design, so the build still runs as a smoke test but cannot publish. That is not a
-failure — an external contributor's first pull request should not open with a red X they have no way
-to fix.
+Two caveats. The link arrives a couple of minutes after the green `build` check, because the deploy
+runs after it — the comment is posted once the site is actually live, so the link never points at
+nothing. And a pull request from a **fork** gets no preview: its token is read-only by design, so
+the build still runs as a smoke test but cannot publish. That is not a failure — an external
+contributor's first pull request should not open with a red X they have no way to fix.
 
 (contribute-pr-green)=
 ## 5. Drive it green, then hand off
@@ -120,10 +122,13 @@ Cutting a release is a separate, maintainer-run workflow ([Publishing](#contribu
 (contribute-pr-deployment)=
 ## How the documentation reaches the web
 
-Deployment is continuous and has nothing to do with releases: every merge to `main` rebuilds the
-site and publishes it to the `gh-pages` branch root, which GitHub Pages serves. Pull-request
-previews live on that same branch under `pr-preview/pr-N/`, which is why merging your pull request
-also deletes its preview.
+Deployment is continuous and has nothing to do with releases, and the built site is never stored
+anywhere: each deploy reassembles it from scratch — `main`'s most recent build, plus one artifact
+per *currently open* pull request — and publishes that whole tree to GitHub Pages. Your preview is
+on the site because your pull request is open, and it leaves on the first deploy after it closes.
+Nothing removes it; it simply stops being an input. A weekly scheduled run performs the same
+assembly, which keeps `main`'s build fresh and sweeps the preview of a pull request that closed
+during a quiet week. ([The diary entry](#diary-docs-previews) tells why it works this way.)
 
 The one subtlety worth internalising if you ever touch the workflow: mystmd bakes the site's base
 path into every asset link **at build time**, so a preview has to be built for the subdirectory it
@@ -137,7 +142,10 @@ will be served from. That is what this step does, quoted from the workflow itsel
 ```
 
 To rebuild and republish the site without merging anything — after a failed deploy, say — run the
-**Documentation** workflow manually from the Actions tab (`workflow_dispatch`).
+**Documentation** workflow manually from the Actions tab (`workflow_dispatch`). That is also the
+recovery when `publish` fails with `No usable 'site-main' artifact`: a Pages deployment is atomic,
+so the previous site keeps serving until a good one replaces it, and the failure is loud rather
+than destructive.
 
 ```{code-cell} python
 :tags: [remove-cell]
@@ -169,7 +177,7 @@ assert "uv run myst build --html --execute --strict" in text, "end-at anchor no 
 | `build` red, `Could not find DOI "…" from doi.org` | DOI metadata is resolved over the network unless it is frozen in `docs/myst.doi.bib` | `cd docs && uv run myst build --doi-bib`, then commit `myst.doi.bib` |
 | `build` red, `Site has N error(s), stopping build` | A cross-reference, directive or link mystmd could not resolve | Reproduce with the `build` command above; the error names the file and line |
 | `build` red only in CI, green locally | Stale `docs/_build` cache locally | `rm -rf docs/_build` and rebuild |
-| Preview link 404s | GitHub's own Pages deployment has not finished, or the pull request is from a fork | Wait a minute; for forks, ask a maintainer to read the branch locally |
+| Preview link 404s | The `publish` job has not finished deploying yet, or the pull request is from a fork — forks never publish | Wait for `publish` to go green; for forks, ask a maintainer to read the branch locally |
 | Merge button blocked with everything green | The branch is out of date in a way GitHub cannot merge, or a check never reported | Check the merge box for which requirement is unmet; rebase only if there is a real conflict |
 
 :::{seealso}
