@@ -129,9 +129,10 @@ the same shape. Moving *onto* the branch: a branch-served site builds on the nex
 branch, and the last `gh-pages` push predated the flip, so the old artifact kept serving with
 `pages/builds/latest` returning 404 and no workflow run to look at —
 `gh api -X POST repos/OWNER/REPO/pages/builds` bootstraps it. Moving *off* it: the `github-pages`
-environment still restricts deployments to `gh-pages` and `main`, so a pull request's deploy is
-rejected — "branch is not allowed to deploy" — before a byte moves, unless a wildcard policy is
-added first.
+environment restricts which refs may deploy, so a pull request is rejected — `Branch
+"refs/pull/142/merge" is not allowed to deploy to github-pages` — before a byte moves. The rule that
+admits it must be spelled `refs/pull/*/merge`, and a plain `*` will not do: policies are matched
+against `GITHUB_REF` with `fnmatch` semantics, where a wildcard never crosses a `/`.
 :::
 
 :::{dropdown} Why not Cloudflare Pages or Netlify?
@@ -150,9 +151,6 @@ page is the path of least resistance.
 :::
 
 :::{attention} Assumptions to verify
-- The wildcard deployment policy on the `github-pages` environment is what unblocks pull-request
-  deploys — without it the first preview fails on the branch policy, not on anything about
-  artifacts.
 - No rebuild fallback is needed when `main`'s artifact is missing: a Pages deployment is atomic, so
   failing loudly leaves the previous site serving rather than an empty one.
 - The weekly rebuild plus 90-day retention keeps that artifact warm enough that expiry is never
