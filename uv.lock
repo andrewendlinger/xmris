@@ -1,6 +1,6 @@
 version = 1
 revision = 3
-requires-python = ">=3.10, <=3.13"
+requires-python = ">=3.10, <3.14"
 resolution-markers = [
     "python_full_version >= '3.12'",
     "python_full_version == '3.11.*'",
@@ -3503,7 +3503,10 @@ version = "0.6.1"
 source = { editable = "." }
 dependencies = [
     { name = "anywidget" },
+    { name = "matplotlib", version = "3.10.9", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "matplotlib", version = "3.11.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "numpy" },
+    { name = "pandas" },
     { name = "scipy", version = "1.15.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "scipy", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "xarray" },
@@ -3515,6 +3518,7 @@ fitting = [
     { name = "numpy" },
     { name = "pandas" },
     { name = "pyamares-xmris" },
+    { name = "tqdm" },
 ]
 
 [package.dev-dependencies]
@@ -3540,11 +3544,14 @@ dev = [
 requires-dist = [
     { name = "anywidget", specifier = ">=0.9.21" },
     { name = "joblib", marker = "extra == 'fitting'", specifier = ">=1.5.3" },
+    { name = "matplotlib", specifier = ">=3.5" },
     { name = "numpy", specifier = ">=1.26.0" },
     { name = "numpy", marker = "extra == 'fitting'", specifier = "<2.0" },
+    { name = "pandas", specifier = ">=2.1" },
     { name = "pandas", marker = "extra == 'fitting'", specifier = "<2.2" },
     { name = "pyamares-xmris", marker = "extra == 'fitting'", specifier = ">=0.3.33" },
     { name = "scipy", specifier = ">=1.11.0" },
+    { name = "tqdm", marker = "extra == 'fitting'", specifier = ">=4.60" },
     { name = "xarray", specifier = "<2025.11.0" },
 ]
 provides-extras = ["fitting"]

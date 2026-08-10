@@ -6,10 +6,14 @@ name = "xmris"
 version = "0.6.1"
 description = "An xarray-based MRI and MRS toolbox"
 readme = "README.md"
-# The <=3.13 ceiling is a pyAMARES constraint (the `fitting` extra). It stays
+# The 3.13 ceiling is a pyAMARES constraint (the `fitting` extra). It stays
 # project-wide only because requires-python cannot be scoped to an optional
 # extra; core xmris itself has no such cap. Revisit once pyAMARES supports 3.14.
-requires-python = ">=3.10,<=3.13"
+# Spelled `<3.14`, NOT `<=3.13`: PEP 440 reads `<=3.13` as `<= 3.13.0`, which
+# excluded every 3.13 patch release from 3.13.1 on -- i.e. all of them, since
+# 3.13.0 shipped in Oct 2024. `<3.14` is what "3.13 is the highest supported
+# minor" actually means.
+requires-python = ">=3.10,<3.14"
 authors = [
     { name = "Andrecho", email = "37243793+andrewendlinger@users.noreply.github.com" }
 ]
@@ -30,7 +34,9 @@ classifiers = [
 
 dependencies = [
     "anywidget>=0.9.21",
+    "matplotlib>=3.5",  # core/accessor + every plot module import it at module level
     "numpy>=1.26.0",
+    "pandas>=2.1",      # core/accessor imports pandas directly
     "scipy>=1.11.0",    # core baseline/phasing/bruker import scipy directly
     "xarray<2025.11.0", # Pinned for compatibility
 ]
@@ -44,6 +50,7 @@ dependencies = [
 fitting = [
     "pyamares-xmris>=0.3.33",
     "joblib>=1.5.3", # parallel fit dispatch (fitting-only)
+    "tqdm>=4.60",    # fitting/amares imports it directly for the fit progress bar
     "numpy<2.0",
     "pandas<2.2",
 ]
