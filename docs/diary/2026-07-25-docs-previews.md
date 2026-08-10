@@ -1,19 +1,20 @@
 (diary-docs-previews)=
 # Every pull request publishes the page it changes
 
-<span style="color: gray; font-size: 0.9em;">Last edited: 2026-08-10 · #112, #114</span>
+<span style="color: gray; font-size: 0.9em;">Last edited: 2026-08-10 · #112, #114, #142, #143, #144</span>
 
 A preview link was the one thing a pull request never handed you, and getting one turned out to be
 mostly a matter of not deleting a build CI already paid for: the reviewer's copy used to live two
 minutes on a runner and then vanish. Three weeks later the bill arrived. The branch carrying the
-site is 103 MB across 3,079 files, its history 674 MB of unique blobs that every clone pays;
-GitHub's own build of that branch has crept from 28 s to 494 s and errored on three of its last ten
-runs; the live site is serving a layout two merges old; and the preview for a pull request merged
-four days ago is still published. Four bugs, one cause — **the published site is versioned state**.
+site had reached 103 MB across 3,079 files, its history 674 MB of unique blobs that every clone
+paid for; GitHub's own build of that branch had crept from 28 s to 494 s and errored on three of
+its last ten runs; the live site was serving a layout two merges old; and the preview for a pull
+request merged four days earlier was still published. Four bugs, one cause — **the published site
+was versioned state**.
 
 :::{important}
 Built output is derived, never stored. Every deploy recomputes the whole site from `main`'s build
-plus one artifact per *currently open* pull request, and `gh-pages` goes away.
+plus one artifact per *currently open* pull request. `gh-pages` no longer exists.
 :::
 
 (diary-docs-previews-derived)=
@@ -38,17 +39,25 @@ That one sentence covers the preview still live four days after its merge, the `
 stranded in closed pull requests' directories, and the branch that only ever grew — all three were
 incremental-cleanup bugs, and there is no increment left to clean.
 
-The store becomes GitHub's artifact retention rather than git: 90 days for `main`'s build, 14 for a
+It behaved exactly that way on the first day. `pr-preview/pr-139/`, published and stranded since a
+merge four days earlier, was simply absent from the first assembled deploy. `pr-preview/pr-143/`
+served for eleven minutes, its pull request merged, and the next unrelated deploy erased it. No
+cleanup step exists to have run.
+
+The store is GitHub's artifact retention rather than git: 90 days for `main`'s build, 14 for a
 preview, with the weekly link-check run extended to rebuild and republish. That keeps the live
 artifact under a week old and doubles as the sweep, bounding how long a closed pull request's
-preview can linger when nothing else happens to deploy.
+preview can linger when nothing else happens to deploy. One build is a 21 MB zip — 1,548 files,
+56 MB unpacked — and assembly downloads it fresh every time.
 
 :::{warning}
-Publishing now runs on pull-request events, so a branch's workflow writes to the live deployment.
-`main`'s content always comes from `main`'s own artifact, so a broken branch can corrupt only its
-own subdirectory — but the fork guard stops being a token limitation and becomes a security
-boundary: a fork's HTML would otherwise be served from our origin on `github.io`. It is still
-design rather than evidence; no fork pull request has arrived to exercise it.
+Publishing runs on pull-request events, so a branch's workflow writes to the live deployment. That
+is not theoretical: the site was updated by pull request #143's own run, before #143 merged. It is
+safe only because the root always comes from `main`'s artifact, never from the branch being tested,
+so a broken branch can corrupt its own subdirectory and nothing else. The fork guard, meanwhile,
+stops being a token limitation and becomes a security boundary — a fork's HTML would otherwise be
+served from our origin on `github.io`. That one is still design rather than evidence; no fork pull
+request has arrived to exercise it.
 :::
 
 (diary-docs-previews-baseurl)=
@@ -150,12 +159,30 @@ you download, unpack and serve locally is not a link, and a review gate only wor
 page is the path of least resistance.
 :::
 
-:::{attention} Assumptions to verify
-- No rebuild fallback is needed when `main`'s artifact is missing: a Pages deployment is atomic, so
-  failing loudly leaves the previous site serving rather than an empty one.
-- The weekly rebuild plus 90-day retention keeps that artifact warm enough that expiry is never
-  reached in practice.
-- The flip moves no URLs: every path, plus the search index, `objects.inv` and `sitemap.xml`,
-  answers identically before and after — and `gh` alone replaces both deploy actions, sticky
-  preview comment included.
-:::
+(diary-docs-previews-changed)=
+## What changed from the plan
+
+Three assumptions were wrong, and each cost a red run to discover:
+
+- **The `publish` job has no checkout, and that broke `gh`.** Moving artifacts needs no source, so
+  omitting `actions/checkout` looked like free economy. But `gh run download`, `gh pr list` and
+  `gh pr comment` all resolve the repository from a git remote, so the job died half a second in
+  with `failed to run git: fatal: not a git repository`. Only the `gh api` calls survived, because
+  they carry an explicit `repos/OWNER/REPO/...` path. `GH_REPO` in the step environment fixes it
+  and keeps the job checkout-free.
+- **Flipping the Pages source is housekeeping, not the switch.** The plan treated
+  `build_type=workflow` as the moment the site changes hands. It is not: an explicit workflow
+  deployment is served whatever the configured source says, so the assembled site — main's build,
+  previews and all — went live while the API still reported `build_type: legacy` and a `gh-pages`
+  source. The flip still matters, because a stray push to that branch would otherwise trigger a
+  legacy build over the top of it, and because the branch cannot be deleted while it is the
+  nominal source.
+- **The rejection came from the ref pattern, not the branch list.** See the warning above: a
+  wildcard cannot match a merge ref, which is not a fact any amount of local reasoning produces.
+
+What the plan got right is the part that mattered: the fail-loud path fired for real on the first
+pull request, before any `site-main` artifact existed, printing
+`No usable 'site-main' artifact. The live site is unchanged; recover with: gh workflow run
+deploy.yml` — and the previous site kept serving throughout, exactly as an atomic deployment
+should. `gh-pages` was deleted at tip `5ae31c42` once the assembled site was confirmed serving all
+72 routes.
