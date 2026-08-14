@@ -33,7 +33,7 @@ Package manager is `uv` — never use pip. Add deps with `uv add <pkg>`; sync wi
 
 - Tests: `uv run test` (regenerates notebook tests from MyST, then runs pytest). Regenerate notebooks only: `uv run test-gen`.
 - Architecture tests only, fast iteration: `uv run pytest tests/test_core.py -n0 --no-cov` (pytest `addopts` otherwise forces `-n auto --nbmake --cov`). Single test: append `::TestClass::test_name`.
-- Lint: `uv run ruff check .` (`--fix` to auto-fix). Format: `uv run ruff format .`.
+- Lint + format check, exactly as the `Lint` CI job runs them: `uv run lint`. Individually: `uv run ruff check .` (`--fix` to auto-fix), `uv run ruff format .`. Ruff excludes `*.md` — it formats Python inside Markdown code blocks and would flatten the hand-set docs snippets, so `ruff format .` is safe to run tree-wide.
 - Type-check: `uv run mypy src/xmris` — run it and fix clear type errors before finishing. It is not in CI and not configured, so xarray typing can be noisy; fix real issues, don't chase false positives.
 - Docs API stubs: `uv run docs-api`. Check a page renders: `myst build --html` from `docs/` — one-shot, ~10 s warm, exit 0 (add `--execute` to run notebooks too).
 - `uv run docs` and `uv run docs-notebooks` **launch a blocking preview server** (`myst start --execute`) and never exit. They are for a human reading the site — never put them in a verification step. In general, check what a `uv run <name>` alias does in `src/xmris/_scripts.py`; the inline comments in `pyproject.toml` describe intent, not blocking behaviour.
@@ -56,5 +56,5 @@ Ruff: line length 100, NumPy docstring convention. Public functions need fully-t
 
 ## Commits & releases
 
-- Conventional Commits (`feat:`, `fix:`, `chore:`, `docs:`, `add:`). Branch, then PR — `main` takes no direct pushes and requires five checks green (`Docs style`, `build`, `bare install`, `test (3.10)`, `test (3.13)`). PRs are squash-merged, so the **PR title** is the commit subject on `main`. The user merges; see @docs/contribute/pull_requests.md.
+- Conventional Commits (`feat:`, `fix:`, `chore:`, `docs:`, `add:`). Branch, then PR — `main` takes no direct pushes and requires six checks green (`Docs style`, `Lint`, `build`, `bare install`, `test (3.10)`, `test (3.13)`). PRs are squash-merged, so the **PR title** is the commit subject on `main`. The user merges; see @docs/contribute/pull_requests.md.
 - Release (see `/release`): never bump version until CI is green. Releases go through a `release/vX.Y.Z` branch (full test matrix), then the bump lands on `main` via a PR — and only *then* is `vX.Y.Z` tagged on the merged commit, which triggers the PyPI publish. Tagging before the merge would leave the tag outside `main`'s history. Bump with `uv version --bump patch|minor`.
