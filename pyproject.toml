@@ -65,6 +65,7 @@ docs-notebooks = "xmris._scripts:docs_notebooks"        # Serve tutorials — bl
 docs = "xmris._scripts:docs_all"                        # API refs, then serve site — blocking
 test-gen = "xmris._scripts:generate_test_notebooks"
 test = "xmris._scripts:run_tests"
+lint = "xmris._scripts:run_lint"                        # Format check, then lint — mirrors CI
 
 # ==============================================================================
 # 2. BUILD SYSTEM

@@ -25,6 +25,39 @@ jobs:
       - name: Check docs style
         run: python3 .claude/skills/docs-page/check_docs.py
 
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    # Both halves of ruff, once. `ruff check` used to be the first step of `test`,
+    # which meant it ran per matrix leg, a formatting nit stopped the maths from
+    # ever running, and the failure reported itself as a test failure. Same
+    # reasoning as the docs job above: a lint failure should read as a lint failure.
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: "**/pyproject.toml"
+
+      - name: Set up Python
+        run: uv python install 3.13
+
+      - name: Install dependencies
+        run: uv sync --all-extras --dev
+
+      # Format before lint: the mechanical failure is the cheaper one to fix, so
+      # it should be the one you see first. `uv run lint` runs these same two.
+      - name: Format (ruff)
+        run: uv run ruff format --check .
+
+      - name: Lint (ruff)
+        run: uv run ruff check .
+
   bare-install:
     name: bare install
     runs-on: ubuntu-latest
@@ -80,9 +113,6 @@ jobs:
 
       - name: Install dependencies
         run: uv sync --all-extras --dev
-
-      - name: Lint (ruff)
-        run: uv run ruff check .
 
       - name: Run Tests
         run: uv run test
