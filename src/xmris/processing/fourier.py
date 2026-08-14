@@ -161,14 +161,8 @@ def fft(
 
         # Smart mapping: If converting standard time, automatically apply
         # frequency metadata
-        term = (
-            COORDS.frequency
-            if (d == DIMS.time and o_dim in (None, DIMS.frequency))
-            else None
-        )
-        da_transformed = _convert_fft_coords(
-            da_transformed, dim=d, out_dim=o_dim, term=term
-        )
+        term = COORDS.frequency if (d == DIMS.time and o_dim in (None, DIMS.frequency)) else None
+        da_transformed = _convert_fft_coords(da_transformed, dim=d, out_dim=o_dim, term=term)
 
     return da_transformed
 
@@ -216,12 +210,8 @@ def ifft(
 
         # Smart mapping: If converting standard frequency, automatically apply
         # time metadata
-        term = (
-            COORDS.time if (d == DIMS.frequency and o_dim in (None, DIMS.time)) else None
-        )
-        da_transformed = _convert_fft_coords(
-            da_transformed, dim=d, out_dim=o_dim, term=term
-        )
+        term = COORDS.time if (d == DIMS.frequency and o_dim in (None, DIMS.time)) else None
+        da_transformed = _convert_fft_coords(da_transformed, dim=d, out_dim=o_dim, term=term)
 
     return da_transformed
 
@@ -257,11 +247,7 @@ def fftc(
     """
     new_dims = out_dim if out_dim is not None else dim
 
-    return (
-        ifftshift(da, dim=dim)
-        .pipe(fft, dim=dim, out_dim=out_dim)
-        .pipe(fftshift, dim=new_dims)
-    )
+    return ifftshift(da, dim=dim).pipe(fft, dim=dim, out_dim=out_dim).pipe(fftshift, dim=new_dims)
 
 
 def ifftc(
@@ -291,8 +277,4 @@ def ifftc(
     """
     new_dims = out_dim if out_dim is not None else dim
 
-    return (
-        ifftshift(da, dim=dim)
-        .pipe(ifft, dim=dim, out_dim=out_dim)
-        .pipe(fftshift, dim=new_dims)
-    )
+    return ifftshift(da, dim=dim).pipe(ifft, dim=dim, out_dim=out_dim).pipe(fftshift, dim=new_dims)
