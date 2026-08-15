@@ -23,9 +23,6 @@
 
 **[Explore the official documentation](https://andrewendlinger.github.io/xmris/)** for tutorials, complete API references, and advanced usage guides.
 
-Upgrading? The **[changelog](https://andrewendlinger.github.io/xmris/changelog)** records what changed in each release. There is no `CHANGELOG.md` here — it is a rendered page, so every entry can link the issue, the pull request, and the documentation behind it.
-
-
 
 ## 02. Overview
 
@@ -109,6 +106,9 @@ For a one-shot render check instead (the same command CI runs), use `myst build 
 
 More information can be found in the [contributing guide](https://andrewendlinger.github.io/xmris/guide).
 
+### Changelog
+
+Upgrading? The **[changelog](https://andrewendlinger.github.io/xmris/changelog)** records what changed in each release. There is no `CHANGELOG.md` here — it is a rendered page, so every entry can link the issue, the pull request, and the documentation behind it.
 
 ---
 
