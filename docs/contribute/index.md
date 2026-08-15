@@ -35,8 +35,9 @@ flowchart LR
 :::{note}
 **For Claude Code users:** four of the skills under
 [`.claude/skills/`](https://github.com/andrewendlinger/xmris/tree/main/.claude/skills) fire on the
-matching change above; a fifth, user-triggered `release` skill drives [cutting a
-release](#contribute-release). None carries rules of its own — each routes to the one canonical doc
+matching change above; two more drive [cutting a release](#contribute-release) — the user-triggered
+`release` skill, and the `changelog` skill it invokes to write that release's
+[changelog](#changelog) entry. None carries rules of its own — each routes to the one canonical doc
 that owns it, obeying the same "one home per concept" rule these docs preach.
 :::
 
@@ -47,9 +48,10 @@ that owns it, obeying the same "one home per concept" rule these docs preach.
    confirm `uv run test` is green.
 2. **Make your change**, following the page for its kind above. A significant decision starts as a
    [dev-diary draft](#contribute-dev-diary) that gets reviewed before the code is written.
-3. [**Open a pull request**](#contribute-pr) against `main` — `main` takes no direct pushes. Four
-   checks gate the merge: the test suite on Python 3.10 and 3.13, the docs style checker, and an
-   executed build of this documentation, so a broken notebook fails your branch rather than `main`.
+3. [**Open a pull request**](#contribute-pr) against `main` — `main` takes no direct pushes. Six
+   checks gate the merge: the test suite on Python 3.10 and 3.13, ruff, the docs style checker, an
+   install of only what a real user receives, and an executed build of this documentation, so a
+   broken notebook fails your branch rather than `main`.
    That build also publishes your change as a **live preview site**, which is where anything
    reader-facing gets reviewed.
 4. **Drive it green, then hand off** — a maintainer reviews and merges. Cutting a release is a

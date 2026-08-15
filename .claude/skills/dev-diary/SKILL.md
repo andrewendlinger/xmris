@@ -19,7 +19,7 @@ entry is rewritten ground-up into the current story — `Last edited` updated, t
 appended — rather than a sibling entry spawned. A new dated entry is for a new decision; the
 reader should never have to join two articles to get one answer.
 
-The `Dev Diary` group also has **one evergreen page** — `docs/diary/about.md` ("A dev diary for
+The `Dev Diary` group also has **one evergreen page** — `docs/diary/index.md` ("A dev diary for
 xmris") — that tells readers *what the diary is*. It is **not** an entry: no `Last edited` line, no
 assumptions block, no reconciliation, and it stays pinned at the **top** of the group. This skill
 governs the dated entries **below** it; touch `about.md` only when the diary's own workflow changes.

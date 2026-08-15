@@ -221,6 +221,13 @@ project:
     # Its decision notebooks are niche and reachable from the decision board on
     # the page itself, so they stay in the TOC (hidden entries are still built
     # and still resolve as link targets) but out of the sidebar.
+    #
+    # The changelog hides here for the same reason, and pairs: the roadmap is
+    # what is coming, the changelog what shipped. The sidebar is for what you
+    # browse, and nobody browses a changelog -- you arrive at it from the
+    # header's Project menu, from a link in the page you were already reading,
+    # or from PyPI. That makes the `nav` entry below load-bearing, not a
+    # convenience: it is the only navigational route to this page.
     - file: roadmap.md
       title: Roadmap
       children:
@@ -229,6 +236,9 @@ project:
           hidden: true
         - file: decisions/decision_02b_physics_constants.md
           title: 02b · Constants — exploration
+          hidden: true
+        - file: changelog.md
+          title: Changelog
           hidden: true
 
 site:
@@ -273,6 +283,8 @@ site:
           url: /diary
         - title: Roadmap
           url: /roadmap
+        - title: Changelog
+          url: /changelog
 
   actions:
     - title: GitHub

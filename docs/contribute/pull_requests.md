@@ -30,11 +30,15 @@ git checkout -b <type>/<short-slug>     # e.g. feat/apodize-gauss, docs/domains-
 The **pull request title** becomes the commit subject on `main`, because pull requests are
 squash-merged — so it is the title, not your individual commits, that has to read well in
 `git log`. Use a [Conventional Commit](https://www.conventionalcommits.org/) prefix: `feat:`,
-`fix:`, `docs:`, `chore:`, `ci:`, `add:`.
+`fix:`, `docs:`, `refactor:`, `test:`, `ci:`, `chore:`. A parenthesised scope is encouraged where
+it narrows usefully — `fix(packaging)`, `chore(ci)`, `feat(fitting)` — and a `!` before the colon
+marks a breaking change.
 
 The body is where you say what moved. If you consolidated documentation — thinned one page into
 another, gave a concept a new home — name the pages, because that is the part a reviewer cannot see
-from the diff alone.
+from the diff alone. Write it for someone who was not in the discussion: at release time the
+[changelog](#changelog) entry for your change is written from this body, not from the diff, and it
+carries your issue and pull-request numbers forward as its trail.
 
 (contribute-pr-open)=
 ## 2. Open it against `main`

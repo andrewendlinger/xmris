@@ -25,7 +25,7 @@ If a change picks between ≥2 viable approaches, adds conceptual surface (a new
 
 Pass 1 is the change's **master overview** and its review gate: the plan file is right for executing and too heavy for approving, so the entry is what gets read on the rendered site (`uv run docs`) before work starts. It never restates the plan's steps. The skill always asks before writing anything — never decide that autonomously — and after committing the draft the turn **ends** so the user can review the page; implementation waits for their go-ahead.
 
-The `Dev Diary` section opens with one evergreen intro (`docs/diary/about.md`, pinned first) that explains what the diary *is*; dated entries follow it chronologically and carry a muted `Last edited` line rather than a status banner.
+The `Dev Diary` section opens with one evergreen intro (`docs/diary/index.md`, pinned first) that explains what the diary *is*; dated entries follow it chronologically and carry a muted `Last edited` line rather than a status banner.
 
 ## Environment & commands
 
@@ -56,5 +56,6 @@ Ruff: line length 100, NumPy docstring convention. Public functions need fully-t
 
 ## Commits & releases
 
-- Conventional Commits (`feat:`, `fix:`, `chore:`, `docs:`, `add:`). Branch, then PR — `main` takes no direct pushes and requires six checks green (`Docs style`, `Lint`, `build`, `bare install`, `test (3.10)`, `test (3.13)`). PRs are squash-merged, so the **PR title** is the commit subject on `main`. The user merges; see @docs/contribute/pull_requests.md.
+- Conventional Commits (`feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `ci:`, `chore:`, optional `(scope)`, `!` for breaking). Branch, then PR — `main` takes no direct pushes and requires six checks green (`Docs style`, `Lint`, `build`, `bare install`, `test (3.10)`, `test (3.13)`). PRs are squash-merged, so the **PR title** is the commit subject on `main`. The user merges; see @docs/contribute/pull_requests.md.
+- **The changelog is written at release time, not per PR.** `docs/changelog.md` is the canonical home (there is no root `CHANGELOG.md` — PyPI reaches it through `[project.urls]`). The `changelog` skill curates it from `git log` and PR bodies while the release matrix runs; the `release` skill invokes it and refuses to tag while the top section still says `unreleased`. Nothing is generated and no CI job parses it.
 - Release (see `/release`): never bump version until CI is green. Releases go through a `release/vX.Y.Z` branch (full test matrix), then the bump lands on `main` via a PR — and only *then* is `vX.Y.Z` tagged on the merged commit, which triggers the PyPI publish. Tagging before the merge would leave the tag outside `main`'s history. Bump with `uv version --bump patch|minor`.

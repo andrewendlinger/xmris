@@ -137,7 +137,7 @@ This very page — the roadmap you are reading is being written and argued right
 ::::{div}
 :class: roadmap-item roadmap-item--minor
 
-A changelog begins — its first entry is this release
+[A changelog](#changelog) begins — its first entry is this release
 [#10](https://github.com/andrewendlinger/xmris/issues/10)
 ::::
 
