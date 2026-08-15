@@ -1,7 +1,7 @@
 (diary-authoring-skills)=
 # The skills remember the rules so you don't
 
-<span style="color: gray; font-size: 0.9em;">Last edited: 2026-07-25 · #103, #104, #114</span>
+<span style="color: gray; font-size: 0.9em;">Last edited: 2026-08-15 · #103, #104, #114</span>
 
 Every change to xmris has to clear the same stack of contracts at once. A new function, for
 example, has to honour
@@ -42,10 +42,11 @@ the missing front door.
 The skills split along one seam. `xmr-method` and `xmr-widget` produce the **what** — the maths
 and the UI over it. A widget is never a home for new maths, so it hands any missing method back to
 `xmr-method` first. `docs-page` and `dev-diary` produce the **how-to-use** and the **why** — the
-tutorial a reader runs, and the decision log you are reading now. A fifth skill sits off this
-seam: `release`, the user-triggered **ship** step, routes to [Publishing](#contribute-release)
-exactly as the four route to their docs — that operational axis is why the group is **Workflows**,
-not just the authoring four.
+tutorial a reader runs, and the decision log you are reading now. `changelog` produces the **what
+shipped** — the one record a reader reaches from PyPI rather than from the sidebar. A sixth skill
+sits off this seam: `release`, the user-triggered **ship** step, routes to
+[Publishing](#contribute-release) exactly as the five route to their docs — that operational axis
+is why the group is **Workflows**, not just the authoring five.
 
 (diary-authoring-skills-diary)=
 ## The diary is the workflow's review gate

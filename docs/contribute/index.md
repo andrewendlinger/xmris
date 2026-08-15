@@ -14,6 +14,7 @@ change you are making**. Find your row and follow the page it points to:
 | An interactive widget — a UI over the maths | [Add a widget](#contribute-widget) | [The Architecture Contract](#contract) |
 | A docs page — tutorial, explainer, or guide | [Write a docs page](#contribute-docs) | Documentation style |
 | The record of a significant decision | [Write a dev-diary entry](#contribute-dev-diary) | [A dev diary for xmris](#diary-about) |
+| The record of what shipped in a release | [Write a changelog entry](#contribute-changelog) | [Publishing](#contribute-release) |
 
 Each of those pages carries a **live checklist**, rendered straight from the Claude Code skill that
 automates that kind of change — so whether you work by hand or with Claude, you follow the same,
@@ -26,19 +27,21 @@ flowchart LR
     C2["Widget"] --> W["xmr-widget"]
     C3["Docs page"] --> P["docs-page"]
     C4["Decision record"] --> V["dev-diary"]
+    C5["Release record"] --> L["changelog"]
     M --> A["Architecture Contract — the Commandments"]
     W --> A
     P --> H["Documentation style"]
     V --> H
+    L --> R["Publishing — the release workflow"]
 ```
 
 :::{note}
-**For Claude Code users:** four of the skills under
+**For Claude Code users:** five of the skills under
 [`.claude/skills/`](https://github.com/andrewendlinger/xmris/tree/main/.claude/skills) fire on the
-matching change above; two more drive [cutting a release](#contribute-release) — the user-triggered
-`release` skill, and the `changelog` skill it invokes to write that release's
-[changelog](#changelog) entry. None carries rules of its own — each routes to the one canonical doc
-that owns it, obeying the same "one home per concept" rule these docs preach.
+matching change above; the sixth, the user-triggered `release` skill, drives [cutting a
+release](#contribute-release) and invokes `changelog` along the way. None carries rules of its own
+— each routes to the one canonical doc that owns it, obeying the same "one home per concept" rule
+these docs preach.
 :::
 
 (contribute-home-first)=
