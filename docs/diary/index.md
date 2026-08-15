@@ -51,4 +51,8 @@ flowchart LR
 :::{seealso}
 Writing one yourself? [Write a dev-diary entry](#contribute-dev-diary) has the
 mechanics, straight from the skill that drives it.
+
+After *what changed in a release* rather than why a design is the way it is? That
+is the [changelog](#changelog) — one line per change, linking back to entries here
+where one exists.
 :::

@@ -146,7 +146,10 @@ need — every chapter title is also a page that summarises what is under it.
 | [Contribute](#contribute-home) | Setup, the Architecture Contract, one page per kind of change | You are opening a pull request |
 | [Dev diary](#diary-about) | One entry per significant decision, told as a story | You found a design choice you cannot explain |
 | [Roadmap](#roadmap) | What is shipped, in motion, and still being argued about | You are wondering whether to wait for something |
-| [Changelog](#changelog) | What changed in each release, with the issue and pull request behind it | You just upgraded and something behaves differently |
 
 Every page in the first six chapters is an executable notebook: the plots and numbers you see were
 produced by the code above them, and they run on every pull request.
+
+Not a chapter, and not in the sidebar: the [changelog](#changelog) records what changed in each
+release, if you have just upgraded and something behaves differently. It lives under **Project** in
+the header.

@@ -1,7 +1,8 @@
 (changelog)=
 # Changelog
 
-The [dev diary](#diary-about) records *why*; the [roadmap](#roadmap) records what is next.
+What shipped in each release; *why* is in the [dev diary](#diary-about), what is next in the
+[roadmap](#roadmap).
 
 (changelog-v0-7-0)=
 ## v0.7.0 — unreleased
