@@ -1,18 +1,13 @@
 (changelog)=
 # Changelog
 
-What changed in each release of `xmris`, for someone who just ran `pip install -U xmris`. Every
-entry links the issue that motivated it, the pull request that shipped it, and — where one exists —
-the page that documents it or the [diary](#diary-about) entry that argued it.
-
-Two neighbours answer different questions: the [dev diary](#diary-about) records *why* a decision was
-made, and the [roadmap](#roadmap) records what is coming. This page records only consequences.
+The [dev diary](#diary-about) records *why*; the [roadmap](#roadmap) records what is next.
 
 (changelog-v0-7-0)=
 ## v0.7.0 — unreleased
 
-The first release with a changelog, and a large one: the fitting subsystem, the domain-contract
-engine, a hardened vocabulary, and a documentation site rebuilt around them.
+The fitting subsystem, the domain-contract engine, a hardened vocabulary, and a documentation site
+rebuilt around them.
 
 **Breaking**
 

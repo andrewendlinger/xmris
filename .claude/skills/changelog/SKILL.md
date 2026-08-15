@@ -112,6 +112,13 @@ One bullet, one sentence, then the trail:
   `release` skill checks that word is gone before it tags.
 - `## Earlier releases` stays pinned at the bottom.
 
+**Never explain the page on the page.** The intro is one line of signposting to the diary and the
+roadmap, and it is already written — do not extend it, and never describe the format ("every entry
+links the issue that…"), the audience ("for someone who just ran `pip install -U`") or the
+changelog's own history. The reader can see the format; they are here for the bullets. The same
+applies to the one-line summary under a version heading: it names what shipped, not what the
+changelog is.
+
 Read `templates/entry.md` for the shape to copy.
 
 ## 6. Verify

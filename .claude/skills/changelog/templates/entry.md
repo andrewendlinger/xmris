@@ -13,6 +13,9 @@ exactly one anchor and inserting a version churns no other.
 (changelog-v<X>-<Y>-<Z>)=
 ## v<X>.<Y>.<Z> — unreleased
 
+<Optional: one line naming what shipped, if the release has a shape worth stating.
+ What shipped — never what the changelog is, how it is formatted, or who it is for.>
+
 **Breaking**
 - <What no longer works, and the one line that fixes it. This group leads whenever it exists —
   it is the only one a reader must not scroll past.> — [#<issue>](…) · [#<pr>](…)
