@@ -61,23 +61,13 @@ macOS legs used to be `continue-on-error`, because official `pyamares` hard-requ
 
 The matrix in ② takes roughly fifteen minutes and nothing else depends on it. That is when the
 [changelog](#changelog) entry gets written, so it is ready to ride the bump commit in ③ — one pull
-request carries both the new version and the description of what is in it.
+request carries both the new version and the description of what is in it. How an entry is curated,
+and why nothing generates it, is its own page: [Write a changelog entry](#contribute-changelog).
 
-There are no changelog fragments to collect and no generator to run. `git log` since the last tag is
-raw material, not a draft: a squash-merge subject says what the *diff* did, and an entry has to say
-what the *user* got. Every bullet carries its trail — the issue, the pull request, and the page or
-diary entry behind it — so a reader can always get from a one-line consequence back to the reasoning.
-
-```{note}
-**For Claude Code users:** the [`changelog` skill](https://github.com/andrewendlinger/xmris/blob/main/.claude/skills/changelog/SKILL.md)
-does this, and the `release` skill invokes it at this step. Its checklist:
-```
-
-```{literalinclude} ../../.claude/skills/changelog/SKILL.md
-:language: markdown
-:start-after: <!-- excerpt:start -->
-:end-before: <!-- excerpt:end -->
-```
+:::{note}
+**For Claude Code users:** step 3 of the `release` skill invokes the `changelog` skill here. That
+page carries its live checklist.
+:::
 
 Two properties of the entry are load-bearing later. Its heading says `unreleased` until the release,
 and ③ refuses to tag while that word is there — the only guard against a tag whose version the

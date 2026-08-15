@@ -177,7 +177,7 @@ project:
 
     # 8. Contribute -- the router page, then the four steps of a contribution.
     # Step 3 nests, because it is the only one that is a choose-one rather than
-    # a do-this: four sibling workflows, each mirroring the Claude Code skill
+    # a do-this: five sibling workflows, each mirroring the Claude Code skill
     # that automates it.
     - title: Contribute
       children:
@@ -197,6 +197,8 @@ project:
               title: Write a docs page
             - file: contribute/dev_diary.md
               title: Write a dev-diary entry
+            - file: contribute/changelog_entries.md
+              title: Write a changelog entry
         - file: contribute/pull_requests.md
           title: 4. Open a pull request
         - file: contribute/publishing.md
