@@ -74,10 +74,7 @@ def export_widget_static(
             return val
 
         if isinstance(val, dict):
-            return {
-                k: _compress_and_check(v, f"{name}.{k}", depth + 1)
-                for k, v in val.items()
-            }
+            return {k: _compress_and_check(v, f"{name}.{k}", depth + 1) for k, v in val.items()}
 
         if isinstance(val, (list, tuple, np.ndarray)):
             arr = np.asarray(val)
@@ -108,11 +105,7 @@ def export_widget_static(
                 elif isinstance(raw_val, dict):
                     print(f"  [Sync] {name:<15} : Dictionary")
                 else:
-                    val_str = (
-                        str(raw_val)[:30] + "..."
-                        if len(str(raw_val)) > 30
-                        else str(raw_val)
-                    )
+                    val_str = str(raw_val)[:30] + "..." if len(str(raw_val)) > 30 else str(raw_val)
                     print(f"  [Sync] {name:<15} : {type(raw_val).__name__} = {val_str}")
 
             payload[name] = _compress_and_check(raw_val, name)

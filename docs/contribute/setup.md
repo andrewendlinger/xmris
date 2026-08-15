@@ -19,14 +19,17 @@ We use modern, Rust-based tooling to keep the development environment blistering
 
 `ruff` is our single source of truth for code style, replacing `black`, `flake8`, and `isort` with a single tool that runs in milliseconds.
 
+* **Check both halves:** Run `uv run lint` — this is exactly what the `Lint` check on your pull request runs, so a green run here means a green check there.
 * **Format code:** Run `uv run ruff format .`
 * **Lint code:** Run `uv run ruff check .`
 * **Auto-fix issues:** Run `uv run ruff check . --fix` (This automatically fixes safe issues like unused imports or variables).
 
+`ruff format .` is safe to run over the whole repository: `pyproject.toml` excludes `*.md`, because ruff formats Python inside Markdown code blocks too and would flatten the hand-set snippets in the documentation. Prose layout is an authoring decision — see [the checks that gate a merge](#contribute-pr-checks).
+
 (setup-vscode)=
 ### 3. VS Code Configuration
 
-To ensure a seamless, "it-just-works" experience, we use the official **Ruff extension**. This configuration enables "Format on Save" and organizes imports automatically using the project's specific `ruff` rules.
+To ensure a seamless, "it-just-works" experience, we use the official **Ruff extension**.
 
 **Required Extensions:**
 
@@ -34,14 +37,24 @@ To ensure a seamless, "it-just-works" experience, we use the official **Ruff ext
 * [Ruff (Astral Software)](https://marketplace.visualstudio.com/items?itemName=charliermarsh.ruff)
 
 **Settings (`.vscode/settings.json`):**
-Create or update your workspace `.vscode/settings.json` with the exact configuration below. This tells the editor to use the `uv`-created environment and delegates all formatting and linting directly to `ruff`:
+The repository already ships one, and it is deliberately short — only the two things that are *properties of this project* rather than of you:
 
 ```json
 {
   "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
-  "python.interpreter.infoVisibility": "always",
-  "python.analysis.typeCheckingMode": "basic",
 
+  "[python]": {
+    "editor.rulers": [100]
+  }
+}
+```
+
+The interpreter path points at the `.venv` that `uv sync` created; the ruler matches `line-length = 100` from `pyproject.toml`, so your editor draws the margin ruff actually enforces.
+
+Format-on-save is **not** set here, and that is on purpose: whether your editor reformats as you type is a personal preference, so it belongs in your own user settings rather than in everyone's checkout. If you want it, add this to your **user** `settings.json` once and every Python project benefits:
+
+```json
+{
   "[python]": {
     "editor.formatOnSave": true,
     "editor.defaultFormatter": "charliermarsh.ruff",
@@ -53,8 +66,8 @@ Create or update your workspace `.vscode/settings.json` with the exact configura
 
   "ruff.nativeServer": "on"
 }
-
-
 ```
+
+Nothing depends on you doing so — `uv run lint` and the `Lint` check catch the drift either way.
 
 > **Pro Tip:** By setting `"ruff.nativeServer": "on"`, you bypass the Python wrapper and leverage the ultra-fast Rust-based language server directly. This provides near-instant, real-time feedback and auto-formatting as you type.

@@ -65,6 +65,7 @@ docs-notebooks = "xmris._scripts:docs_notebooks"        # Serve tutorials — bl
 docs = "xmris._scripts:docs_all"                        # API refs, then serve site — blocking
 test-gen = "xmris._scripts:generate_test_notebooks"
 test = "xmris._scripts:run_tests"
+lint = "xmris._scripts:run_lint"                        # Format check, then lint — mirrors CI
 
 # ==============================================================================
 # 2. BUILD SYSTEM
@@ -126,10 +127,25 @@ addopts = """
 """
 testpaths = ["tests"]
 
-# --- Ruff (Linter) ---
+# --- Ruff (Linter & Formatter) ---
+# Both halves are gated by the `Lint` job in .github/workflows/ci-fast.yml, and
+# reproduced locally by `uv run lint`.
 [tool.ruff]
 line-length = 100
-target-version = "py312"
+
+# No target-version: ruff infers it from `requires-python` above, so the two can
+# never disagree. They used to -- this said py312 while the package supports 3.10,
+# which let the selected `UP` rules propose syntax the `test (3.10)` leg cannot run.
+
+# ruff 0.16 formats Python blocks inside Markdown, and the docs are the one place
+# where snippet layout *is* the argument: the leading-dot `.xmr` chains and the
+# column-aligned comment gutters are hand-set teaching material, and the formatter
+# flattens both onto one line. Those pages are executed as tests by nbmake, so
+# their correctness is already gated -- what is left is prose, and prose is ours.
+# force-exclude makes the rule hold when a single file is named explicitly too
+# (an editor formatting the open buffer), not just when ruff walks the tree.
+extend-exclude = ["*.md"]
+force-exclude = true
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "NPY", "D", "UP"] # Errors, Failures, Isort, NumPy, Docstrings, Upgrade
@@ -138,10 +154,10 @@ ignore = ["D100", "D104", "D401"]                  # Ignore missing docstring in
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"
 
-[tool.ruff.lint.per-file-ignores]
-# Ignore line length, unused imports, and import positions in notebooks/scripts
-"docs/**/*.py" = ["E501", "F401", "E402"]
-"docs/**/*.ipynb" = ["E501", "F401", "E402"]
+# No per-file-ignores. The docs used to carry E501/F401/E402 relief under
+# `docs/**/*.py` and `docs/**/*.ipynb`, but jupytext commits only `.md` (now
+# excluded above) and the notebooks it generates are gitignored -- which ruff
+# skips by default. Both patterns matched nothing, so the relief was fictional.
 
 # --- Jupytext ---
 # Tool for automatic two-way syncing between Jupyter Notebooks (.ipynb) and Markdown (.md).

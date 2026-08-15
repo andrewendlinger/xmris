@@ -481,3 +481,30 @@ def run_tests() -> None:
     except subprocess.CalledProcessError as e:
         # Pass the exact exit code from pytest back to the terminal/CI
         sys.exit(e.returncode)
+
+
+def run_lint() -> None:
+    """
+    Check formatting and lint the tree, exactly as the CI ``Lint`` job does.
+
+    Formatting is checked before linting because the mechanical failure is the
+    cheaper one to fix. Neither step writes: a formatting failure is repaired
+    with ``uv run ruff format .``, a lint failure often with
+    ``uv run ruff check . --fix``.
+    """
+    print("🔎 Checking formatting...", flush=True)
+    try:
+        subprocess.run(["ruff", "format", "--check", "."], check=True)
+    except subprocess.CalledProcessError as e:
+        print("\n❌ Formatting drift. Fix it with: uv run ruff format .")
+        # Pass the exact exit code from ruff back to the terminal/CI
+        sys.exit(e.returncode)
+
+    print("\n🔎 Linting...", flush=True)
+    try:
+        subprocess.run(["ruff", "check", "."], check=True)
+    except subprocess.CalledProcessError as e:
+        print("\n❌ Lint errors. Auto-fix the safe ones with: uv run ruff check . --fix")
+        sys.exit(e.returncode)
+
+    print("\n✅ Format and lint clean!")

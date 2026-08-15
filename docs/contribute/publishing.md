@@ -16,7 +16,7 @@ _Note_: [Workflow diagram](#release-diagram) at the end of the page.
 (release-daily)=
 ## ① Daily Development
 
-Work on a branch and land it through a pull request — `main` takes no direct pushes, and five checks
+Work on a branch and land it through a pull request — `main` takes no direct pushes, and six checks
 gate every merge. That path has its own page: [Open a pull request](#contribute-pr).
 
 - **Do not** bump the version.
@@ -123,7 +123,7 @@ pull-request lifecycle: [How the documentation reaches the web](#contribute-pr-d
 %%{init: {'flowchart': {'htmlLabels': false}}}%%
 flowchart TD
     subgraph dev ["① Daily development"]
-        A["Branch + pull request"] -->|"five checks"| B["Fast CI: Py 3.10 & 3.13"]
+        A["Branch + pull request"] -->|"six checks"| B["Fast CI: Py 3.10 & 3.13"]
         B -->|"merge"| MAIN["main"]
     end
 
