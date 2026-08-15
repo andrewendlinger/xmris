@@ -56,6 +56,36 @@ macOS legs used to be `continue-on-error`, because official `pyamares` hard-requ
 
 ---
 
+(release-changelog)=
+## ②b The Changelog
+
+The matrix in ② takes roughly fifteen minutes and nothing else depends on it. That is when the
+[changelog](#changelog) entry gets written, so it is ready to ride the bump commit in ③ — one pull
+request carries both the new version and the description of what is in it.
+
+There are no changelog fragments to collect and no generator to run. `git log` since the last tag is
+raw material, not a draft: a squash-merge subject says what the *diff* did, and an entry has to say
+what the *user* got. Every bullet carries its trail — the issue, the pull request, and the page or
+diary entry behind it — so a reader can always get from a one-line consequence back to the reasoning.
+
+```{note}
+**For Claude Code users:** the [`changelog` skill](https://github.com/andrewendlinger/xmris/blob/main/.claude/skills/changelog/SKILL.md)
+does this, and the `release` skill invokes it at this step. Its checklist:
+```
+
+```{literalinclude} ../../.claude/skills/changelog/SKILL.md
+:language: markdown
+:start-after: <!-- excerpt:start -->
+:end-before: <!-- excerpt:end -->
+```
+
+Two properties of the entry are load-bearing later. Its heading says `unreleased` until the release,
+and ③ refuses to tag while that word is there — the only guard against a tag whose version the
+changelog never described. And its cross-links are MyST targets rather than URLs, so the build
+reports any that no longer resolve.
+
+---
+
 (release-tag-publish)=
 ## ③ Bump, Merge, Then Tag
 
@@ -97,12 +127,23 @@ The `v*` tag triggers the `publish` job in `ci-publish.yml`. It uses `uv build -
 (release-cleanup)=
 ## ④ After the Release
 
-The merge in ③ already put the bump on `main`, so cleanup is only:
+The merge in ③ already put the bump on `main`, so what is left is:
 
-- delete the release branch (GitHub offers this on the merge, or `git push origin --delete release/v0.2.0`),
-- confirm the new version is live on PyPI.
+- confirm the new version is live on PyPI,
+- create the GitHub Release — `gh release create v0.2.0 --title v0.2.0 --notes-file …`, its body the
+  changelog section written in ②b, with the MyST target links rewritten as full documentation URLs
+  because GitHub cannot resolve them,
+- delete the release branch (GitHub offers this on the merge, or `git push origin --delete release/v0.2.0`).
 
 The `v*` tag stays as the permanent release marker.
+
+```{note}
+The GitHub Release is created by hand rather than by `ci-publish.yml`, deliberately. Automating it
+would mean granting `contents: write` to the one job that publishes to PyPI, and parsing
+`docs/changelog.md` inside the pipeline — where a failure lands *after* the tag is pushed, and
+recovery means deleting and re-pushing a tag. Doing it here costs one command and can only ever
+announce a version that actually shipped.
+```
 
 ---
 
@@ -135,12 +176,14 @@ flowchart TD
         E -->|"No"| F["Fix on the release branch"]
         F -->|"push fix"| D
         E -->|"Yes"| G
+        D -.->|"while it runs"| CL["②b Write the changelog entry"]
     end
 
     G -.-> H
+    CL -.-> H
 
     subgraph publish ["③ Bump, merge, then tag"]
-        H["Bump on the release branch"] --> I["PR into main, merge"]
+        H["Bump + changelog, one commit"] --> I["PR into main, merge"]
         I -->|"tag v* on main"| J["Publish job: uv build --no-sources"]
         J -->|"Trusted Publishing"| K[("PyPI")]
     end
@@ -148,7 +191,7 @@ flowchart TD
     K -.-> L
 
     subgraph after ["④ After the release"]
-        L["Delete the branch, verify on PyPI"]
+        L["GitHub Release from the entry, delete the branch, verify on PyPI"]
     end
 
     style dev fill:#f0f7ff,stroke:#4a90d9,stroke-width:2px,color:#1a1a1a

@@ -24,10 +24,12 @@ any of them can reach for live `code-cell`s, real output and plots. What separat
 template applies. It holds the devices mined from the pages that work, each pointing at its live
 example so you copy rather than reinvent.
 
-**Two paths never route here:**
+**Three paths never route here:**
 
 - `docs/diary/` belongs to the **`dev-diary`** skill. Hand off; do not write an entry from here.
   (`check_docs.py` still checks entries — the structural rules in §2 bind every page in the tree.)
+- `docs/changelog.md` belongs to the **`changelog`** skill. It is a reference genre — no motivated
+  narrative, no live cells — so none of the templates below apply to it.
 - `docs/api/` is **generated and gitignored**. `docs_api()` clears the directory before
   regenerating, so a hand edit there is destroyed with no git history to recover it. Fix the
   docstring in `src/` instead.

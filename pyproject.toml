@@ -58,6 +58,10 @@ fitting = [
 [project.urls]
 Repository = "https://github.com/andrewendlinger/xmris"
 Documentation = "https://andrewendlinger.github.io/xmris/"
+# There is no root CHANGELOG.md by design -- the changelog is a rendered docs page
+# (xarray/pandas/numpy do the same). PyPI surfaces this key in the project sidebar,
+# which is how a packager still finds it.
+Changelog = "https://andrewendlinger.github.io/xmris/changelog"
 
 [project.scripts]
 docs-api = "xmris._scripts:docs_api"                    # Update API references

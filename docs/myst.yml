@@ -231,6 +231,12 @@ project:
           title: 02b · Constants — exploration
           hidden: true
 
+    # 11. Changelog -- the other bookend to the roadmap, and a plain article for
+    # the same reason: what shipped belongs next to what is coming, not inside a
+    # chapter. Written by the `changelog` skill at release time.
+    - file: changelog.md
+      title: Changelog
+
 site:
   template: book-theme
   title: xmris
@@ -273,6 +279,8 @@ site:
           url: /diary
         - title: Roadmap
           url: /roadmap
+        - title: Changelog
+          url: /changelog
 
   actions:
     - title: GitHub
