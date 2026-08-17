@@ -18,6 +18,13 @@ from xmris.visualization import (
     WaterfallConfig,
 )
 
+# Windows consoles default to a legacy code page (cp1252) that cannot encode the
+# emoji these scripts print, so every `uv run` alias would crash on its first
+# print there; force UTF-8 on both streams before anything is written.
+for _stream in (sys.stdout, sys.stderr):
+    if hasattr(_stream, "reconfigure"):
+        _stream.reconfigure(encoding="utf-8")
+
 # The docs chapters whose pages are executed as tests. One directory per sidebar
 # chapter, mirrored into tests/autogen_notebooks/<chapter>/. Keep in sync with
 # GENRES in .claude/skills/docs-page/check_docs.py -- that file decides which
