@@ -180,6 +180,7 @@ graph LR
 
 ```{code-cell} ipython3
 ds = grid.xmr.fit_amares(pk)
+ds
 ```
 
 Two arguments worth knowing about, neither of them required:
@@ -205,17 +206,24 @@ from xmris import build_prior_knowledge
 
 # 1. Every variable the sections below refer to is present.
 for _v in (
-    "data", "fit", "residuals", "amplitude", "chem_shift", "linewidth",
-    "phase", "snr", "crlb", "sd", "fit_status",
+    "data", "fit", "fit_components", "residuals", "amplitude", "chem_shift",
+    "linewidth", "phase", "lineshape_g", "snr", "crlb", "sd", "fit_status",
 ):
     assert _v in ds.data_vars, f"{_v} missing from the fit Dataset"
 
-# 2. The three shapes: signals, values, uncertainties.
+# 2. The four shapes: summed signals, per-peak signals, values, uncertainties.
 assert ds["fit"].dims == ("voxel", "time")
+assert ds["fit_components"].dims == ("voxel", "metabolite", "time")
 assert ds["amplitude"].dims == ("voxel", "metabolite")
 assert ds["crlb"].dims == ("voxel", "metabolite", "parameter")
 assert list(ds["parameter"].values) == ["amplitude", "chem_shift", "linewidth", "phase"]
 assert list(ds["metabolite"].values) == ["PCr", "ATP"]
+
+# 2b. The one invariant that could silently rot: the components ARE the fit, split
+#     up. Anything that desynchronizes the two reconstructions breaks here.
+#     skipna=False, or the empty voxel 3's all-NaN components would sum to a 0.0
+#     that no longer matches `fit`'s NaN.
+xr.testing.assert_allclose(ds["fit_components"].sum("metabolite", skipna=False), ds["fit"])
 
 # 3. Regression for #68: the spectrometer frequency is resolved from the modern
 #    `reference_frequency` attr, not the legacy "MHz" key. `grid` carries only the
@@ -241,8 +249,9 @@ np.testing.assert_allclose(
 ## 3. Anatomy of the returned Dataset
 
 Fitting is the one xmris operation that does not hand back a `DataArray`. It cannot: a fit produces
-signals that live on `time`, quantities that live per metabolite, and uncertainties that live per
-metabolite *and* per parameter. Three different shapes, one aligned container.
+signals that live on `time`, the same signals split per metabolite, quantities that live per
+metabolite, and uncertainties that live per metabolite *and* per parameter. Four different shapes,
+one aligned container.
 
 ```{code-cell} ipython3
 ds
@@ -251,9 +260,17 @@ ds
 | Shape | Variables | What it is |
 |---|---|---|
 | `(voxel, time)` | `data`, `fit`, `residuals` | the signal you passed in, the model AMARES built, and what is left over |
-| `(voxel, metabolite)` | `amplitude`, `chem_shift`, `linewidth`, `phase`, `snr` | the quantified answer, one number per peak per voxel |
+| `(voxel, metabolite, time)` | `fit_components` | that same model *before* the peaks were added together — one signal per metabolite |
+| `(voxel, metabolite)` | `amplitude`, `chem_shift`, `linewidth`, `phase`, `lineshape_g`, `snr` | the quantified answer, one number per peak per voxel |
 | `(voxel, metabolite, parameter)` | `crlb`, `sd` | the uncertainty on *every* fitted parameter, relative (%) and absolute |
 | `(voxel,)` | `fit_status` | whether that voxel was fitted at all |
+
+`fit_components` sits directly under `fit` because it is the next thing you reach for: `fit` tells
+you whether the model matched the data, the components tell you *which peak* accounts for which
+part of it. They are not a second, independent reconstruction — summing them over `metabolite`
+gives back `fit` exactly, which is what makes plotting them underneath the fit honest rather than
+illustrative. Everything true of `fit` is true of them: same domain, same axis, same calibration
+attrs, so `ds["fit_components"].xmr.to_ppm()` works wherever `ds["fit"].xmr.to_ppm()` does.
 
 The point of the `metabolite` and `parameter` axes is that they carry names, so selection reads
 like the question you are asking:
@@ -446,11 +463,16 @@ The last check is the one no summary statistic replaces. `data`, `fit` and `resi
 the same domain you passed in, so plotting them is the same code for the best and worst voxel:
 
 ```{code-cell} ipython3
+ds.isel(voxel=0)
+```
+
+```{code-cell} ipython3
 fig, axes = plt.subplots(1, 2, figsize=(11, 4), sharex=True)
 
 for ax, v in zip(axes, [0, 7]):
     voxel = ds.isel(voxel=v)
     offset = -0.25 * float(np.abs(voxel["data"].xmr.to_spectrum().real).max())
+    component_offset = -0.15 * float(np.abs(voxel["data"].xmr.to_spectrum().real).max())
     for var, color, label in (
         ("data", "black", "data"),
         ("fit", "tab:red", "fit"),
@@ -551,7 +573,7 @@ print("ratio      :", (ds_scaled["amplitude"] / ds["amplitude"].isel(voxel=0)).v
 
 **Either domain in, the same domain out.** AMARES fits the FID, but you rarely hold one — you hold
 a phased spectrum in ppm. Hand that over and `fit_amares` round-trips it for you, returning
-`data`, `fit` and `residuals` in the representation you passed:
+`data`, `fit`, `fit_components` and `residuals` in the representation you passed:
 
 ```{code-cell} ipython3
 as_ppm = grid.isel(voxel=0).xmr.to_spectrum().xmr.to_ppm()
@@ -583,6 +605,9 @@ np.testing.assert_allclose(
 )
 assert ds_ppm["fit"].dims == ("chemical_shift",)
 assert ds_ppm["residuals"].dims == ("chemical_shift",)
+# every signal variable rides along -- a FID left inside a ppm Dataset would break
+# `ds_ppm["fit_components"].xmr.to_ppm()` with a missing-reference_frequency error.
+assert ds_ppm["fit_components"].dims == ("metabolite", "chemical_shift")
 # and the round trip is reversible from there
 assert ds_ppm["fit"].xmr.to_hz().dims == ("frequency",)
 ```

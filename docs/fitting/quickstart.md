@@ -117,13 +117,17 @@ ds
 
 Expand the arrays above and you can already see the shape of the answer: `data`, `fit` and
 `residuals` still live on `time`, while `amplitude`, `chem_shift`, `linewidth`, `phase` and `snr`
-sit on a new `metabolite` axis carrying your peak names. Uncertainties (`crlb`, `sd`) span one more
-axis, `parameter`, so a single variable holds the error on every fitted quantity.
+sit on a new `metabolite` axis carrying your peak names. `fit_components` spans both — the model
+split back into one signal per peak, which sums over `metabolite` to `fit`. Uncertainties (`crlb`,
+`sd`) span `metabolite` and one more axis, `parameter`, so a single variable holds the error on
+every fitted quantity.
 
 ```{code-cell} ipython3
 :tags: [remove-cell]
 
 # STRICT TESTS: the fit recovered the simulated truth.
+import xarray as xr
+
 # 1. Amplitudes and shifts come back at the simulated values.
 np.testing.assert_allclose(
     ds["amplitude"].sel(metabolite=["PCr", "ATP"]).values,
@@ -145,8 +149,10 @@ np.testing.assert_allclose(
 )
 # 2. The Dataset has the shapes the prose above claims.
 assert ds["amplitude"].dims == ("metabolite",)
+assert ds["fit_components"].dims == ("metabolite", "time")
 assert ds["crlb"].dims == ("metabolite", "parameter")
 assert list(ds["parameter"].values) == ["amplitude", "chem_shift", "linewidth", "phase"]
+xr.testing.assert_allclose(ds["fit_components"].sum("metabolite"), ds["fit"])
 # 3. This voxel was fitted, not skipped (0 = fitted).
 assert int(ds["fit_status"]) == 0
 ```

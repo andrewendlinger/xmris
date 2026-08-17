@@ -405,6 +405,14 @@ class XmrisDataVars(BaseVocabulary):
 
     fit = XmrisTerm("fit", description="The reconstructed time-domain or frequency-domain fit.")
 
+    fit_components = XmrisTerm(
+        "fit_components",
+        description=(
+            "The individual per-metabolite model signals along the `metabolite` "
+            "dimension. Summing them over `metabolite` reproduces `fit`."
+        ),
+    )
+
     residuals = XmrisTerm(
         "residuals", description="The difference between the original data and the fit."
     )
@@ -419,6 +427,14 @@ class XmrisDataVars(BaseVocabulary):
     linewidth = XmrisTerm("linewidth", description="Fitted linewidth (damping factor).", unit="Hz")
 
     phase = XmrisTerm("phase", description="Fitted phase.", unit="degrees")
+
+    lineshape_g = XmrisTerm(
+        "lineshape_g",
+        description=(
+            "Fitted Voigt lineshape parameter: 0 is a pure Lorentzian, 1 a pure "
+            "Gaussian. Typically held fixed by the prior knowledge."
+        ),
+    )
 
     crlb = XmrisTerm(
         "crlb",
