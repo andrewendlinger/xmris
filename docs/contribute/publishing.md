@@ -123,7 +123,10 @@ The merge in ③ already put the bump on `main`, so what is left is:
 - create the GitHub Release — `gh release create v0.2.0 --title v0.2.0 --notes-file …`, its body the
   changelog section written in ②b, with the MyST target links rewritten as full documentation URLs
   because GitHub cannot resolve them,
-- delete the release branch (GitHub offers this on the merge, or `git push origin --delete release/v0.2.0`).
+- delete the release branch (GitHub offers this on the merge, or `git push origin --delete release/v0.2.0`),
+- reconcile [the roadmap](#roadmap): a small `docs(roadmap)` pull request moves the newly shipped
+  cards into the Shipped band and advances its version chips — the conventions live on the page
+  itself, under [How this page changes](#roadmap-changing).
 
 The `v*` tag stays as the permanent release marker.
 

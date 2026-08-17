@@ -58,4 +58,6 @@ Pushing branches and tags triggers CI and an irreversible PyPI publish. **Confir
    ```
    Write `notes.md` to the scratchpad from the `vX.Y.Z` section you produced in step 3, converting the MyST target links (`[The Two Domains](#domains)`) to full docs URLs — GitHub cannot resolve them. Nothing in CI does this: creating the release by hand keeps `contents: write` off the job that publishes to PyPI, and means the announcement only ever exists for a version that actually shipped.
 
-7. **Wrap up.** Confirm the new version is live on PyPI and `main` is in the expected state. Delete the release branch. Summarize what shipped.
+7. **Reconcile the roadmap.** `docs/roadmap.md` expresses release state by band membership — the conventions live on the page itself, under "How this page changes". Move the cards this release shipped into the Shipped band, point the Shipped chip at the new version, clear or add `roadmap-status--merged` chips to match `main`, and update the `Last edited` line. Land it as a small `docs(roadmap)` pull request — bookkeeping, not a design pass.
+
+8. **Wrap up.** Confirm the new version is live on PyPI and `main` is in the expected state. Delete the release branch. Summarize what shipped.
