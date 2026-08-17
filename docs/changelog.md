@@ -5,7 +5,7 @@ What shipped in each release; *why* is in the [dev diary](#diary-about), what is
 [roadmap](#roadmap).
 
 (changelog-v0-7-0)=
-## v0.7.0 — unreleased
+## v0.7.0 — 2026-08-17
 
 The fitting subsystem, the domain-contract engine, a hardened vocabulary, and a documentation site
 rebuilt around them.
