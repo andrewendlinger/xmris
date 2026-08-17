@@ -756,6 +756,14 @@
   color: var(--roadmap-rust);
 }
 
+/* Merged to main but not yet tagged -- the one state between the motion and
+   shipped bands. Cleared by the release workflow's reconcile step. */
+.roadmap-status--merged {
+  border: 1px solid color-mix(in srgb, var(--roadmap-slate) 45%, transparent);
+  background: color-mix(in srgb, var(--roadmap-slate) 12%, transparent);
+  color: var(--roadmap-slate);
+}
+
 /* A decided card's lifecycle line: explored → decided → solution spec →
    implementation. Done stages carry ✓ and link their artifact (the frozen
    exploration notebook, later the spec), so the line accretes links as the

@@ -1,7 +1,7 @@
 (roadmap)=
 # Where xmris is going
 
-<span style="color: gray; font-size: 0.9em;">Last edited: 2026-08-10</span>
+<span style="color: gray; font-size: 0.9em;">Last edited: 2026-08-17</span>
 
 ::::{div}
 :class: roadmap-hero
@@ -50,7 +50,7 @@ will probably change when it meets reality.
 :class: roadmap-band roadmap-band--shipped
 
 (roadmap-shipped)=
-## Shipped <span class="roadmap-ver">on `main` today</span>
+## Shipped <span class="roadmap-ver">on PyPI · <a href="https://pypi.org/project/xmris/">v0.7.0</a></span>
 
 ::::{div}
 :class: roadmap-phase roadmap-phase--shipped
@@ -58,7 +58,8 @@ will probably change when it meets reality.
 
 What you can use today.
 
-Real on `main` and exercised on every pull request — though `main` still runs ahead of PyPI.
+`pip install xmris` gets all of it, and every pull request re-executes it. What each release
+added is the [changelog](#changelog).
 ::::
 
 ::::{div}
@@ -108,37 +109,16 @@ build. The why is the [architecture tour](#architecture).
 :class: roadmap-band roadmap-band--motion
 
 (roadmap-in-motion)=
-## In motion <span class="roadmap-ver"><a href="https://github.com/andrewendlinger/xmris/milestone/1">v0.7</a></span>
+## In motion <span class="roadmap-ver"><a href="https://github.com/andrewendlinger/xmris/milestone/1">v0.7.x</a></span>
 
 ::::{div}
 :class: roadmap-phase roadmap-phase--motion
 :label: roadmap-phase-motion
 
-Moving right now.
+The 0.7 series, continuing.
 
-v0.7 is the tag that finally makes the band above installable.
-::::
-
-::::{div}
-:class: roadmap-item roadmap-item--minor
-
-Next in line: the docs get a floor plan — a sidebar you can scan, concepts apart from tutorials,
-and a landing page that says where everything lives
-[#137](https://github.com/andrewendlinger/xmris/issues/137)
-::::
-
-::::{div}
-:class: roadmap-item roadmap-item--minor
-
-This very page — the roadmap you are reading is being written and argued right now
-[#116](https://github.com/andrewendlinger/xmris/issues/116)
-::::
-
-::::{div}
-:class: roadmap-item roadmap-item--minor
-
-[A changelog](#changelog) begins — its first entry is this release
-[#10](https://github.com/andrewendlinger/xmris/issues/10)
+v0.7.0 shipped the band above; what is left of the series lands as patches, and the milestone
+closes with the last of them.
 ::::
 
 ::::{div}
@@ -152,16 +132,9 @@ and permanently [#131](https://github.com/andrewendlinger/xmris/issues/131)
 :class: roadmap-item roadmap-item--minor
 
 Bug fix: a fit could silently return the prior it was given and look completely fine — the rework
-that kills it is merged; the last guards are tracked
+that kills it shipped in v0.7.0; the last guards remain
 [#80](https://github.com/andrewendlinger/xmris/issues/80)
 [#82](https://github.com/andrewendlinger/xmris/issues/82)
-::::
-
-::::{div}
-:class: roadmap-item roadmap-item--minor
-
-Bug fix: the wheel on PyPI cannot install on Apple Silicon, and a bare `pip install xmris` cannot
-even be imported [#122](https://github.com/andrewendlinger/xmris/issues/122)
 ::::
 
 :::::
@@ -328,6 +301,13 @@ one argument [#113](https://github.com/andrewendlinger/xmris/issues/113)
 ::::
 
 ::::{div}
+:class: roadmap-item roadmap-item--minor
+
+`fit_amares` returns each metabolite's fit, not only their sum — the first request from an
+outside user [#150](https://github.com/andrewendlinger/xmris/issues/150)
+::::
+
+::::{div}
 :class: roadmap-item
 
 The preprocessing middle gets claimed
@@ -438,32 +418,16 @@ wording of that refusal, and the fate of the unused k-space vocabulary, is decis
 
 :::::
 
-(roadmap-landscape)=
-## The issue landscape
+(roadmap-spine)=
+## The decision spine
 
-<span style="color: gray; font-size: 0.9em;">A snapshot taken 2026-08-05 · the
-[milestones](https://github.com/andrewendlinger/xmris/milestones) are the live source</span>
-
-Forty-seven issues are open, and their distribution is the argument for the release line above: the
-largest cluster is not missing features — it is unmade decisions, plus the work standing behind
-them. Two of those decisions are now made (02 and 02b on the board); their tracker issues stay
-open until the implementations land, with
-[#21](https://github.com/andrewendlinger/xmris/issues/21) and
-[#22](https://github.com/andrewendlinger/xmris/issues/22) re-scoped by what was decided.
-
-| Cluster | Issues | Lands in |
-|---|---|---|
-| Design decisions — the board above | [#62](https://github.com/andrewendlinger/xmris/issues/62) [#64](https://github.com/andrewendlinger/xmris/issues/64) [#65](https://github.com/andrewendlinger/xmris/issues/65) [#66](https://github.com/andrewendlinger/xmris/issues/66) [#88](https://github.com/andrewendlinger/xmris/issues/88) [#124](https://github.com/andrewendlinger/xmris/issues/124) [#125](https://github.com/andrewendlinger/xmris/issues/125) [#136](https://github.com/andrewendlinger/xmris/issues/136) | v0.8 |
-| Blocked behind them | [#21](https://github.com/andrewendlinger/xmris/issues/21) [#22](https://github.com/andrewendlinger/xmris/issues/22) [#23](https://github.com/andrewendlinger/xmris/issues/23) [#28](https://github.com/andrewendlinger/xmris/issues/28) [#34](https://github.com/andrewendlinger/xmris/issues/34) [#71](https://github.com/andrewendlinger/xmris/issues/71) [#102](https://github.com/andrewendlinger/xmris/issues/102) [#107](https://github.com/andrewendlinger/xmris/issues/107) | v0.8 |
-| The tag itself | [#10](https://github.com/andrewendlinger/xmris/issues/10) [#80](https://github.com/andrewendlinger/xmris/issues/80) [#82](https://github.com/andrewendlinger/xmris/issues/82) [#115](https://github.com/andrewendlinger/xmris/issues/115) [#116](https://github.com/andrewendlinger/xmris/issues/116) [#122](https://github.com/andrewendlinger/xmris/issues/122) [#131](https://github.com/andrewendlinger/xmris/issues/131) [#137](https://github.com/andrewendlinger/xmris/issues/137) [#138](https://github.com/andrewendlinger/xmris/issues/138) | v0.7 |
-| Quality & tooling | [#87](https://github.com/andrewendlinger/xmris/issues/87) [#108](https://github.com/andrewendlinger/xmris/issues/108) [#111](https://github.com/andrewendlinger/xmris/issues/111) [#117](https://github.com/andrewendlinger/xmris/issues/117) [#127](https://github.com/andrewendlinger/xmris/issues/127) [#133](https://github.com/andrewendlinger/xmris/issues/133) | v0.8 – v0.9 |
-| The front door | [#27](https://github.com/andrewendlinger/xmris/issues/27) [#46](https://github.com/andrewendlinger/xmris/issues/46) [#67](https://github.com/andrewendlinger/xmris/issues/67) [#119](https://github.com/andrewendlinger/xmris/issues/119) [#120](https://github.com/andrewendlinger/xmris/issues/120) [#121](https://github.com/andrewendlinger/xmris/issues/121) [#126](https://github.com/andrewendlinger/xmris/issues/126) | v0.9 |
-| Correctness & capability | [#29](https://github.com/andrewendlinger/xmris/issues/29) [#31](https://github.com/andrewendlinger/xmris/issues/31) [#83](https://github.com/andrewendlinger/xmris/issues/83) [#84](https://github.com/andrewendlinger/xmris/issues/84) [#113](https://github.com/andrewendlinger/xmris/issues/113) [#128](https://github.com/andrewendlinger/xmris/issues/128) [#132](https://github.com/andrewendlinger/xmris/issues/132) | v0.9 |
-| Space & scale | [#4](https://github.com/andrewendlinger/xmris/issues/4) [#25](https://github.com/andrewendlinger/xmris/issues/25) | Horizon |
-
-The decisions are not a flat list. The spine below is the board's dependency order — the decided
-pair feeds the data model first, and the core/extras boundary and the plug-in promise decide each
-other:
+What is actually inside each release lives with the live milestones —
+[v0.7](https://github.com/andrewendlinger/xmris/milestone/1) ·
+[v0.8](https://github.com/andrewendlinger/xmris/milestone/2) ·
+[v0.9](https://github.com/andrewendlinger/xmris/milestone/3) — which count themselves, so this
+page does not repeat them. What only this page can say is the board's dependency order: the
+decided pair feeds the data model first, and the core/extras boundary and the plug-in promise
+decide each other.
 
 ```{mermaid}
 %%{init: {'flowchart': {'htmlLabels': false}}}%%
@@ -486,8 +450,18 @@ and then it is someone else's turn to say what comes next
 
 This page is written by hand, and it is the argument rather than the record: the
 [milestones](https://github.com/andrewendlinger/xmris/milestones) hold what is actually in each
-release, and they move faster. A milestone here earns its band from the state of the work, so if
-the two disagree, the tracker is right and this page is stale — say so by
+release, and they move faster. Three conventions keep the two honest:
+
+- **A band is a release state.** Shipped means *on PyPI*; In motion means *still coming*. A card
+  that is merged to `main` but not yet tagged stays In motion and carries a
+  <span class="roadmap-status roadmap-status--merged">merged</span> chip until its release ships.
+- **A milestone names a series, not a tag.** v0.7 is the whole 0.7 line and closes when its scope
+  has shipped — no patch tag is promised in advance; the [changelog](#changelog) records, after
+  the fact, which tag carried what.
+- **Every release ends with a reconcile pass.** A step of the release workflow moves the newly
+  shipped cards up, advances the chips, and re-dates the line under the title.
+
+If the page and the tracker still disagree, the tracker is right — say so by
 [opening an issue](https://github.com/andrewendlinger/xmris/issues/new). The same route works
 forward: if your work depends on something sitting in the horizon band, say so there too, because
 that is the main way something moves up a band.
