@@ -18,30 +18,28 @@
   <a href="https://opensource.org/license/bsd-3-clause"><img src="https://img.shields.io/badge/License-BSD_3--Clause-blue.svg" alt="License: BSD 3-Clause"></a>
 </div>
 
-MR data usually arrives as a bare array plus a pile of numbers you are expected to remember: which
-axis is time, how wide the sweep was, what everything is referenced to. `xmris` keeps all of that
-attached to the data instead. Your FID stays an ordinary
-[`xarray`](https://xarray.dev) `DataArray` — dimensions named, coordinates in seconds, metadata
-riding along — and the physics is one accessor away.
+MR data tends to arrive as a bare array plus a pile of numbers you have to keep in your head:
+which axis is time, how wide the sweep was, what zero means. `xmris` keeps all of that on the
+data itself. Your FID stays a plain [`xarray`](https://xarray.dev) `DataArray` — axes named, time
+in seconds, metadata riding along — and the physics is one accessor away.
 
 ```python
 spectrum = fid.xmr.to_spectrum().xmr.autophase().xmr.to_ppm()
 ```
 
-Nothing gets wrapped in a custom class, so every `xarray` habit you already have keeps working, and
-a grid of voxels goes through exactly the same call as a single one. Your spectrum comes out the
-other side still knowing its ppm axis.
+There is no custom class to learn. Every `xarray` habit you have keeps working, a whole grid of
+voxels goes through the same call as a single one, and the spectrum that comes out still knows its
+ppm axis.
 
 ## Start with the documentation
 
 ### → [andrewendlinger.github.io/xmris](https://andrewendlinger.github.io/xmris/)
 
-That is where the package really lives. Every tutorial page is an executable notebook, so the plots
-and numbers you read there were produced by the code above them, and they are re-run on every pull
-request. If you are new, [Basics](https://andrewendlinger.github.io/xmris/basics) walks the
-FID → spectrum → ppm round trip from scratch;
-[Concepts](https://andrewendlinger.github.io/xmris/concepts) explains why `xmris` is fussy about
-names and metadata.
+That is where the package really lives. Every tutorial page is a live notebook: the plots and
+numbers you see come from the code right above them, re-run on every pull request. New here?
+[Basics](https://andrewendlinger.github.io/xmris/basics) walks the FID → spectrum → ppm round trip
+from scratch; [Concepts](https://andrewendlinger.github.io/xmris/concepts) explains why `xmris` is
+fussy about names and metadata.
 
 ## Quick start
 
@@ -71,40 +69,45 @@ print(spectrum.dims)                         # ('chemical_shift',)
 print(round(spectrum.attrs["phase_p0"], 2))  # 2.17 — autophase wrote down what it applied
 ```
 
-With your own data you build the `DataArray` yourself, and then two things matter. The **time
-coordinate** is the axis `xmris` reads: space it by your dwell time and the frequency axis follows
-from it, no separate sweep-width setting to keep in sync. The **attributes** are the part only you
-can know — `reference_frequency` (MHz) and `carrier_ppm` (which chemical shift sits at 0 Hz) — and
-they are what turns Hz into ppm.
+Got your own data? Then you build the `DataArray` yourself. Four steps, no magic:
 
 ```python
 import numpy as np
 import xarray as xr
 import xmris
 
-n_points, spectral_width = 1024, 4000.0      # points, Hz
-time = np.arange(n_points) / spectral_width  # seconds — this axis sets the frequency axis
-signal = np.exp(2j * np.pi * 250.0 * time - time / 0.05)  # one peak, 250 Hz off centre
+# Step 1 — the time axis. Space it by your dwell time (here: a 4000 Hz sweep,
+# so 1/4000 s per point). This axis alone sets the frequency axis later on —
+# there is no separate sweep-width setting to keep in sync.
+time = np.arange(1024) / 4000.0  # seconds
 
+# Step 2 — your samples. Any complex array works; here, one fake peak
+# 250 Hz off centre, decaying. Stack three copies to play three voxels.
+signal = np.exp(2j * np.pi * 250.0 * time - time / 0.05)
+data = np.stack([signal, 0.5 * signal, 0.25 * signal])  # (voxel, time)
+
+# Step 3 — wrap it up. Name the dims, attach the time axis, and add the
+# two facts only you can know:
 fid = xr.DataArray(
-    np.stack([signal, 0.5 * signal, 0.25 * signal]),  # 3 voxels x 1024 points
+    data,
     dims=["voxel", "time"],
-    coords={"voxel": [0, 1, 2], "time": time},
+    coords={"time": time},
     attrs={
-        "reference_frequency": 120.66,  # MHz, what a shift in Hz gets measured against
-        "carrier_ppm": 0.0,             # the ppm value sitting at 0 Hz (1H water: 4.7)
+        "reference_frequency": 120.66,  # MHz — your Larmor frequency
+        "carrier_ppm": 0.0,             # which ppm sits at 0 Hz (1H water: 4.7)
     },
 )
 
-spectrum = fid.xmr.to_spectrum()  # all three voxels at once, no loop
-print(spectrum.coords["frequency"].values[[0, -1]])  # [-2000.  1996.09375]
+# Step 4 — done. The whole toolbox now works, all voxels at once:
+spectrum = fid.xmr.to_spectrum()
+print(spectrum.coords["frequency"].values[[0, -1]].tolist())  # [-2000.0, 1996.09375]
 
 ppm = spectrum.xmr.to_ppm()
 print(ppm.dims)  # ('voxel', 'chemical_shift')
 ```
 
-The 4000 Hz you spaced the time axis with is the 4000 Hz that comes back. Leave out
-`reference_frequency` or `carrier_ppm` and `to_ppm` says so, by name, before doing any maths —
+The 4000 Hz you put into the time axis is the 4000 Hz you get back. Forget
+`reference_frequency` or `carrier_ppm` and `to_ppm` tells you, by name, before it does any maths —
 [Hz and ppm](https://andrewendlinger.github.io/xmris/basics/hz-and-ppm) takes it from here.
 
 ## What is in the box
@@ -112,15 +115,16 @@ The 4000 Hz you spaced the time axis with is the 4000 Hz that comes back. Leave 
 - **Processing** — zero filling, exponential and Lorentz-to-Gauss apodization, manual and automatic
   phasing, asymmetric-least-squares baseline correction, FID ↔ spectrum, Hz ↔ ppm.
 - **Vendor data** — Bruker ParaVision arrays and their parameter dicts become a fully labelled FID,
-  digital-filter group delay included: the one that otherwise puts a phase roll through everything.
+  digital-filter group delay included: the one that puts a phase roll through everything if you
+  forget it.
 - **Fitting** — AMARES quantification via [pyAMARES](https://github.com/HawkMRS/pyAMARES), returning
   a `Dataset` with your signal, the fit and the residual aligned.
 - **Plots and widgets** — matplotlib helpers, plus sliders you can drag to phase, apodize, or scroll
   through a stack of spectra.
 
-And what is not: `xmris` is a `0.x` package, the spectroscopy side is further along than the
-imaging side, Bruker is the only vendor loader so far, and full MRSI grids — lazy, chunked, on an
-anatomical image — are still ahead. Core `xmris` will not do image reconstruction. The
+And what is not: `xmris` is a `0.x` package, the MRS side is ahead of the imaging side, Bruker is
+the only vendor loader so far, and full MRSI grids — lazy, chunked, sitting on an anatomical
+image — are still to come. Core `xmris` will not do image reconstruction. The
 [roadmap](https://andrewendlinger.github.io/xmris/roadmap) says what is shipped, what is moving,
 and what is still being argued about.
 
@@ -131,9 +135,9 @@ pip install xmris             # or: uv add xmris
 pip install "xmris[fitting]"  # adds AMARES quantification
 ```
 
-Fitting is an extra because its dependency chain reaches `hlsvdpro`, which ships no arm64 wheel; the
-`pyamares-xmris` repackage on PyPI carries the platform marker that makes it install on Apple
-Silicon too. Everything else is in the bare install. Python 3.10 – 3.13.
+Fitting is an extra because deep in its dependencies sits `hlsvdpro`, which ships no arm64 wheel;
+the `pyamares-xmris` repackage on PyPI adds the marker that skips it on Apple Silicon, so the
+install works there too. All else is in the bare install. Python 3.10 – 3.13.
 
 ## Contributing
 
@@ -145,10 +149,10 @@ the [contributor guide](https://andrewendlinger.github.io/xmris/contribute).
 
 Upgrading? The **[changelog](https://andrewendlinger.github.io/xmris/changelog)** records what
 changed in each release. There is no `CHANGELOG.md` here — it is a rendered page, so every entry can
-link the issue, the pull request, and the documentation behind it.
+link the issue, the pull request, and the docs behind it.
 
 ## License
 
-`xmris` is licensed under the **BSD 3-Clause License** — see
-[LICENSE](https://github.com/andrewendlinger/xmris/blob/main/LICENSE). Use it, build on
-it, ship it, commercially or not; keep the copyright notice.
+`xmris` is **BSD 3-Clause** — see
+[LICENSE](https://github.com/andrewendlinger/xmris/blob/main/LICENSE). Use it, build on it, ship
+it, paid work or not; just keep the notice.
