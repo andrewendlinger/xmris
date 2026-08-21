@@ -1,7 +1,7 @@
 (diary-authoring-skills)=
 # The skills remember the rules so you don't
 
-<span style="color: gray; font-size: 0.9em;">Last edited: 2026-08-21 · #103, #104, #114</span>
+<span style="color: gray; font-size: 0.9em;">Last edited: 2026-08-21 · #103, #104, #114, #166</span>
 
 Every change to xmris has to clear the same stack of contracts at once. A new function, for
 example, has to honour
