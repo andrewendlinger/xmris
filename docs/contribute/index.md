@@ -49,8 +49,8 @@ these docs preach.
 
 1. [**Set up your environment**](#setup) — clone the repo, run `uv sync --all-extras --dev`, and
    confirm `uv run test` is green.
-2. **Make your change**, following the page for its kind above. A significant decision starts as a
-   [dev-diary draft](#contribute-dev-diary) that gets reviewed before the code is written.
+2. **Make your change**, following the page for its kind above. A significant decision is offered a
+   [dev-diary entry](#contribute-dev-diary), written once the change lands.
 3. [**Open a pull request**](#contribute-pr) against `main` — `main` takes no direct pushes. Six
    checks gate the merge: the test suite on Python 3.10 and 3.13, ruff, the docs style checker, an
    install of only what a real user receives, and an executed build of this documentation, so a

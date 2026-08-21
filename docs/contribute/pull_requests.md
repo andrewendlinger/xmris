@@ -103,8 +103,8 @@ https://andrewendlinger.github.io/xmris/pr-preview/pr-123/
 That is your branch, built and **fully executed** — the same build the live site gets, not a lighter
 one. Plots are real plots, hidden asserts really ran. For anything reader-facing this is the review
 surface: prose, admonitions, mermaid diagrams and cell output only reveal what they actually look
-like once rendered. A [dev-diary](#contribute-dev-diary) draft is *reviewed* here before its
-implementation begins.
+like once rendered. A [dev-diary](#contribute-dev-diary) entry is reviewed here like any
+other page.
 
 ```{mermaid}
 %%{init: {'flowchart': {'htmlLabels': false}}}%%

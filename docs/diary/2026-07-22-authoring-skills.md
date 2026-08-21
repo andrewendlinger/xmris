@@ -1,7 +1,7 @@
 (diary-authoring-skills)=
 # The skills remember the rules so you don't
 
-<span style="color: gray; font-size: 0.9em;">Last edited: 2026-08-15 · #103, #104, #114</span>
+<span style="color: gray; font-size: 0.9em;">Last edited: 2026-08-21 · #103, #104, #114</span>
 
 Every change to xmris has to clear the same stack of contracts at once. A new function, for
 example, has to honour
@@ -49,19 +49,18 @@ sits off this seam: `release`, the user-triggered **ship** step, routes to
 is why the group is **Workflows**, not just the authoring five.
 
 (diary-authoring-skills-diary)=
-## The diary is the workflow's review gate
+## The diary keeps the why
 
-The `dev-diary` skill is where this system meets how xmris is actually planned: docs first.
-Before any code, the approved plan is distilled into a one-screen draft entry, and the work
-**stops** until that draft has been read on the rendered site — a gate that can be rolled past in
-an auto-accepting session is no gate at all. One full cycle of using the skill taught three
-refinements, now law in it:
+The `dev-diary` skill is where this system meets how xmris is actually built. A significant repo
+or architectural decision — one where a defensible alternative lost — is offered a diary entry,
+and once the work has landed the decision is written up as a one-screen story, checked against
+the code as built. Cycles of using the skill taught three refinements, now law in it:
 
 - An entry is proposed for **decisions**, not categories — a new rule, decorator or namespace
   earns one; a vocabulary term that merely names what a new method did does not.
-- Reconciling means **rewriting the entry into how it is now and why**. The plan file does not
-  survive the merge, so the entry absorbs its rationale; a "what changed from the plan" section
-  appears only where the divergence itself teaches.
+- The entry is written **against the code, not from memory**. The plan file does not survive
+  the merge, so the entry absorbs its rationale; a "what changed from the plan" section appears
+  only where the divergence itself teaches.
 - **One entry per decision, rewritten in place as the decision evolves** — this very article
   absorbed its later turns rather than spawning sequels, and its *Last edited* line says the
   story is current.
