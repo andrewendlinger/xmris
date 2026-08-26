@@ -19,11 +19,11 @@ These four rules govern everything under `docs/` — explanation articles, tutor
 
 Reader-facing prose uses plain strings (`"time"`, `"frequency"`), per Commandment 4's library-internals-only rule. `ATTRS`/`DIMS`/`COORDS` appear only in passages explicitly addressed to contributors, or inside hidden test cells.
 
-## Significant changes get a diary entry
+## Significant decisions: offer a diary entry
 
-If a change picks between ≥2 viable approaches, adds conceptual surface (a new rule, decorator, or namespace — not a vocabulary term that follows an existing pattern), or spans multiple PRs, invoke the `dev-diary` skill — at the **start** (a one-screen article written from the approved plan, as the branch's first commit) and again at the **end** (rewritten into the story of how it is now; a "what changed from the plan" note only where the divergence teaches). When an existing entry already tells the decision's story, propose updating that entry instead of adding a sibling.
+If a change involves a significant repo or architectural decision — it picks between ≥2 viable approaches, adds conceptual surface (a new rule, decorator, or namespace — not a vocabulary term that follows an existing pattern), or spans multiple PRs — **offer** a dev-diary entry via the `dev-diary` skill: a one-screen article, written once the change has landed, telling how it is now and why. When an existing entry already tells the decision's story, propose updating that entry instead of adding a sibling.
 
-Pass 1 is the change's **master overview** and its review gate: the plan file is right for executing and too heavy for approving, so the entry is what gets read on the rendered site (`uv run docs`) before work starts. It never restates the plan's steps. The skill always asks before writing anything — never decide that autonomously — and after committing the draft the turn **ends** so the user can review the page; implementation waits for their go-ahead.
+The skill always asks before writing anything — never decide that autonomously; if the user declines, drop it. The entry never restates the plan's steps — commits and the diff own those — and it absorbs the rationale only the plan held, since the plan file does not survive the merge.
 
 The `Dev Diary` section opens with one evergreen intro (`docs/diary/index.md`, pinned first) that explains what the diary *is*; dated entries follow it chronologically and carry a muted `Last edited` line rather than a status banner.
 

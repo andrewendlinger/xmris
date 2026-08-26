@@ -1,7 +1,7 @@
 (diary-architecture-contract)=
 # The Commandments now run against the code they govern
 
-<span style="color: gray; font-size: 0.9em;">Last edited: 2026-07-23 · #103</span>
+<span style="color: gray; font-size: 0.9em;">Last edited: 2026-08-21 · #103, #166</span>
 
 The [architecture rules](#contract) are the standing law for everything under
 `src/xmris/` — and the law had quietly stopped describing the land. Commandment 3 bans descriptive
@@ -69,7 +69,7 @@ home everything was just pointed at, for the price of re-homing every rule anywa
 - **One Commandment 7 violation was left standing.** `build_fid`'s repetition coordinate still
   hand-builds its attrs dict: `COORDS` has no `repetition` term, and growing the vocabulary is a
   Commandment 4 event of its own — flagged as follow-up rather than smuggled in.
-- All four pass-1 assumptions held: `inspect.getsource` sees the decorators; the kernelspec'd page
+- All four assumptions marked in the draft held: `inspect.getsource` sees the decorators; the kernelspec'd page
   executes in the docs build while `test-gen` still walks exactly its 26 tutorial/explainer files;
   the pinned mystmd's anchor behavior is what the build showed; and the new `TestAccessorDefaults`
   row runs without importing pyAMARES.

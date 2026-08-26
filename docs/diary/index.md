@@ -21,31 +21,22 @@ edited* line under each title tells you the story is current.
 (diary-about-how)=
 ## How an entry gets written
 
-The entries are a by-product of how xmris is actually built. A significant change usually starts as a planning session — nowadays often with e.g. Claude Code — that ends in a precise, ordered plan. That plan is exactly
-right for *doing* the work and sometimes not so good for *judging* it: twenty mechanical
-steps with the one real decision buried underneath them.
+The entries are a by-product of how xmris is actually built. A significant change usually starts
+as a planning session — nowadays often with e.g. Claude Code — that ends in a precise, ordered
+plan, reviewed in its own right (how, varies by contributor and tooling). That plan is exactly
+right for *doing* the work and not so good for *keeping*: twenty mechanical steps with the one
+real decision buried underneath them — and the plan file does not survive the merge.
 
-So before any code is written, the plan is distilled into a short **draft
-entry** — one screen: the tension, the decision, a diagram, and often a code snippet or two — a small user story sketching
-the call we wish existed. That draft is what gets reviewed — and the work stops
-until it has been.
-Writing it this early, forcing the argument onto a single page helps catching bad decision early.
-
-> It's almost like a docs-first approach.
-
-Then the work happens, and reality argues back. So once the change lands, the
-draft is **reconciled into the story you are reading**: corrections wherever
-the plan turned out wrong, the real file paths and code snippets dropped in so
-you can see how it works under the hood, and a straight account of why — having
-now built it — we think the call was right.
+So once the change lands, that decision is told here as a one-screen **story**: the tension, the
+decision, the real file paths and code snippets so you can see how it works under the hood —
+checked against the code as built, not drafted from the plan — and a straight account of why,
+having now built it, we think the call was right.
 
 ```{mermaid}
 %%{init: {'flowchart': {'htmlLabels': false}}}%%
 flowchart LR
-    P["Plan"] --> D["Draft the entry"]
-    D --> R["Review the shape"]
-    R --> B["Build it"]
-    B --> S["Reconcile into a story"]
+    P["Plan"] --> B["Build"]
+    B --> S["Tell the story"]
 ```
 
 :::{seealso}

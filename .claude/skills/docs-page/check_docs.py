@@ -30,9 +30,9 @@ from pathlib import Path
 # the mapping is spelled out rather than inferred -- a new chapter has to
 # declare which genre its pages are held to. Writing a diary entry belongs to
 # the `dev-diary` skill, but the structural rules bind it like any other page --
-# an entry missing from the TOC never renders, and the diary is a review gate
-# that only works if it does. Only api/ escapes: it is generated and gitignored,
-# so there is nothing to hand-fix.
+# an entry missing from the TOC never renders, and a decision record no one can
+# read keeps nothing. Only api/ escapes: it is generated and gitignored, so
+# there is nothing to hand-fix.
 GENRES = {
     "basics": "tutorial",
     "pipeline": "tutorial",

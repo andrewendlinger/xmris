@@ -105,6 +105,9 @@ docs/**/**/**/*.ipynb
 # Local scratch notes
 TODO.md
 
+# plan-doc plan folders — the plan file lives outside the repo
+plans/
+
 # macOS
 .DS_Store
 .AppleDouble
