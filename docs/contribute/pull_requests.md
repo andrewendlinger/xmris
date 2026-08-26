@@ -86,10 +86,11 @@ exercised nowhere else. That gap once shipped a release whose `import xmris` rai
 `ModuleNotFoundError` while all four other checks stayed green, so this job installs the way a user
 does and refuses to trust anything the dev environment happens to provide.
 
-Two further jobs report on the pull request without gating it. `publish` assembles and deploys the
-site — that is where your preview comes from — and `links` checks external URLs **weekly on a
-schedule** rather than on your branch, because a third-party URL rotting is not your fault and
-should not redden your pull request.
+Neither of the two remaining pieces gates anything, and neither is a job on this run. Publishing
+the site — where your preview comes from — is a **separate workflow** that starts when `build`
+succeeds, and reports back as a `Docs preview` status carrying the link. External links are checked
+**weekly on a schedule** rather than on your branch, because a third-party URL rotting is not your
+fault and should not redden your pull request.
 
 (contribute-pr-preview)=
 ## 4. Read your change on its own website
@@ -109,19 +110,26 @@ other page.
 ```{mermaid}
 %%{init: {'flowchart': {'htmlLabels': false}}}%%
 flowchart LR
-    P["Push to the PR"] --> B["Build: execute + strict"]
-    B --> U["Upload preview-pr-N"]
-    U --> A["Assemble: main + every open PR"]
-    A --> D["Deploy the whole site"]
-    D --> C["Bot comments the link"]
-    M["Merge or close"] --> X["Dropped from the next assembly"]
+    subgraph Y["Your branch · read-only token"]
+        P["Push to the PR"] --> B["Build: execute + strict"]
+        B --> U["Upload preview-pr-N"]
+    end
+    subgraph N["main's workflow · write token"]
+        A["Assemble: main + every open PR"] --> D["Deploy the whole site"]
+        D --> C["Comment the link"]
+    end
+    U -.-> A
+    M["Merge or close"] --> X["Absent from the deploy it triggers"]
 ```
 
-Two caveats. The link arrives a couple of minutes after the green `build` check, because the deploy
-runs after it — the comment is posted once the site is actually live, so the link never points at
-nothing. And a pull request from a **fork** gets no preview: its token is read-only by design, so
-the build still runs as a smoke test but cannot publish. That is not a failure — an external
-contributor's first pull request should not open with a red X they have no way to fix.
+Two caveats. The link arrives a couple of minutes after the green `build` check, because
+publishing is a second workflow that starts only once this one has finished — the comment is posted
+when the site is actually live, so the link never points at nothing. And if you are contributing
+**from a fork**, your first build waits for a maintainer to press *Approve*: GitHub does not run
+workflows from a new contributor unprompted, and this repository executes every notebook in your
+branch. Once approved you get the same preview, the same comment and the same status as anyone
+else — the dashed arrow above is the only place your branch and the published site meet, and only
+an artifact crosses it.
 
 (contribute-pr-green)=
 ## 5. Drive it green, then hand off
@@ -144,10 +152,19 @@ Cutting a release is a separate, maintainer-run workflow ([Publishing](#contribu
 Deployment is continuous and has nothing to do with releases, and the built site is never stored
 anywhere: each deploy reassembles it from scratch — `main`'s most recent build, plus one artifact
 per *currently open* pull request — and publishes that whole tree to GitHub Pages. Your preview is
-on the site because your pull request is open, and it leaves on the first deploy after it closes.
-Nothing removes it; it simply stops being an input. A weekly scheduled run performs the same
-assembly, which keeps `main`'s build fresh and sweeps the preview of a pull request that closed
-during a quiet week. ([The diary entry](#diary-docs-previews) tells why it works this way.)
+on the site because your pull request is open. Closing it triggers one more deploy, from which it
+is simply absent; nothing removes it, and there is no cleanup step to fail. A weekly scheduled run
+performs the same assembly, which keeps `main`'s build fresh.
+([The diary entry](#diary-docs-previews) tells why it works this way.)
+
+That assembly is a *second* workflow, and the split is the load-bearing part. `Documentation`
+builds your branch — executing every notebook in it — and holds nothing but a read-only token.
+`Publish docs site` picks up the artifact afterwards and does everything privileged. GitHub runs
+that second workflow from `main`'s copy of the file whatever branch triggered it, so the token that
+can write to the site is never in reach of the branch being tested. Which is also why the assembly
+picks artifacts by *provenance* — which repository and which commit produced them — rather than by
+name: on a pull request the workflow file itself comes from your branch, so the name it writes on
+an artifact is a hint, not a promise.
 
 The one subtlety worth internalising if you ever touch the workflow: mystmd bakes the site's base
 path into every asset link **at build time**, so a preview has to be built for the subdirectory it
@@ -160,11 +177,15 @@ will be served from. That is what this step does, quoted from the workflow itsel
 :caption: The build step — quoted from .github/workflows/deploy.yml at build time
 ```
 
-To rebuild and republish the site without merging anything — after a failed deploy, say — run the
-**Documentation** workflow manually from the Actions tab (`workflow_dispatch`). That is also the
-recovery when `publish` fails with `No usable 'site-main' artifact`: a Pages deployment is atomic,
-so the previous site keeps serving until a good one replaces it, and the failure is loud rather
-than destructive.
+Both workflows can be run by hand from the Actions tab (`workflow_dispatch`), and which one you
+want depends on what broke. **Publish docs site** re-assembles and redeploys from the artifacts
+that already exist — seconds, and the right lever when a deploy failed. **Documentation** rebuilds
+first and then chains into publishing, which is the slower recovery you need when the artifact
+itself is missing or stale — including the `No usable 'site-main' artifact` failure. Dispatch that
+one **from `main`**: assembly only accepts a `site-main` built on `main`, so the same run launched
+off a branch rebuilds happily and then fails identically. Either way a
+Pages deployment is atomic, so the previous site keeps serving until a good one replaces it, and
+the failure is loud rather than destructive.
 
 ```{code-cell} python
 :tags: [remove-cell]
@@ -196,7 +217,7 @@ assert "uv run myst build --html --execute --strict" in text, "end-at anchor no 
 | `build` red, `Could not find DOI "…" from doi.org` | DOI metadata is resolved over the network unless it is frozen in `docs/myst.doi.bib` | `cd docs && uv run myst build --doi-bib`, then commit `myst.doi.bib` |
 | `build` red, `Site has N error(s), stopping build` | A cross-reference, directive or link mystmd could not resolve | Reproduce with the `build` command above; the error names the file and line |
 | `build` red only in CI, green locally | Stale `docs/_build` cache locally | `rm -rf docs/_build` and rebuild |
-| Preview link 404s | The `publish` job has not finished deploying yet, or the pull request is from a fork — forks never publish | Wait for `publish` to go green; for forks, ask a maintainer to read the branch locally |
+| Preview link 404s | The **Publish docs site** workflow has not finished deploying yet, or (on a fork) the build is still waiting for a maintainer to approve it | Wait for the `Docs preview` status to appear; check the Actions tab for a run needing approval |
 | Merge button blocked with everything green | The branch is out of date in a way GitHub cannot merge, or a check never reported | Check the merge box for which requirement is unmet; rebase only if there is a real conflict |
 
 :::{seealso}

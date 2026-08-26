@@ -1,188 +1,146 @@
 (diary-docs-previews)=
 # Every pull request publishes the page it changes
 
-<span style="color: gray; font-size: 0.9em;">Last edited: 2026-08-10 · #112, #114, #142, #143, #144</span>
+<span style="color: gray; font-size: 0.9em;">Last edited: 2026-08-26 · #112, #114, #142, #143, #144, #171</span>
 
 A preview link was the one thing a pull request never handed you, and getting one turned out to be
-mostly a matter of not deleting a build CI already paid for: the reviewer's copy used to live two
-minutes on a runner and then vanish. Three weeks later the bill arrived. The branch carrying the
-site had reached 103 MB across 3,079 files, its history 674 MB of unique blobs that every clone
-paid for; GitHub's own build of that branch had crept from 28 s to 494 s and errored on three of
-its last ten runs; the live site was serving a layout two merges old; and the preview for a pull
-request merged four days earlier was still published. Four bugs, one cause — **the published site
-was versioned state**.
+mostly a matter of not deleting a build CI had already paid for. Two questions had to be answered
+before that was safe, and each was answered wrong the first time: **what the published site is made
+of**, and **who is allowed to write it**.
 
 :::{important}
-Built output is derived, never stored. Every deploy recomputes the whole site from `main`'s build
-plus one artifact per *currently open* pull request. `gh-pages` no longer exists.
+Built output is derived, never stored: every deploy recomputes the whole site from `main`'s build
+plus one artifact per *currently open* pull request. Who may publish it is decided in
+`publish.yml`, which GitHub runs from `main` whatever branch triggered it — never in the file the
+branch being tested can edit.
 :::
 
 (diary-docs-previews-derived)=
 ## Nothing to clean up, because nothing accumulates
 
-Write the published site as a function of what is open *right now* and the entire class of failures
-above stops being reachable:
+The first answer arrived as a bill: three weeks in, the branch carrying the site had reached 103 MB,
+its build had crept from 28 s to 494 s, the live site was serving a layout two merges old, and a
+preview whose pull request merged four days earlier was still published. Four bugs, one cause — the
+published site was **versioned state**. Write it instead as a function of what is open *right now*
+and that entire class of failure stops being reachable:
 
 ```{mermaid}
 %%{init: {'flowchart': {'htmlLabels': false}}}%%
 flowchart LR
-    E["Any deploy event"] --> Q["Ask GitHub what is open"]
-    Q --> M["main's build artifact"]
-    Q --> P["one artifact per open PR"]
-    M --> A["Assemble the site"]
-    P --> A
-    A --> D["Deploy it whole"]
+    subgraph B["The branch · read-only token"]
+        E["Build: execute + strict"] --> P["Upload preview-pr-N"]
+    end
+    subgraph M["main's workflow · write token"]
+        Q["Ask GitHub what is open"] --> A["Assemble: main's build<br>+ each open preview"]
+        A --> D["Deploy it whole"]
+    end
+    P -.->|"one artifact"| Q
 ```
 
-A closed pull request's preview is not removed; on the next deploy it is simply no longer an input.
-That one sentence covers the preview still live four days after its merge, the `.nojekyll` files
-stranded in closed pull requests' directories, and the branch that only ever grew — all three were
-incremental-cleanup bugs, and there is no increment left to clean.
+A closed pull request's preview is never removed; it simply stops being an input. That one sentence
+covers the stranded preview, the `.nojekyll` files orphaned in closed pull requests' directories,
+and the branch that only ever grew — all three were incremental-cleanup bugs, and there is no
+increment left to clean. The store is GitHub's artifact retention rather than git.
 
-It behaved exactly that way on the first day. `pr-preview/pr-139/`, published and stranded since a
-merge four days earlier, was simply absent from the first assembled deploy. `pr-preview/pr-143/`
-served for eleven minutes, its pull request merged, and the next unrelated deploy erased it. No
-cleanup step exists to have run.
+(diary-docs-previews-provenance)=
+## The name on an artifact is not a claim about who wrote it
 
-The store is GitHub's artifact retention rather than git: 90 days for `main`'s build, 14 for a
-preview, with the weekly link-check run extended to rebuild and republish. That keeps the live
-artifact under a week old and doubles as the sweep, bounding how long a closed pull request's
-preview can linger when nothing else happens to deploy. One build is a 21 MB zip — 1,548 files,
-56 MB unpacked — and assembly downloads it fresh every time.
+The second answer arrived as a contributor, and this page asserted the wrong one for a month. The
+first fork pull request (#164) got no preview, and the guard that arranged that was doing nothing of
+the sort. For a `pull_request` event GitHub runs the workflow file **from the merge commit** — for a
+fork, a commit the contributor controls. The guard lived in that file. So did the line naming the
+artifact. And assembly chose the site root by asking for the newest artifact called `site-main`.
+Each link is defensible alone; chained, they meant a fork could have published the **root** of the
+site, with nothing in the way but a run-approval prompt that stops appearing after a contributor's
+first merged pull request.
 
-:::{warning}
-Publishing runs on pull-request events, so a branch's workflow writes to the live deployment. That
-is not theoretical: the site was updated by pull request #143's own run, before #143 merged. It is
-safe only because the root always comes from `main`'s artifact, never from the branch being tested,
-so a broken branch can corrupt its own subdirectory and nothing else. The fork guard, meanwhile,
-stops being a token limitation and becomes a security boundary — a fork's HTML would otherwise be
-served from our origin on `github.io`. That one is still design rather than evidence; no fork pull
-request has arrived to exercise it.
-:::
+So the guard was deleted rather than fixed, and forks now publish like anyone else. What makes that
+safe is a rule that reads nothing the branch wrote — **provenance, not name**:
 
-(diary-docs-previews-baseurl)=
-## What survives the move, and what it costs
+| Admitted | Only when |
+|---|---|
+| `site-main` | its run's `head_repository_id` equals `repository_id`, and its branch is `main` |
+| `preview-pr-N` | its run's head SHA **is** pull request N's current head |
+| the trigger itself | the completed run was `.github/workflows/deploy.yml` |
 
-Two details of the build step are unchanged and still load-bearing. `BASE_URL` is baked into every
-asset path at build time, so a preview must be built for the subdirectory it will be served from;
-building for `/xmris` and serving from `/xmris/pr-preview/pr-N/` 404s every stylesheet. That is
-also why the site refuses to compress — only 183 of 1,269 files across two builds are
-byte-identical, so `plotly-5BWH43UK.js` at 4.77 MB is a fresh blob per preview.
-
-Deleting the branch stops that from *accumulating*; it does not shrink a single copy, and the
-assembled site now scales with the number of open pull requests instead. Per-copy weight is
-therefore the only thing left that grows a deploy — today ~12 MB of it is executed-notebook figure
-output, which the move to vector figures should largely dissolve.
-
-:::{dropdown} The `.nojekyll` trap, now historical
-A branch-served Pages site runs Jekyll, which silently drops every `_`-prefixed path — here
-`build/_assets`, `build/_shared` and `build/routes/_index-*`, which is all of the site's CSS and
-JS. Neither deploy action wrote a `.nojekyll`, so the build did — for the root only. Writing one
-into each preview directory looked harmless and was not: the removal deploys an *empty* folder, and
-the action adds `--exclude .nojekyll` to its delete-rsync whenever the source lacks one, so exactly
-that file outlived every closed pull request. A site served from a workflow artifact is published
-as-is, so both the file and its footgun are gone.
-:::
-
-(diary-docs-previews-layers)=
-## Three enforcement layers, and how the third one bit
-
-Docs rules have three enforcers, each because the one above it is blind to something:
-
-| Layer | Catches | Blind to |
-|---|---|---|
-| `check_docs.py` — the `Docs style` job | what the build never mentions: a missing target, a dead `.ipynb` link, a drifted kernel name | anything it has no rule for |
-| `myst build --strict` | what the build *reports* and then exits 0 on anyway | its own warnings — a missed `literalinclude` anchor still only warns |
-| the preview | whether the page actually reads right | nothing a human declines to look at |
-
-That middle row is narrower than it sounds: mystmd's `--strict` exits non-zero on **errors** only,
-never on warnings. So the quoted-source pins in [the Architecture Contract](#contract) stay
-load-bearing — a renamed decorator would still truncate a `literalinclude` with nothing but a
-warning to show for it.
-
-Turning that layer on had a consequence nobody predicted. The first strict build on CI went red on
-a *valid* DOI:
-
-```text
-⛔️ 03_plotting_1dfid.md:198 Could not find DOI "https://doi.org/10.1002/mrm.25568" from doi.org
-```
-
-mystmd resolves every `doi.org` link against the network at build time, so `--strict` had quietly
-made the documentation build — and the deploy behind it — depend on doi.org being reachable from a
-GitHub runner. The fix is to stop asking: `myst build --doi-bib` freezes that metadata into
-`docs/myst.doi.bib`, which only takes effect once *listed* in `myst.yml`'s `bibliography`, because
-declaring that key at all makes mystmd load only the files named there. A `check_docs.py` rule now
-errors on any `doi.org` link missing from the cache, so the next contributor to add one is told
-before CI is. The lesson generalises past DOIs: **a strict gate converts every latent network
-dependency in a build into a flaky failure**, and it fails on whichever pull request happens to be
-open at the time.
-
-(diary-docs-previews-gate)=
-## What the gate cost, and what it was worth
-
-A preview only helps if a red check can actually stop a merge, and none could: `main`'s ruleset
-contained a single `deletion` rule, so nothing — not the tests, not `Docs style` — was required. It
-now requires all four checks and a pull request, with zero approving reviews so a sole maintainer
-can still merge their own work.
-
-Requiring a pull request broke exactly one thing, and instructively: the release flow ended with
-`git merge release/vX.Y.Z` and `git push origin main`. Routing that through a pull request exposes a
-second problem, because this repository squash-merges — a tag cut on the release branch would sit
-on a commit that never enters `main`'s history. So the order flipped: bump, merge, *then* tag the
-merged commit ([Publishing](#release-tag-publish)). Publishing itself never moved; the `v*` tag
-still triggers the matrix and the PyPI job.
+Every field there comes from the API, never from the artifact. The middle row is what lets a fork
+publish at all: it cannot claim another pull request's directory without its branch tip *being* that
+commit, at which point it has claimed nothing.
 
 :::{warning}
-Changing where Pages gets its bytes is not self-starting, and the trap has now appeared twice in
-the same shape. Moving *onto* the branch: a branch-served site builds on the next push to that
-branch, and the last `gh-pages` push predated the flip, so the old artifact kept serving with
-`pages/builds/latest` returning 404 and no workflow run to look at —
-`gh api -X POST repos/OWNER/REPO/pages/builds` bootstraps it. Moving *off* it: the `github-pages`
-environment restricts which refs may deploy, so a pull request is rejected — `Branch
-"refs/pull/142/merge" is not allowed to deploy to github-pages` — before a byte moves. The rule that
-admits it must be spelled `refs/pull/*/merge`, and a plain `*` will not do: policies are matched
-against `GITHUB_REF` with `fnmatch` semantics, where a wildcard never crosses a `/`.
-:::
-
-:::{dropdown} Why not Cloudflare Pages or Netlify?
-Both hand out preview URLs with no workflow YAML at all. The price is a vendor account and an API
-token in the repository's secrets — for a package heading into JOSS review, one more dependency a
-reviewer cannot see the far side of. GitHub Pages already hosts the site; a preview should not add
-a second host. The same stance is why the assembly step uses nothing but `gh` and the two
-first-party Pages actions, rather than the third-party deploy actions it replaces.
-:::
-
-:::{dropdown} Why not just download the build artifact?
-That was the smallest possible change back when previews were added — delete one `if:` and the
-artifact survives. Artifacts are now the transport, but the conclusion is unchanged: a 52 MB zip
-you download, unpack and serve locally is not a link, and a review gate only works when reading the
-page is the path of least resistance.
+This buys containment, not innocence. A fork's preview is still contributor-written HTML served from
+`andrewendlinger.github.io`, an origin shared with every Pages site on the account — the trade every
+hosted preview service makes. It is bounded, not removed: a fork writes only under its own
+`pr-preview/pr-N/`, closing the pull request triggers the deploy that drops it, and the payload is
+capped per preview, by file count, and against Pages' 1 GB ceiling. GitHub's approval prompt is a
+**run** gate, not a review gate — it is granted before the content exists.
 :::
 
 (diary-docs-previews-changed)=
 ## What changed from the plan
 
-Three assumptions were wrong, and each cost a red run to discover:
-
-- **The `publish` job has no checkout, and that broke `gh`.** Moving artifacts needs no source, so
-  omitting `actions/checkout` looked like free economy. But `gh run download`, `gh pr list` and
-  `gh pr comment` all resolve the repository from a git remote, so the job died half a second in
-  with `failed to run git: fatal: not a git repository`. Only the `gh api` calls survived, because
-  they carry an explicit `repos/OWNER/REPO/...` path. `GH_REPO` in the step environment fixes it
-  and keeps the job checkout-free.
-- **Flipping the Pages source is housekeeping, not the switch.** The plan treated
-  `build_type=workflow` as the moment the site changes hands. It is not: an explicit workflow
-  deployment is served whatever the configured source says, so the assembled site — main's build,
-  previews and all — went live while the API still reported `build_type: legacy` and a `gh-pages`
-  source. The flip still matters, because a stray push to that branch would otherwise trigger a
-  legacy build over the top of it, and because the branch cannot be deleted while it is the
-  nominal source.
-- **The rejection came from the ref pattern, not the branch list.** See the warning above: a
-  wildcard cannot match a merge ref, which is not a fact any amount of local reasoning produces.
+- **This page called the fork guard a security boundary.** It was a token workaround wearing a
+  boundary's clothes, and it sat here unchallenged until the first fork pull request arrived to test
+  it. A guard that lives in a file the adversary edits is documentation, not enforcement.
+- **The publishing job has no checkout, and that broke `gh`.** Moving artifacts needs no source, so
+  omitting `actions/checkout` looked like free economy — but `gh run download`, `gh pr list` and
+  `gh pr comment` all resolve the repository from a git remote, and the job died half a second in
+  with `failed to run git: fatal: not a git repository`. Only `gh api` survived, because it carries
+  an explicit `repos/OWNER/REPO/...` path. `GH_REPO` in the step environment fixes it.
 
 What the plan got right is the part that mattered: the fail-loud path fired for real on the first
-pull request, before any `site-main` artifact existed, printing
-`No usable 'site-main' artifact. The live site is unchanged; recover with: gh workflow run
-deploy.yml` — and the previous site kept serving throughout, exactly as an atomic deployment
-should. `gh-pages` was deleted at tip `5ae31c42` once the assembled site was confirmed serving all
-72 routes.
+pull request, before any `site-main` artifact existed, printing `No usable 'site-main' artifact. The
+live site is unchanged; recover with: gh workflow run deploy.yml` — and the previous site kept
+serving throughout, exactly as an atomic deployment should.
+
+:::{dropdown} Why not `pull_request_target` for the build?
+It is the obvious way to hand a fork's build a write token, and the wrong one here: the build runs
+`myst build --execute`, which executes every notebook in the branch. `pull_request_target` would
+pair arbitrary contributor code with a token that can write to the repository. `workflow_run`
+inverts it — the untrusted half keeps a read-only token and passes an artifact across, and the
+privileged half never sees the branch at all.
+:::
+
+:::{dropdown} Why not Cloudflare Pages or Netlify?
+Both hand out preview URLs with no workflow YAML at all. The price is a vendor account and an API
+token in the repository's secrets — for a package heading into JOSS review, one more dependency a
+reviewer cannot see the far side of. GitHub Pages already hosts the site; a preview should not add a
+second host. The same stance is why assembly uses nothing but `gh`.
+:::
+
+:::{dropdown} Why not just download the build artifact?
+That was the smallest possible change back when previews were added — delete one `if:` and the
+artifact survives. Artifacts are now the transport, but the conclusion is unchanged: a 52 MB zip you
+download, unpack and serve locally is not a link, and a review gate only works when reading the page
+is the path of least resistance.
+:::
+
+:::{dropdown} How `--strict` broke the build on a valid DOI
+Docs rules have three enforcers, each because the one above it is blind to something:
+`check_docs.py` catches what the build never mentions (a missing target, a dead `.ipynb` link, a
+drifted kernel name); `myst build --strict` catches what the build reports and then exits 0 on
+anyway; the preview catches whether the page actually reads right. Turning the middle one on went
+red on a *valid* DOI — `Could not find DOI "https://doi.org/10.1002/mrm.25568" from doi.org` —
+because mystmd resolves every `doi.org` link over the network at build time. `myst build --doi-bib`
+freezes that metadata into `docs/myst.doi.bib`, which only takes effect once *listed* in
+`myst.yml`'s `bibliography`, since declaring that key makes mystmd load only the files named there.
+The lesson generalises past DOIs: **a strict gate converts every latent network dependency into a
+flaky failure**, on whichever pull request happens to be open at the time. Note `--strict` exits
+non-zero on **errors** only, never warnings — so the quoted-source pins in
+[the Architecture Contract](#contract) stay load-bearing.
+:::
+
+:::{dropdown} The `.nojekyll` trap, and the ref pattern, now historical
+A branch-served Pages site runs Jekyll, which silently drops every `_`-prefixed path — all of the
+site's CSS and JS. Neither deploy action wrote a `.nojekyll`, so the build did, for the root only.
+Writing one into each preview directory looked harmless and was not: the removal deploys an *empty*
+folder, and the action adds `--exclude .nojekyll` to its delete-rsync whenever the source lacks one,
+so exactly that file outlived every closed pull request. A site served from a workflow artifact is
+published as-is, so both the file and its footgun are gone.
+
+Separately, a pull request was once refused with `Branch "refs/pull/142/merge" is not allowed to
+deploy to github-pages`. The rule admitting it must be spelled `refs/pull/*/merge`, because policies
+are matched against `GITHUB_REF` with `fnmatch` semantics, where a wildcard never crosses a `/`.
+That entry is now removable: with publishing moved to `main`'s workflow, no deployment ever comes
+from a merge ref again.
+:::

@@ -1,0 +1,295 @@
+name: Publish docs site
+
+# The trusted half of the docs preview system. `Documentation` builds the site
+# on every pull request -- INCLUDING forks, whose notebooks it executes -- with
+# a read-only token and no secrets. This workflow does everything privileged:
+# assemble, deploy, comment.
+#
+# `workflow_run` is what makes that split safe. GitHub runs this file from the
+# DEFAULT BRANCH, in base-repository context, whatever branch or fork triggered
+# the build -- so a fork cannot reach the token that publishes the site by
+# editing a workflow, which is exactly what it CAN do to `deploy.yml`.
+on:
+  workflow_run:
+    workflows: [Documentation]
+    types: [completed]
+  # A closed pull request's preview stops being an input to the assembly, but
+  # only once something deploys -- otherwise it serves until the weekly run.
+  # Safe here despite the name: this workflow never checks anything out, so no
+  # fork code ever runs beside the write token.
+  pull_request_target:
+    types: [closed]
+  # Re-assemble and redeploy from existing artifacts, no 4-minute rebuild.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    # A failed build has no artifact worth publishing, and the other two events
+    # carry no conclusion at all. The path check matters as much as the
+    # conclusion: a fork's merge commit may add its own workflow file, and one
+    # also called `Documentation` would otherwise fire this job on demand.
+    if: >-
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.path == '.github/workflows/deploy.yml')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Deployments queue instead of racing, since two overlapping deploys can land
+    # the one assembled first. Note that a PENDING run is cancelled when a newer
+    # one enters the group -- which is why the comment step below refreshes EVERY
+    # open preview rather than only the one that triggered this run.
+    concurrency:
+      group: pages-publish
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      pages: write          # create the Pages deployment
+      id-token: write       # the OIDC token deploy-pages exchanges for it
+      actions: read         # list and download the build artifacts
+      contents: read
+      pull-requests: write  # the sticky preview comments
+      statuses: write       # the "Docs preview" commit status
+    steps:
+      - name: Assemble the site from current state
+        env:
+          GH_TOKEN: ${{ github.token }}
+          # This job never checks the repository out -- it only moves artifacts
+          # around -- so `gh` has no git remote to infer the repository from and
+          # every subcommand but `gh api` dies with "not a git repository".
+          GH_REPO: ${{ github.repository }}
+          # Fork-influenced fields (head_branch, display_title, actor.login,
+          # commit messages) must NEVER be interpolated into a `run:` block: git
+          # permits `$`, backticks and parentheses in a branch name, and a fork
+          # names its own branch. Anything of that kind arrives through `env:`.
+          TRIGGER_PATH: ${{ github.event.workflow_run.path }}
+          EVENT: ${{ github.event_name }}
+          # A healthy preview is ~21 MB compressed / ~56 MB unpacked, and a build
+          # is ~1,550 files. Pages caps a published site at 1 GB and its deploy
+          # at ten minutes, and this site is the sum of every open pull request.
+          MAX_PREVIEW_MB: 150
+          MAX_TOTAL_MB: 800
+          MAX_FILES: 20000
+        run: |
+          set -euo pipefail
+
+          # Artifact NAMES are attacker-controlled. For a `pull_request` event
+          # GitHub runs the workflow file from the merge commit, which a fork
+          # writes -- so a fork can rename its own upload to `site-main` and, if
+          # we selected by name alone, take over the ROOT of the published site.
+          # Every lookup below therefore filters on PROVENANCE: which repository
+          # and which commit actually produced the artifact. Those fields come
+          # from the API, never from the artifact.
+          api_artifacts() {
+            gh api --paginate "repos/$GITHUB_REPOSITORY/actions/artifacts?name=$1&per_page=100" \
+              --jq '.artifacts[] | select(.expired | not)'
+          }
+
+          # main's build: same repository AND branch main. The repository check is
+          # the load-bearing half, since a fork may call its own branch "main";
+          # the branch check excludes same-repo pull requests, which cannot.
+          main_run=$(api_artifacts site-main 2>/dev/null | jq -rs '
+            map(select(.workflow_run.head_repository_id == .workflow_run.repository_id
+                       and .workflow_run.head_branch == "main"))
+            | sort_by(.created_at) | reverse | .[0].workflow_run.id // empty' || true)
+
+          if [ -z "$main_run" ]; then
+            # Fail loud rather than rebuilding: a Pages deployment is atomic, so a
+            # failed publish leaves the previous site serving -- never an empty
+            # one -- and a silent rebuild would hide that the artifact chain broke.
+            echo "::error::No usable 'site-main' artifact. The live site is unchanged; recover with: gh workflow run deploy.yml --ref main"
+            exit 1
+          fi
+          mkdir -p _site
+          # Always --name. Downloading a whole run instead creates one directory
+          # per artifact name, and those names are attacker-controlled
+          # (CVE-2024-54132).
+          gh run download "$main_run" --name site-main --dir _site </dev/null
+
+          # The previews are a pure function of what is open RIGHT NOW.
+          gh pr list --state open --limit 200 --json number,headRefOid </dev/null \
+            | jq -r '.[] | [.number, .headRefOid] | @tsv' > open_prs.tsv
+
+          : > published.tsv
+          : > dropped.md
+
+          while IFS=$'\t' read -r pr head_sha; do
+            [ -n "$pr" ] || continue
+
+            # The commits that belong to THIS pull request. Fetched over REST per
+            # pull request rather than through `gh pr list --json commits`, which
+            # asks GraphQL for every commit's author connection across every open
+            # pull request at once and trips the 500,000-node ceiling.
+            shas=$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$pr/commits" \
+                     --jq '.[].sha' </dev/null 2>/dev/null \
+                   | jq -Rs 'split("\n") | map(select(length > 0))' || echo '[]')
+            shas=$(printf '%s' "$shas" | jq -c --arg h "$head_sha" '. + [$h] | unique')
+
+            # Provenance for a preview: the artifact's run head SHA must be one of
+            # THIS pull request's own commits. A fork cannot satisfy that for
+            # someone else's pull request -- it would need a commit of its own to
+            # already be in that pull request's history, which it cannot cause.
+            #
+            # Matching the commit SET rather than only the head is what keeps a
+            # preview served while a newer build is still running: an unrelated
+            # deploy landing mid-build would otherwise delete the directory that
+            # this pull request's comment already links to.
+            match=$(api_artifacts "preview-pr-$pr" 2>/dev/null \
+              | jq -rs --argjson shas "$shas" '
+              map(select(.workflow_run.head_sha as $s | $shas | index($s)))
+              | sort_by(.created_at) | reverse | .[0]
+              | if . == null then empty
+                else "\(.workflow_run.id)\t\(.size_in_bytes)\t\(.workflow_run.head_sha)" end' || true)
+
+            if [ -z "$match" ]; then
+              echo "PR #$pr: no preview artifact from any of its commits -- skipped"
+              continue
+            fi
+            preview_run=$(printf '%s' "$match" | cut -f1)
+            size_mb=$(( $(printf '%s' "$match" | cut -f2) / 1048576 ))
+            built_sha=$(printf '%s' "$match" | cut -f3)
+            [ "$built_sha" = "$head_sha" ] || echo "PR #$pr: newest matching preview is from ${built_sha:0:7}, one or more pushes behind"
+
+            # Compressed size is the only figure the API exposes, so it is the
+            # only one checkable before extraction -- the file-count cap below
+            # necessarily runs after. `timeout` is what actually bounds the gap:
+            # 150 MB of zipped empty files is millions of entries, and inode
+            # exhaustion would otherwise happen mid-extract.
+            if [ "$size_mb" -gt "$MAX_PREVIEW_MB" ]; then
+              echo "::warning::PR #$pr: preview is ${size_mb} MB compressed, over the ${MAX_PREVIEW_MB} MB cap -- dropped"
+              echo "  - PR #$pr: over the ${MAX_PREVIEW_MB} MB per-preview cap (${size_mb} MB)" >> dropped.md
+              continue
+            fi
+
+            dir="_site/pr-preview/pr-$pr"
+            mkdir -p "$dir"
+            if ! timeout 300 gh run download "$preview_run" --name "preview-pr-$pr" --dir "$dir" </dev/null; then
+              echo "PR #$pr: preview download failed -- skipped"
+              rm -rf "$dir"
+              continue
+            fi
+
+            # A byte cap does not stop two million empty files, and the tar Pages
+            # builds from them would blow the ten-minute deployment timeout.
+            files=$(find "$dir" -type f | wc -l | tr -d ' ')
+            if [ "$files" -gt "$MAX_FILES" ]; then
+              echo "::warning::PR #$pr: preview has $files files, over the $MAX_FILES cap -- dropped"
+              echo "  - PR #$pr: over the $MAX_FILES file cap ($files files)" >> dropped.md
+              rm -rf "$dir"
+              continue
+            fi
+
+            printf '%s\t%s\t%s\t%s\n' "$pr" "$head_sha" "$built_sha" "$(du -sm "$dir" | cut -f1)" >> published.tsv
+          done < open_prs.tsv
+
+          # Total budget: drop the largest previews until the site fits. site-main
+          # is never a candidate -- the root is not negotiable.
+          total_mb() { du -sm _site | cut -f1; }
+          while [ "$(total_mb)" -gt "$MAX_TOTAL_MB" ] && [ -s published.tsv ]; do
+            biggest=$(sort -t"$(printf '\t')" -k4 -n -r published.tsv | head -1)
+            pr=$(printf '%s' "$biggest" | cut -f1)
+            mb=$(printf '%s' "$biggest" | cut -f4)
+            echo "::warning::Site is $(total_mb) MB, over the ${MAX_TOTAL_MB} MB budget -- dropping PR #$pr's preview (${mb} MB)"
+            echo "  - PR #$pr: dropped to keep the site under ${MAX_TOTAL_MB} MB (${mb} MB)" >> dropped.md
+            rm -rf "_site/pr-preview/pr-$pr"
+            awk -F'\t' -v drop="$pr" '$1 != drop' published.tsv > published.tsv.new
+            mv published.tsv.new published.tsv
+          done
+
+          # Log the payload every time, so "the deploy is getting heavy" is a
+          # series rather than a single sample -- and so a drop is never silent.
+          {
+            echo "### Assembled site"
+            echo "- triggered by \`$EVENT\` (${TRIGGER_PATH:-n/a})"
+            echo "- $(find _site -type f | wc -l | tr -d ' ') files, $(total_mb) MB of a ${MAX_TOTAL_MB} MB budget"
+            echo "- previews: $(cut -f1 published.tsv | tr '\n' ' ')"
+            if [ -s dropped.md ]; then
+              echo "- **dropped:**"
+              cat dropped.md
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the Pages artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
+
+      - name: Comment the preview link on every published pull request
+        # Deliberately not "the pull request that triggered this run". A pending
+        # publish is cancelled when a newer one enters the concurrency group, so a
+        # per-trigger comment goes missing exactly when previews are busiest --
+        # which is the bug this workflow exists to fix. Refreshing every open
+        # preview instead is idempotent (`--edit-last` raises no notification) and
+        # self-healing: a cancelled run costs nothing, because the next one
+        # re-posts everything.
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}  # no checkout here either
+          SITE: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          set -euo pipefail
+          [ -s published.tsv ] || { echo "No previews published -- nothing to comment."; exit 0; }
+
+          while IFS=$'\t' read -r pr head_sha built_sha _; do
+            url="${SITE%/}/pr-preview/pr-$pr/"
+            stale=""
+            [ "$built_sha" = "$head_sha" ] || stale=" A newer commit is still building, so this is one or more pushes behind."
+            # Heredoc, not an inline multi-line string: YAML indentation would
+            # otherwise survive into the comment, where four leading spaces make
+            # Markdown render the paragraph as a code block.
+            body=$(cat <<EOF
+          📖 **Docs preview:** $url
+
+          Fully executed, from \`${built_sha:0:7}\`.$stale It leaves the site on the first deploy after this pull request closes — nothing to clean up.
+          EOF
+          )
+            # Tolerated per pull request: one that was closed, locked or deleted
+            # between the assemble step and here must not abort the loop and take
+            # every pull request after it down with it -- the site is already live
+            # by this point, so failing the job here would be a lie.
+            gh pr comment "$pr" --edit-last --create-if-none --body "$body" </dev/null \
+              || echo "::warning::PR #$pr: could not post the preview comment"
+            # A workflow_run job does not appear in the pull request's check list.
+            # This status is how the link gets there -- it is not among the
+            # ruleset's required contexts, so it reports without gating.
+            gh api -X POST "repos/$GITHUB_REPOSITORY/statuses/$head_sha" \
+              -f state=success -f context='Docs preview' \
+              -f target_url="$url" -f description='Built and published' >/dev/null \
+              || echo "::warning::PR #$pr: could not post the Docs preview status"
+          done < published.tsv
+
+      - name: Report a failed publish on the pull requests it affects
+        # Without this a failure is invisible where it matters: `publish` is no
+        # longer a check on the pull request, and the failed-run notification goes
+        # to whoever triggered the build -- often an outside contributor who can
+        # do nothing about it.
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          [ -s open_prs.tsv ] || exit 0
+          while IFS=$'\t' read -r pr head_sha; do
+            [ -n "$head_sha" ] || continue
+            # A pull request whose preview went out in this very run keeps its
+            # green status: the deploy is atomic, so if it reached the site it is
+            # live regardless of what failed afterwards.
+            if [ -s published.tsv ] && cut -f1 published.tsv | grep -qx "$pr"; then
+              echo "PR #$pr: published in this run -- leaving its status alone"
+              continue
+            fi
+            echo "PR #$pr: reporting the failed publish on ${head_sha:0:7}"
+            gh api -X POST "repos/$GITHUB_REPOSITORY/statuses/$head_sha" \
+              -f state=failure -f context='Docs preview' \
+              -f target_url="$RUN_URL" -f description='The publish workflow failed' >/dev/null || true
+          done < open_prs.tsv

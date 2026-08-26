@@ -1,0 +1,41 @@
+name: Link check
+
+# Weekly (and on demand): the docs build with external link checking, and
+# nothing else. It lives apart from `Documentation` because publishing chains
+# off that workflow's overall conclusion -- so a rotted third-party URL sharing
+# a run with the build would take the weekly republish, which is also the
+# preview sweep, down with it. A dead external link is no reason to stop
+# deploying, and no reason to redden a pull request that never touched it.
+on:
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  links:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v7
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --all-extras
+
+      - name: Check external links
+        # --strict is what makes this job able to fail: an unresolvable link is
+        # reported as an error ("Site has 1 error ... stopping build"), and myst
+        # exits 0 on errors without it. No --execute: links are read from the
+        # source, not from cell output.
+        run: |
+          uv run docs-api
+          cd docs
+          uv run myst build --html --check-links --strict
