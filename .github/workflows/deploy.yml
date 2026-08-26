@@ -5,37 +5,38 @@ on:
     branches: [main]
   # Build (execute) the docs on PRs too, so a docs-breaking or kernel-hanging
   # dependency is caught pre-merge instead of only surfacing after landing on
-  # main -- and publish the result as a preview the reviewer can read. There is
-  # no `closed` action: a preview is not deleted, it simply stops being an input
-  # to the next deploy.
+  # main -- and hand the result to `publish.yml` as an artifact the reviewer can
+  # read as a website. There is no `closed` action here: a preview is not
+  # deleted, it simply stops being an input to the next deploy.
   pull_request:
     branches: [main]
     types: [opened, synchronize, reopened]
-  # Weekly, off the PR path. Three jobs at once: external link rot is checked
-  # (a dead third-party URL is no reason to redden a PR that never touched it),
-  # main's artifact is refreshed so it can never expire, and the site is
-  # republished -- which sweeps the preview of any pull request closed while
-  # nothing else happened to deploy.
+  # Weekly, off the PR path: main's artifact is refreshed so it can never expire,
+  # and the deploy that chains off this run republishes the site -- which sweeps
+  # the preview of any pull request closed while nothing else happened to deploy.
+  # External link rot is checked separately, in links.yml.
   schedule:
     - cron: '0 6 * * 1'
   workflow_dispatch:
 
 # Supersede a stale build for the same PR (each one is ~4 min, so racing two of
 # them wastes minutes and can publish the older site). Keyed per PR, falling
-# back to the ref, so a main deploy is never cancelled by PR activity.
+# back to the ref, so a main build is never cancelled by PR activity.
 concurrency:
   group: docs-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
-# Minimal default token; only `publish` elevates, and only far enough to deploy
-# the site and comment the preview link.
+# This workflow executes the notebooks of whatever branch it is given, forks
+# included, so it must never hold anything but a read-only token. Everything
+# privileged -- deploying the site, commenting the link -- lives in publish.yml,
+# which `workflow_run` runs from the default branch and out of a fork's reach.
 permissions:
   contents: read
 
 jobs:
   # Executes every notebook via `myst build --execute`, which is the check that
   # a docs dependency didn't break/hang the build, then hands the result to
-  # `publish` as an artifact. Nothing here writes to a branch: built output is
+  # publish.yml as an artifact. Nothing here writes to a branch: built output is
   # derived, never stored.
   build:
     runs-on: ubuntu-latest
@@ -73,16 +74,14 @@ jobs:
           uv run myst build --html --execute --strict
 
       - name: Upload the built site
-        # Fork PRs get a read-only token and never publish: their HTML would
-        # otherwise be served from our own origin on github.io. They still build
-        # above as a smoke test -- a contributor's first PR should not open with
-        # a red X it has no way to fix.
-        if: >-
-          github.event_name != 'pull_request' ||
-          github.event.pull_request.head.repo.full_name == github.repository
+        # Fork pull requests upload like any other. Note that a fork rewrites
+        # this file -- for a `pull_request` event GitHub runs the workflow from
+        # the merge commit -- so the name below is a hint, not a guarantee, and
+        # nothing here can be trusted downstream. publish.yml therefore selects
+        # artifacts by PROVENANCE (which repository and which commit produced
+        # them), never by name alone.
         uses: actions/upload-artifact@v7
         with:
-          # These two names are the contract with the publish job below.
           name: ${{ github.event_name == 'pull_request' && format('preview-pr-{0}', github.event.number) || 'site-main' }}
           path: docs/_build/html
           # Retention is the store now that git isn't. 90 days for the live
@@ -90,148 +89,3 @@ jobs:
           # preview, which is slack for a long-lived PR, not an archive.
           retention-days: ${{ github.event_name == 'pull_request' && 14 || 90 }}
           if-no-files-found: error
-
-  # Recomputes the published site from present state -- main's build plus one
-  # artifact per currently open pull request -- and deploys it whole. Because
-  # that is a pure function of what is open now, a closed PR's preview vanishes
-  # on the next deploy with no cleanup step to miss.
-  publish:
-    needs: build
-    if: >-
-      github.event_name != 'pull_request' ||
-      github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    # Deployments queue instead of racing. The per-PR group at the top of this
-    # file still cancels redundant BUILDS; only publishing is serialized, since
-    # two overlapping deploys can land the one assembled first.
-    concurrency:
-      group: pages-publish
-      cancel-in-progress: false
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    permissions:
-      pages: write          # create the Pages deployment
-      id-token: write       # the OIDC token deploy-pages exchanges for it
-      actions: read         # list and download the build artifacts
-      contents: read
-      pull-requests: write  # the sticky preview comment
-    steps:
-      - name: Assemble the site from current state
-        env:
-          GH_TOKEN: ${{ github.token }}
-          # This job never checks the repository out -- it only moves artifacts
-          # around -- so `gh` has no git remote to infer the repository from and
-          # every subcommand but `gh api` dies with "not a git repository".
-          GH_REPO: ${{ github.repository }}
-        run: |
-          set -euo pipefail
-
-          # Newest non-expired artifact of a given name -> the run that produced
-          # it. `gh run download` wants a run id, and the artifacts API is the
-          # only place that mapping exists. Assembly uses nothing but `gh`: a
-          # third-party deploy action is one more dependency a JOSS reviewer
-          # cannot see the far side of.
-          newest_run() {
-            gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=$1&per_page=100" \
-              --jq '.artifacts | map(select(.expired | not)) | sort_by(.created_at)
-                    | reverse | .[0].workflow_run.id // empty'
-          }
-
-          main_run=$(newest_run site-main || true)
-          if [ -z "$main_run" ]; then
-            # Fail loud rather than rebuilding: a Pages deployment is atomic, so
-            # a failed publish leaves the previous site serving -- never an
-            # empty one -- and a silent rebuild would hide that the artifact
-            # chain broke.
-            echo "::error::No usable 'site-main' artifact. The live site is unchanged; recover with: gh workflow run deploy.yml"
-            exit 1
-          fi
-          mkdir -p _site
-          gh run download "$main_run" --name site-main --dir _site
-
-          # The previews are a pure function of what is open RIGHT NOW.
-          open_prs=$(gh pr list --state open --json number --jq '.[].number' || true)
-          for pr in $open_prs; do
-            preview_run=$(newest_run "preview-pr-$pr" || true)
-            if [ -z "$preview_run" ]; then
-              echo "PR #$pr: no preview artifact (fork, or its build is still running) -- skipped"
-              continue
-            fi
-            mkdir -p "_site/pr-preview/pr-$pr"
-            if ! gh run download "$preview_run" --name "preview-pr-$pr" \
-                 --dir "_site/pr-preview/pr-$pr"; then
-              echo "PR #$pr: preview download failed -- skipped"
-              rm -rf "_site/pr-preview/pr-$pr"
-            fi
-          done
-
-          # Log the payload every time, so "the deploy is getting heavy" is a
-          # series rather than a single sample. It scales with open PRs now:
-          # BASE_URL is baked in, so previews barely share bytes with the root.
-          {
-            echo "### Assembled site"
-            echo "- $(find _site -type f | wc -l | tr -d ' ') files, $(du -sh _site | cut -f1)"
-            echo "- previews: $(ls _site/pr-preview 2>/dev/null | tr '\n' ' ')"
-          } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Upload the Pages artifact
-        uses: actions/upload-pages-artifact@v5
-        with:
-          path: _site
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v5
-
-      - name: Comment the preview link
-        # Sticky: one comment per PR, edited in place on every push. This is the
-        # one thing the retired pr-preview-action gave us for free.
-        if: github.event_name == 'pull_request'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}  # no checkout here either
-          PR: ${{ github.event.number }}
-          SITE: ${{ steps.deployment.outputs.page_url }}
-          SHA: ${{ github.event.pull_request.head.sha }}
-        run: |
-          set -euo pipefail
-          # Heredoc, not an inline multi-line string: YAML indentation would
-          # otherwise survive into the comment, where four leading spaces make
-          # Markdown render the paragraph as a code block.
-          body=$(cat <<EOF
-          📖 **Docs preview:** ${SITE%/}/pr-preview/pr-$PR/
-
-          Fully executed, from \`${SHA:0:7}\`. It leaves the site on the first deploy after this pull request closes — nothing to clean up.
-          EOF
-          )
-          gh pr comment "$PR" --edit-last --create-if-none --body "$body"
-
-  # Weekly (and on demand): the same build with external link checking. Kept out
-  # of `build` so it can never gate a PR, and skips --execute since links are
-  # read from the source, not from cell output.
-  links:
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v7
-
-      - name: Setup uv
-        uses: astral-sh/setup-uv@v7
-        with:
-          enable-cache: true
-
-      - name: Install dependencies
-        run: uv sync --all-extras
-
-      - name: Check external links
-        # --strict is what makes this job able to fail: an unresolvable link is
-        # reported as an error ("Site has 1 error ... stopping build"), and myst
-        # exits 0 on errors without it.
-        run: |
-          uv run docs-api
-          cd docs
-          uv run myst build --html --check-links --strict
