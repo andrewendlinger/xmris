@@ -181,7 +181,9 @@ Both workflows can be run by hand from the Actions tab (`workflow_dispatch`), an
 want depends on what broke. **Publish docs site** re-assembles and redeploys from the artifacts
 that already exist — seconds, and the right lever when a deploy failed. **Documentation** rebuilds
 first and then chains into publishing, which is the slower recovery you need when the artifact
-itself is missing or stale — including the `No usable 'site-main' artifact` failure. Either way a
+itself is missing or stale — including the `No usable 'site-main' artifact` failure. Dispatch that
+one **from `main`**: assembly only accepts a `site-main` built on `main`, so the same run launched
+off a branch rebuilds happily and then fails identically. Either way a
 Pages deployment is atomic, so the previous site keeps serving until a good one replaces it, and
 the failure is loud rather than destructive.
 

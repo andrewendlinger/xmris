@@ -101,7 +101,7 @@ jobs:
             # Fail loud rather than rebuilding: a Pages deployment is atomic, so a
             # failed publish leaves the previous site serving -- never an empty
             # one -- and a silent rebuild would hide that the artifact chain broke.
-            echo "::error::No usable 'site-main' artifact. The live site is unchanged; recover with: gh workflow run deploy.yml"
+            echo "::error::No usable 'site-main' artifact. The live site is unchanged; recover with: gh workflow run deploy.yml --ref main"
             exit 1
           fi
           mkdir -p _site
@@ -110,8 +110,7 @@ jobs:
           # (CVE-2024-54132).
           gh run download "$main_run" --name site-main --dir _site </dev/null
 
-          # The previews are a pure function of what is open RIGHT NOW. headRefOid
-          # pins each one to the commit its pull request actually points at.
+          # The previews are a pure function of what is open RIGHT NOW.
           gh pr list --state open --limit 200 --json number,headRefOid </dev/null \
             | jq -r '.[] | [.number, .headRefOid] | @tsv' > open_prs.tsv
 
@@ -121,23 +120,45 @@ jobs:
           while IFS=$'\t' read -r pr head_sha; do
             [ -n "$pr" ] || continue
 
-            # Provenance for a preview: the artifact's run head SHA must be this
-            # pull request's own head. A fork cannot satisfy that for someone
-            # else's pull request without its branch tip BEING that commit.
-            match=$(api_artifacts "preview-pr-$pr" 2>/dev/null | jq -rs --arg sha "$head_sha" '
-              map(select(.workflow_run.head_sha == $sha))
+            # The commits that belong to THIS pull request. Fetched over REST per
+            # pull request rather than through `gh pr list --json commits`, which
+            # asks GraphQL for every commit's author connection across every open
+            # pull request at once and trips the 500,000-node ceiling.
+            shas=$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$pr/commits" \
+                     --jq '.[].sha' </dev/null 2>/dev/null \
+                   | jq -Rs 'split("\n") | map(select(length > 0))' || echo '[]')
+            shas=$(printf '%s' "$shas" | jq -c --arg h "$head_sha" '. + [$h] | unique')
+
+            # Provenance for a preview: the artifact's run head SHA must be one of
+            # THIS pull request's own commits. A fork cannot satisfy that for
+            # someone else's pull request -- it would need a commit of its own to
+            # already be in that pull request's history, which it cannot cause.
+            #
+            # Matching the commit SET rather than only the head is what keeps a
+            # preview served while a newer build is still running: an unrelated
+            # deploy landing mid-build would otherwise delete the directory that
+            # this pull request's comment already links to.
+            match=$(api_artifacts "preview-pr-$pr" 2>/dev/null \
+              | jq -rs --argjson shas "$shas" '
+              map(select(.workflow_run.head_sha as $s | $shas | index($s)))
               | sort_by(.created_at) | reverse | .[0]
-              | if . == null then empty else "\(.workflow_run.id)\t\(.size_in_bytes)" end' || true)
+              | if . == null then empty
+                else "\(.workflow_run.id)\t\(.size_in_bytes)\t\(.workflow_run.head_sha)" end' || true)
 
             if [ -z "$match" ]; then
-              echo "PR #$pr: no preview artifact matching its head commit -- skipped"
+              echo "PR #$pr: no preview artifact from any of its commits -- skipped"
               continue
             fi
             preview_run=$(printf '%s' "$match" | cut -f1)
             size_mb=$(( $(printf '%s' "$match" | cut -f2) / 1048576 ))
+            built_sha=$(printf '%s' "$match" | cut -f3)
+            [ "$built_sha" = "$head_sha" ] || echo "PR #$pr: newest matching preview is from ${built_sha:0:7}, one or more pushes behind"
 
-            # Measured BEFORE the download: a zip bomb expanded first is a dead
-            # runner, not a skipped preview.
+            # Compressed size is the only figure the API exposes, so it is the
+            # only one checkable before extraction -- the file-count cap below
+            # necessarily runs after. `timeout` is what actually bounds the gap:
+            # 150 MB of zipped empty files is millions of entries, and inode
+            # exhaustion would otherwise happen mid-extract.
             if [ "$size_mb" -gt "$MAX_PREVIEW_MB" ]; then
               echo "::warning::PR #$pr: preview is ${size_mb} MB compressed, over the ${MAX_PREVIEW_MB} MB cap -- dropped"
               echo "  - PR #$pr: over the ${MAX_PREVIEW_MB} MB per-preview cap (${size_mb} MB)" >> dropped.md
@@ -146,7 +167,7 @@ jobs:
 
             dir="_site/pr-preview/pr-$pr"
             mkdir -p "$dir"
-            if ! gh run download "$preview_run" --name "preview-pr-$pr" --dir "$dir" </dev/null; then
+            if ! timeout 300 gh run download "$preview_run" --name "preview-pr-$pr" --dir "$dir" </dev/null; then
               echo "PR #$pr: preview download failed -- skipped"
               rm -rf "$dir"
               continue
@@ -162,16 +183,16 @@ jobs:
               continue
             fi
 
-            printf '%s\t%s\t%s\n' "$pr" "$head_sha" "$(du -sm "$dir" | cut -f1)" >> published.tsv
+            printf '%s\t%s\t%s\t%s\n' "$pr" "$head_sha" "$built_sha" "$(du -sm "$dir" | cut -f1)" >> published.tsv
           done < open_prs.tsv
 
           # Total budget: drop the largest previews until the site fits. site-main
           # is never a candidate -- the root is not negotiable.
           total_mb() { du -sm _site | cut -f1; }
           while [ "$(total_mb)" -gt "$MAX_TOTAL_MB" ] && [ -s published.tsv ]; do
-            biggest=$(sort -t"$(printf '\t')" -k3 -n -r published.tsv | head -1)
+            biggest=$(sort -t"$(printf '\t')" -k4 -n -r published.tsv | head -1)
             pr=$(printf '%s' "$biggest" | cut -f1)
-            mb=$(printf '%s' "$biggest" | cut -f3)
+            mb=$(printf '%s' "$biggest" | cut -f4)
             echo "::warning::Site is $(total_mb) MB, over the ${MAX_TOTAL_MB} MB budget -- dropping PR #$pr's preview (${mb} MB)"
             echo "  - PR #$pr: dropped to keep the site under ${MAX_TOTAL_MB} MB (${mb} MB)" >> dropped.md
             rm -rf "_site/pr-preview/pr-$pr"
@@ -217,24 +238,32 @@ jobs:
           set -euo pipefail
           [ -s published.tsv ] || { echo "No previews published -- nothing to comment."; exit 0; }
 
-          while IFS=$'\t' read -r pr head_sha _; do
+          while IFS=$'\t' read -r pr head_sha built_sha _; do
             url="${SITE%/}/pr-preview/pr-$pr/"
+            stale=""
+            [ "$built_sha" = "$head_sha" ] || stale=" A newer commit is still building, so this is one or more pushes behind."
             # Heredoc, not an inline multi-line string: YAML indentation would
             # otherwise survive into the comment, where four leading spaces make
             # Markdown render the paragraph as a code block.
             body=$(cat <<EOF
           📖 **Docs preview:** $url
 
-          Fully executed, from \`${head_sha:0:7}\`. It leaves the site on the first deploy after this pull request closes — nothing to clean up.
+          Fully executed, from \`${built_sha:0:7}\`.$stale It leaves the site on the first deploy after this pull request closes — nothing to clean up.
           EOF
           )
-            gh pr comment "$pr" --edit-last --create-if-none --body "$body" </dev/null
+            # Tolerated per pull request: one that was closed, locked or deleted
+            # between the assemble step and here must not abort the loop and take
+            # every pull request after it down with it -- the site is already live
+            # by this point, so failing the job here would be a lie.
+            gh pr comment "$pr" --edit-last --create-if-none --body "$body" </dev/null \
+              || echo "::warning::PR #$pr: could not post the preview comment"
             # A workflow_run job does not appear in the pull request's check list.
             # This status is how the link gets there -- it is not among the
             # ruleset's required contexts, so it reports without gating.
             gh api -X POST "repos/$GITHUB_REPOSITORY/statuses/$head_sha" \
               -f state=success -f context='Docs preview' \
-              -f target_url="$url" -f description='Built and published' >/dev/null
+              -f target_url="$url" -f description='Built and published' >/dev/null \
+              || echo "::warning::PR #$pr: could not post the Docs preview status"
           done < published.tsv
 
       - name: Report a failed publish on the pull requests it affects
@@ -252,6 +281,13 @@ jobs:
           [ -s open_prs.tsv ] || exit 0
           while IFS=$'\t' read -r pr head_sha; do
             [ -n "$head_sha" ] || continue
+            # A pull request whose preview went out in this very run keeps its
+            # green status: the deploy is atomic, so if it reached the site it is
+            # live regardless of what failed afterwards.
+            if [ -s published.tsv ] && cut -f1 published.tsv | grep -qx "$pr"; then
+              echo "PR #$pr: published in this run -- leaving its status alone"
+              continue
+            fi
             echo "PR #$pr: reporting the failed publish on ${head_sha:0:7}"
             gh api -X POST "repos/$GITHUB_REPOSITORY/statuses/$head_sha" \
               -f state=failure -f context='Docs preview' \
