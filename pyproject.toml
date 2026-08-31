@@ -51,7 +51,7 @@ fitting = [
     "pyamares-xmris>=0.3.33",
     "joblib>=1.5.3", # parallel fit dispatch (fitting-only)
     "tqdm>=4.60",    # fitting/amares imports it directly for the fit progress bar
-    "numpy<2.0",
+    "numpy<3.0",
     "pandas<2.4",
 ]
 
