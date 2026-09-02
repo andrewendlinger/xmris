@@ -710,8 +710,10 @@ def fit_amares(
     n_param = len(_PARAMETERS)
     crlb_out = np.full((n_spectra, n_metab, n_param), np.nan)
     sd_out = np.full((n_spectra, n_metab, n_param), np.nan)
-    fit_norm = np.full((n_spectra, n_time), np.nan, dtype=complex)
-    comp_norm = np.full((n_spectra, n_metab, n_time), np.nan, dtype=complex)
+    # Model components, one row per metabolite. `fit` is derived from these in step 9,
+    # so there is no separate summed buffer. Held normalized until then, and rescaled
+    # in place -- at n_metab x the size of `fit`, this is the biggest array here.
+    comp_arrs = np.full((n_spectra, n_metab, n_time), np.nan, dtype=complex)
     status = np.zeros(n_spectra, dtype=np.int8)  # 0 = fitted; set below for no_signal / failed
 
     dwelltime = 1.0 / sw
@@ -741,24 +743,22 @@ def fit_amares(
             if crlb_col in df.columns:
                 crlb_out[i, :, p] = df[crlb_col].values
         params = result_pd_to_params(df, MHz=mhz)
-        # `return_mat=True` gives the per-metabolite rows, already uninterleaved by
-        # multieq6 itself -- so no outer `uninterleave` here, unlike the summed branch.
-        # Row order follows `params.valuesdict()` insertion order, which follows the
-        # `df.reindex(metabolites)` above; assert rather than trust that alignment.
-        mat = multieq6(params, timeaxis, return_mat=True)
-        assert mat.shape[0] == n_metab, (
-            f"multieq6 returned {mat.shape[0]} component rows for {n_metab} metabolites"
-        )
-        comp_norm[i] = mat
-        fit_norm[i, :] = mat.sum(axis=0)
+        # `return_mat=True` gives one row per metabolite, already uninterleaved by
+        # multieq6 itself -- so no outer `uninterleave` here. Row order follows
+        # `params` insertion order, which follows the `df.reindex(metabolites)` above.
+        comp_arrs[i] = multieq6(params, timeaxis, return_mat=True)
 
     # 9. Rescale amplitude + reconstructed model back into the input units. The
     #    amplitude *sd* scales with it; CRLB is relative (%), and the other
     #    parameters' uncertainties are independent of amplitude scale.
     value_out[VARS.amplitude] *= global_scale
     sd_out[:, :, _PARAMETERS.index(VARS.amplitude)] *= global_scale
-    fit_arrs = fit_norm * global_scale
-    comp_arrs = comp_norm * global_scale
+    #    The components are rescaled in place (a copy would be the largest allocation
+    #    in the function), and `fit` is their sum -- exactly, rather than to within a
+    #    rounding error of a second, separate rescale. An unfitted voxel's all-NaN
+    #    components still sum to NaN, never to a spurious 0.
+    comp_arrs *= global_scale
+    fit_arrs = comp_arrs.sum(axis=1)
 
     # Undo the carrier shift on the reported shifts: the fit ran carrier-relative
     # (per `ppm_offset` above), so add the carrier back to report absolute ppm. The
