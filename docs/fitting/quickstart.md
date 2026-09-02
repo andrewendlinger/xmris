@@ -116,11 +116,11 @@ ds
 ```
 
 Expand the arrays above and you can already see the shape of the answer: `data`, `fit` and
-`residuals` still live on `time`, while `amplitude`, `chem_shift`, `linewidth`, `phase` and `snr`
-sit on a new `metabolite` axis carrying your peak names. `fit_components` spans both — the model
-split back into one signal per peak, which sums over `metabolite` to `fit`. Uncertainties (`crlb`,
-`sd`) span `metabolite` and one more axis, `parameter`, so a single variable holds the error on
-every fitted quantity.
+`residuals` still live on `time`, while `amplitude`, `chem_shift`, `linewidth`, `phase`,
+`lineshape_g` and `snr` sit on a new `metabolite` axis carrying your peak names. `fit_components`
+spans both — the model split back into one signal per peak, which sums over `metabolite` to `fit`.
+Uncertainties (`crlb`, `sd`) span `metabolite` and one more axis, `parameter`, so a single variable
+holds the error on every fitted quantity.
 
 ```{code-cell} ipython3
 :tags: [remove-cell]

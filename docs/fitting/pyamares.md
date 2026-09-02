@@ -498,48 +498,6 @@ for ax, v in zip(axes, [0, 7]):
     component_offset = -0.15 * float(np.abs(voxel["data"].xmr.to_spectrum().real).max())
     for var, color, label in (
         ("data", "black", "data"),
-        # ("fit", "tab:red", "fit"),
-    ):
-        voxel[var].xmr.to_spectrum().xmr.to_ppm().real.plot(
-            ax=ax, color=color, alpha=0.5 if var == "data" else 1.0, label=label
-        )
-    (voxel["residuals"].xmr.to_spectrum().xmr.to_ppm().real + offset).plot(
-        ax=ax, color="tab:green", lw=0.8, label="residual (offset)"
-    )
-    (voxel["fit"].xmr.to_spectrum().xmr.to_ppm().real + component_offset).plot(
-        ax=ax, color="tab:red", label="fit (offset)"
-    )
-    for metabolite in voxel.metabolite:
-        (
-            voxel["fit_components"].sel(metabolite=metabolite).xmr.to_spectrum().xmr.to_ppm().real
-            # + component_offset
-        ).plot(
-            ax=ax,
-            label=f"{metabolite.values} (fit component, offset)",
-            alpha=0.75,
-            lw=1.25,
-            # linestyle=(2, (5, 1)),
-        )
-
-    crlb = float(voxel["crlb"].sel(metabolite="ATP", parameter="amplitude"))
-    ax.set_title(f"voxel {v} — ATP CRLB {crlb:.1f}%")
-    ax.set_xlim(4, -12)
-    ax.set_ylabel("intensity [a.u.]")
-    ax.legend(fontsize=8)
-
-plt.tight_layout()
-plt.show()
-```
-
-```{code-cell} ipython3
-fig, axes = plt.subplots(1, 2, figsize=(11, 4), sharex=True)
-
-for ax, v in zip(axes, [0, 7]):
-    voxel = ds.isel(voxel=v)
-    offset = -0.25 * float(np.abs(voxel["data"].xmr.to_spectrum().real).max())
-    component_offset = -0.15 * float(np.abs(voxel["data"].xmr.to_spectrum().real).max())
-    for var, color, label in (
-        ("data", "black", "data"),
         ("fit", "tab:red", "fit"),
     ):
         voxel[var].xmr.to_spectrum().xmr.to_ppm().real.plot(
@@ -551,7 +509,7 @@ for ax, v in zip(axes, [0, 7]):
     for metabolite in voxel.metabolite:
         (
             voxel["fit_components"].sel(metabolite=metabolite).xmr.to_spectrum().xmr.to_ppm().real
-            # + component_offset
+            + component_offset
         ).plot(
             ax=ax,
             label=f"{metabolite.values} (fit component, offset)",
