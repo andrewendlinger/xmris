@@ -63,7 +63,7 @@ command — run it there first, since a local failure costs seconds and a CI fai
 | Check | What it measures | Reproduce locally |
 |---|---|---|
 | **`Docs style`** | The docs rules `myst build` stays silent about: a header with no explicit target, a dead `.ipynb` link, a drifted kernel label, a page missing from the TOC | `uv run python .claude/skills/docs-page/check_docs.py` |
-| **`Lint`** | Both halves of ruff: that every Python file is formatted, and that it is free of lint errors | `uv run lint` |
+| **`Lint`** | Both halves of ruff — that every Python file is formatted, and that it is free of lint errors — plus the jupytext round trip, that every docs page is in the canonical Markdown form its notebook twin would write | `uv run lint` |
 | **`build`** | Executes **every** notebook and explainer in the documentation, then fails on any mystmd error — a broken cross-reference, an unresolvable DOI, a directive that did not render | `cd docs && uv run myst build --html --execute --strict` |
 | **`bare install`** | Installs **only** `[project].dependencies` into a clean venv — the set a real user receives — then imports xmris and runs the processing chain | `uv venv /tmp/bare && uv pip install --python /tmp/bare/bin/python . && /tmp/bare/bin/python .github/scripts/bare_install_smoke.py` |
 | **`test (3.10)`** and **`test (3.13)`** | The full suite — including the tutorials, which *are* the maths tests — on both ends of the supported Python range | `uv run test` |
@@ -168,6 +168,7 @@ than destructive.
 
 ```{code-cell} python
 :tags: [remove-cell]
+
 from pathlib import Path
 
 # Pin the literalinclude anchors above. mystmd only *warns* on an unmatched

@@ -39,3 +39,32 @@ real drift, but too judgment-dependent to block a merge on. The checklist:
 :caption: Quote from the [docs-page/SKILL.md](https://github.com/andrewendlinger/xmris/blob/main/.claude/skills/docs-page/SKILL.md)
 :class: skill-quote
 ```
+
+(contribute-docs-format)=
+## The page is half of a notebook pair
+
+Every page here is committed as Markdown, but jupytext keeps it in sync with an `.ipynb` twin
+(gitignored — `docs/**/*.ipynb` never enters git). Edit whichever side you prefer: prose and diffs
+are easier in the `.md`, live plotting easier in Jupyter. What matters is that the `.md` you commit
+is the one jupytext itself would write — the cell markers, the blank line after a directive's
+options, the metadata kept by `[tool.jupytext]` in `pyproject.toml`.
+
+Hand-editing drifts from that form invisibly: the page renders identically, so nothing complains
+until the next contributor opens it in Jupyter and their first save produces a diff they never made.
+So the form is checked mechanically — each page is converted `md → ipynb → md` and compared byte for
+byte:
+
+```bash
+uv run docs-format          # fails on any page that is not in canonical form
+uv run docs-format --fix    # rewrites them; review the diff, it should be whitespace only
+```
+
+`uv run lint` runs the check as its third step, and the `Lint` job runs it on every PR, so drift
+cannot reach `main`. To catch it one step earlier — before the commit rather than after the push —
+install the repository's hooks once:
+
+```bash
+uv run pre-commit install
+```
+
+Nothing depends on you doing so; `.pre-commit-config.yaml` runs the same three commands CI does.

@@ -136,8 +136,6 @@ assert fid_smooth.attrs[ATTRS.apodization_lb] == 3
 assert spec_smooth.attrs[ATTRS.reference_frequency] == 123.2
 ```
 
-+++
-
 The same contract holds for `zero_fill`: zero-padding the FID *is* interpolating
 the spectrum onto a finer grid — so calling it **on a spectrum** hands back a
 spectrum with more points, not a FID:
@@ -256,8 +254,6 @@ assert _raised, "the complexity gate must reject real-valued spectral input"
 assert list(kfilled.dims) == ["kx", "ky"]
 assert kfilled.sizes["kx"] == 16 and kfilled.sizes["ky"] == 8
 ```
-
-+++
 
 ::: {seealso}
 [The Two Domains](#domains) — the design rationale, the full

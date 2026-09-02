@@ -102,6 +102,7 @@ You never need this file (the dict goes straight into the fit), but it is worth 
 
 print(build_prior_knowledge(pk))
 ```
+
 :::
 
 (fitting-quickstart-fit)=

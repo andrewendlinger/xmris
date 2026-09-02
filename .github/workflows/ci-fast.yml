@@ -58,6 +58,13 @@ jobs:
       - name: Lint (ruff)
         run: uv run ruff check .
 
+      # Ruff excludes *.md, so the docs pages -- half of a jupytext notebook pair
+      # each -- are checked by their own round trip: md -> ipynb -> md, byte for
+      # byte. A page hand-edited out of jupytext's canonical form shows up as a
+      # phantom diff for the next contributor who opens it in Jupyter.
+      - name: Docs notebook format (jupytext)
+        run: uv run docs-format
+
   bare-install:
     name: bare install
     runs-on: ubuntu-latest

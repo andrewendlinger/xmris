@@ -507,4 +507,100 @@ def run_lint() -> None:
         print("\n❌ Lint errors. Auto-fix the safe ones with: uv run ruff check . --fix")
         sys.exit(e.returncode)
 
-    print("\n✅ Format and lint clean!")
+    # Ruff excludes *.md, so the docs pages get their own mechanical check here --
+    # same job, same reasoning: drift a machine can repair should never reach review.
+    print()
+    check_notebook_format(fix=False)
+
+    print("\n✅ Format, lint and docs formatting clean!")
+
+
+# ==============================================================================
+# NOTEBOOK FORMAT CHECK
+# ==============================================================================
+# Every page under docs/ that carries a jupytext `text_representation` header is
+# half of a paired notebook: contributors may edit the .md or the .ipynb, but only
+# the .md is committed. Whichever side they touched, jupytext has exactly one
+# canonical .md rendering (set by [tool.jupytext] in pyproject.toml) -- and a page
+# hand-edited in an editor drifts from it silently, so the next contributor who
+# opens it in Jupyter sees a diff they never made. This check round-trips each page
+# md -> ipynb -> md and fails on any difference.
+
+
+def _paired_docs_pages() -> list[Path]:
+    """
+    Collect the docs pages that are jupytext-paired notebooks.
+
+    A page qualifies when its YAML front matter carries jupytext's
+    ``text_representation`` key -- the marker jupytext itself writes. Generated
+    API stubs and the ``_build/`` output are plain Markdown and are skipped.
+
+    Returns
+    -------
+    list of Path
+        Project-relative paths, sorted, of every paired page under ``docs/``.
+    """
+    docs_dir = _get_docs_dir()
+    project_root = docs_dir.parent
+
+    pages = []
+    for path in sorted(docs_dir.rglob("*.md")):
+        if "_build" in path.parts or ".ipynb_checkpoints" in path.parts:
+            continue
+        if "text_representation" in path.read_text(encoding="utf-8")[:2000]:
+            pages.append(path.relative_to(project_root))
+
+    return pages
+
+
+def check_notebook_format(fix: bool | None = None) -> None:
+    """
+    Verify every paired docs page is in jupytext's canonical Markdown form.
+
+    Runs ``jupytext --test-strict``, which converts each page to a notebook and
+    back and compares the result byte for byte.
+
+    Parameters
+    ----------
+    fix : bool or None, optional
+        Rewrite the drifted pages in place instead of failing. ``None`` (the
+        default) reads the flag from the command line, so ``uv run docs-format
+        --fix`` repairs while ``uv run lint`` -- which passes ``False`` -- never
+        writes.
+
+    Raises
+    ------
+    SystemExit
+        With jupytext's exit code when a page is not in canonical form.
+    """
+    if fix is None:
+        fix = "--fix" in sys.argv[1:]
+    pages = [str(p) for p in _paired_docs_pages()]
+
+    if not pages:
+        print("⚠️  No jupytext-paired pages found under docs/ — nothing to check.")
+        return
+
+    if fix:
+        print(f"🛠️  Rewriting {len(pages)} docs page(s) in canonical jupytext form...", flush=True)
+        for page in pages:
+            subprocess.run(
+                ["jupytext", "--quiet", "--to", "md:myst", "--output", page, page], check=True
+            )
+        print("\n✅ Docs pages canonicalized. Review the diff before committing.")
+        return
+
+    print(f"🔎 Checking jupytext format of {len(pages)} docs page(s)...", flush=True)
+    try:
+        subprocess.run(
+            ["jupytext", "--quiet", "--test-strict", "--to", "ipynb", *pages], check=True
+        )
+    except subprocess.CalledProcessError as e:
+        print(
+            "\n❌ Docs pages differ from jupytext's canonical form (diff above:"
+            " 'expected' is the committed file, 'actual' is what jupytext writes)."
+            "\n   Fix them with: uv run docs-format --fix"
+        )
+        sys.exit(e.returncode)
+
+    print("\n✅ Docs notebook formatting is canonical!")

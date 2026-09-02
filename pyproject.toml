@@ -69,7 +69,8 @@ docs-notebooks = "xmris._scripts:docs_notebooks"        # Serve tutorials — bl
 docs = "xmris._scripts:docs_all"                        # API refs, then serve site — blocking
 test-gen = "xmris._scripts:generate_test_notebooks"
 test = "xmris._scripts:run_tests"
-lint = "xmris._scripts:run_lint"                        # Format check, then lint — mirrors CI
+lint = "xmris._scripts:run_lint"                        # Format check, lint, docs format — mirrors CI
+docs-format = "xmris._scripts:check_notebook_format"    # Jupytext round-trip check (--fix rewrites)
 
 # ==============================================================================
 # 2. BUILD SYSTEM
@@ -100,6 +101,7 @@ dev = [
     "jupyter-server>=2.17.0",   # Required for rendering docs
     # --- Code Quality ---
     "ruff>=0.9.0",
+    "pre-commit>=4.6.2",     # Optional local hooks; see .pre-commit-config.yaml
     "mypy>=1.15.0",
     # --- Interactive/Plotting ---
     "ipympl>=0.10.0",

@@ -1,0 +1,29 @@
+# Optional, opt-in guard rail: `uv run pre-commit install` wires these to run on
+# every commit. Nothing depends on you installing them -- CI runs the same checks
+# -- but the docs-format hook in particular catches drift that is invisible in a
+# text editor, so seeing it before you push is cheaper than seeing it in review.
+repos:
+  - repo: local
+    hooks:
+      # docs/**/*.md are half of a jupytext notebook pair. Whether a page was
+      # edited as Markdown or in Jupyter, jupytext has one canonical rendering of
+      # it -- this fails when a committed page is not in that form. Repair with
+      # `uv run docs-format --fix`.
+      - id: docs-format
+        name: docs notebooks are canonical jupytext
+        entry: uv run docs-format
+        language: system
+        files: ^docs/.*\.md$
+        pass_filenames: false
+
+      - id: ruff-format
+        name: ruff format
+        entry: uv run ruff format --check
+        language: system
+        types_or: [python, pyi]
+
+      - id: ruff-check
+        name: ruff check
+        entry: uv run ruff check
+        language: system
+        types_or: [python, pyi]

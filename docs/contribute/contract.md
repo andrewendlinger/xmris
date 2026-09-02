@@ -186,6 +186,7 @@ spectrum.attrs
 
 ```{code-cell} python
 :tags: [remove-cell]
+
 import inspect
 
 import xarray as xr

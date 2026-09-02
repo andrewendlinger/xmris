@@ -16,11 +16,12 @@ short page with a live checklist.
 git clone https://github.com/andrewendlinger/xmris
 cd xmris
 uv sync --all-extras --dev   # uv replaces pip/virtualenv — see the setup guide
-uv run lint                  # check formatting, then lint — what the Lint check runs
+uv run lint                  # formatting, lint, docs notebook format — what the Lint check runs
+uv run docs-format --fix     # repair docs pages that drifted from jupytext's canonical form
 uv run test                  # regenerate the notebook tests and run the full suite
 ```
 
-Run both before you push: together they reproduce four of the six checks that gate a merge.
+Run `lint` and `test` before you push: together they reproduce four of the six checks that gate a merge.
 
 The package manager is [`uv`](https://docs.astral.sh/uv/); please never use `pip`. The [environment
 setup guide](https://andrewendlinger.github.io/xmris/setup) covers the full toolchain (`uv`, `ruff`,

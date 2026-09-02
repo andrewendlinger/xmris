@@ -19,7 +19,7 @@ We use modern, Rust-based tooling to keep the development environment blistering
 
 `ruff` is our single source of truth for code style, replacing `black`, `flake8`, and `isort` with a single tool that runs in milliseconds.
 
-* **Check both halves:** Run `uv run lint` — this is exactly what the `Lint` check on your pull request runs, so a green run here means a green check there.
+* **Check both halves:** Run `uv run lint` — this is exactly what the `Lint` check on your pull request runs, so a green run here means a green check there. It ends with the docs-notebook format check; [Write a docs page](#contribute-docs-format) explains what that one guards and how to install it as a pre-commit hook.
 * **Format code:** Run `uv run ruff format .`
 * **Lint code:** Run `uv run ruff check .`
 * **Auto-fix issues:** Run `uv run ruff check . --fix` (This automatically fixes safe issues like unused imports or variables).
