@@ -18,7 +18,6 @@ from pyAMARES import (
     initialize_FID,
     multieq6,
     result_pd_to_params,
-    uninterleave,
 )
 from pyAMARES.kernel.lmfit import fitAMARES as pyamares_fitAMARES
 from pyAMARES.libs import logger as _pa_logger
@@ -103,12 +102,15 @@ _VALUE_COLS = {
     VARS.chem_shift: "chem shift(ppm)",
     VARS.linewidth: "LW(Hz)",
     VARS.phase: "phase(deg)",
+    VARS.lineshape_g: "g",
     VARS.snr: "SNR",
 }
 
 # Per-parameter uncertainties, gathered along the `parameter` dim as `crlb`/`sd`
-# variables: parameter -> (sd column, CRLB% column). Only these four parameters
-# have a named value var to pair with (g is typically fixed and unreported).
+# variables: parameter -> (sd column, CRLB% column). Only these four are the
+# *optimized* parameters; `g` is reported as a value but stays out, because prior
+# knowledge typically holds it fixed and pyAMARES then emits a degenerate pair
+# (`g_sd` 0.0, `g (%)` inf) that would poison `crlb.max("parameter")`.
 # Amplitude's columns are unqualified in pyAMARES and `CRLB(cs%) ` carries a
 # trailing space, so every label is pinned here explicitly.
 _UNCERTAINTY_COLS = {
@@ -418,9 +420,9 @@ def fit_amares(
 
     AMARES fits in the time domain. Following the domain-preserving contract, a
     spectrum handed to `fit_amares` is round-tripped through the FID for the fit and
-    the returned time-domain variables (`data`, `fit`, `residuals`) are restored to
-    the representation that was passed in (ppm in -> ppm out); a FID is fitted and
-    returned as-is. The quantified parameters are domain-independent.
+    the returned time-domain variables (`data`, `fit`, `fit_components`, `residuals`)
+    are restored to the representation that was passed in (ppm in -> ppm out); a FID
+    is fitted and returned as-is. The quantified parameters are domain-independent.
 
     Robustness: the FID is normalized by a single global factor before fitting — so
     pyAMARES's magnitude-derived optimizer tolerance behaves at any signal scale (a
@@ -491,10 +493,12 @@ def fit_amares(
     Returns
     -------
     xr.Dataset
-        A dataset containing the original data, the fitted model, the residuals, and
-        the quantified parameters (amplitude, chem_shift, linewidth, phase, CRLB, SNR)
-        mapped across the original dimensions and the new ``metabolite`` dimension. It
-        also carries a per-spectrum ``fit_status`` flag (0=fitted, 1=no_signal, 2=failed).
+        A dataset containing the original data, the fitted model (summed as ``fit``
+        and per-metabolite as ``fit_components``, which sums over ``metabolite`` back
+        to ``fit``), the residuals, and the quantified parameters (amplitude,
+        chem_shift, linewidth, phase, lineshape_g, CRLB, SNR) mapped across the
+        original dimensions and the new ``metabolite`` dimension. It also carries a
+        per-spectrum ``fit_status`` flag (0=fitted, 1=no_signal, 2=failed).
     """
     _set_verbosity(verbose)
 
@@ -706,7 +710,10 @@ def fit_amares(
     n_param = len(_PARAMETERS)
     crlb_out = np.full((n_spectra, n_metab, n_param), np.nan)
     sd_out = np.full((n_spectra, n_metab, n_param), np.nan)
-    fit_norm = np.full((n_spectra, n_time), np.nan, dtype=complex)
+    # Model components, one row per metabolite. `fit` is derived from these in step 9,
+    # so there is no separate summed buffer. Held normalized until then, and rescaled
+    # in place -- at n_metab x the size of `fit`, this is the biggest array here.
+    comp_arrs = np.full((n_spectra, n_metab, n_time), np.nan, dtype=complex)
     status = np.zeros(n_spectra, dtype=np.int8)  # 0 = fitted; set below for no_signal / failed
 
     dwelltime = 1.0 / sw
@@ -736,14 +743,22 @@ def fit_amares(
             if crlb_col in df.columns:
                 crlb_out[i, :, p] = df[crlb_col].values
         params = result_pd_to_params(df, MHz=mhz)
-        fit_norm[i, :] = uninterleave(multieq6(params, timeaxis))
+        # `return_mat=True` gives one row per metabolite, already uninterleaved by
+        # multieq6 itself -- so no outer `uninterleave` here. Row order follows
+        # `params` insertion order, which follows the `df.reindex(metabolites)` above.
+        comp_arrs[i] = multieq6(params, timeaxis, return_mat=True)
 
     # 9. Rescale amplitude + reconstructed model back into the input units. The
     #    amplitude *sd* scales with it; CRLB is relative (%), and the other
     #    parameters' uncertainties are independent of amplitude scale.
     value_out[VARS.amplitude] *= global_scale
     sd_out[:, :, _PARAMETERS.index(VARS.amplitude)] *= global_scale
-    fit_arrs = fit_norm * global_scale
+    #    The components are rescaled in place (a copy would be the largest allocation
+    #    in the function), and `fit` is their sum -- exactly, rather than to within a
+    #    rounding error of a second, separate rescale. An unfitted voxel's all-NaN
+    #    components still sum to NaN, never to a spurious 0.
+    comp_arrs *= global_scale
+    fit_arrs = comp_arrs.sum(axis=1)
 
     # Undo the carrier shift on the reported shifts: the fit ran carrier-relative
     # (per `ppm_offset` above), so add the carrier back to report absolute ppm. The
@@ -790,6 +805,17 @@ def fit_amares(
                 .unstack(stack_dim)
                 .transpose(*out_param_dims, DIMS.parameter)
             )
+
+        def _component_var(arr: np.ndarray) -> xr.DataArray:
+            return (
+                xr.DataArray(
+                    arr,
+                    dims=[*param_dims, dim],
+                    coords={**param_coords, dim: da_fid.coords[dim]},
+                )
+                .unstack(stack_dim)
+                .transpose(*out_param_dims, dim)
+            )
     else:
         fit_da = xr.DataArray(fit_arrs[0], dims=[dim], coords={dim: da_fid.coords[dim]})
         param_coords = {DIMS.metabolite: metab_coord}
@@ -804,11 +830,23 @@ def fit_amares(
                 coords={DIMS.metabolite: metab_coord, DIMS.parameter: param_coord},
             )
 
+        def _component_var(arr: np.ndarray) -> xr.DataArray:
+            return xr.DataArray(
+                arr[0],
+                dims=[DIMS.metabolite, dim],
+                coords={DIMS.metabolite: metab_coord, dim: da_fid.coords[dim]},
+            )
+
     # Restore the fit to the caller's representation (ppm in -> ppm out). The model
     # carries the input attrs so the ppm leg (`to_ppm`) finds `reference_frequency`.
+    # The per-metabolite components take the same trip: they are signals on the same
+    # axis, and leaving them behind would put a FID and a spectrum in one Dataset.
+    comp_da = _component_var(comp_arrs)
     fit_da = fit_da.assign_attrs(dict(da.attrs))
+    comp_da = comp_da.assign_attrs(dict(da.attrs))
     if restore_state is not None:
         fit_da = _restore_domain(fit_da, TIME_DIMS, restore_state)
+        comp_da = _restore_domain(comp_da, TIME_DIMS, restore_state)
     # Keep only the physical calibration needed to interpret the fit's own axis (so
     # `ds["fit"].xmr.to_ppm()`/`to_fid()` work like `ds["data"]`); drop stale input
     # processing lineage (phase_p0, apodization_lb, ...) that the synthetic model
@@ -817,8 +855,10 @@ def fit_amares(
         k: da.attrs[k] for k in (ATTRS.reference_frequency, ATTRS.carrier_ppm) if k in da.attrs
     }
     fit_da.attrs = _calib
+    comp_da.attrs = _calib
 
     ds[VARS.fit] = fit_da
+    ds[VARS.fit_components] = comp_da
     # xarray drops attrs on binary ops; re-attach the calibration on the RHS so the
     # residuals are interpretable in their own domain too.
     ds[VARS.residuals] = (ds[VARS.original_data] - ds[VARS.fit]).assign_attrs(_calib)

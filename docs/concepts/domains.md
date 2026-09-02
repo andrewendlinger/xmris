@@ -96,7 +96,8 @@ spec.xmr.apodize_exp(lb=2)   # → spectrum, smoothed (round trip inside)
 
 **Fitting (`fit_amares`) is domain-preserving too**, with a twist. It models the FID, but you may
 hand it a spectrum: it round-trips through the time domain to fit and returns its signal variables
-(`data`/`fit`/`residuals`) in the representation you passed — ppm in, ppm out — while the quantified
+(`data`/`fit`/`fit_components`/`residuals`) in the representation you passed — ppm in, ppm out —
+while the quantified
 parameters are domain-independent. It is the one such operation that carries **no decorator**: it
 returns a `Dataset`, and the round trip must transform only the signals, never the parameter table,
 so it hand-rolls the same converter routing the decorators use.

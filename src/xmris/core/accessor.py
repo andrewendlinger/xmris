@@ -762,8 +762,9 @@ class XmrisAccessor(
         Returns
         -------
         xr.Dataset
-            The original data, the fitted model, the residuals, and the quantified
-            parameters (amplitude, chem_shift, linewidth, phase, CRLB, SNR) mapped
+            The original data, the fitted model (summed as ``fit`` and per-metabolite
+            as ``fit_components``), the residuals, and the quantified parameters
+            (amplitude, chem_shift, linewidth, phase, lineshape_g, CRLB, SNR) mapped
             across the original dimensions and the new ``metabolite`` dimension.
 
         See Also

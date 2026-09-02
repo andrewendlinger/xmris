@@ -1694,8 +1694,14 @@ class TestFittingDomain:
     def test_fid_in_returns_time_domain(self, fid, pk_path):
         """A FID fits directly; outputs stay time-domain and carry the vocab."""
         ds = self._fit(fid, pk_path)
-        assert set(ds.data_vars) >= {VARS.original_data, VARS.fit, VARS.residuals}
+        assert set(ds.data_vars) >= {
+            VARS.original_data,
+            VARS.fit,
+            VARS.fit_components,
+            VARS.residuals,
+        }
         assert DIMS.time in ds[VARS.fit].dims
+        assert DIMS.time in ds[VARS.fit_components].dims
         assert DIMS.metabolite in ds.dims
         assert np.all(np.isfinite(ds[VARS.amplitude].values))
         assert ATTRS.amares_amplitude_scale in ds.attrs
@@ -1704,14 +1710,17 @@ class TestFittingDomain:
         """A Hz spectrum funnels to a FID for the fit and comes back as a spectrum."""
         ds = self._fit(fid.xmr.to_spectrum(), pk_path)
         assert DIMS.frequency in ds[VARS.fit].dims
+        assert DIMS.frequency in ds[VARS.fit_components].dims
         assert DIMS.frequency in ds[VARS.original_data].dims
         assert DIMS.time not in ds[VARS.fit].dims
+        assert DIMS.time not in ds[VARS.fit_components].dims
 
     def test_ppm_in_returns_ppm(self, fid, pk_path):
         """A ppm spectrum is restored to ppm (the whole round trip runs)."""
         ppm = fid.xmr.to_spectrum().xmr.to_ppm()
         ds = self._fit(ppm, pk_path)
         assert DIMS.chemical_shift in ds[VARS.fit].dims
+        assert DIMS.chemical_shift in ds[VARS.fit_components].dims
 
     def test_fid_and_spectrum_agree(self, fid, pk_path):
         """Fitting a FID vs its spectrum yields the same parameters."""
@@ -1834,6 +1843,34 @@ class TestFittingDomain:
             VARS.phase,
         ]
         assert ds[VARS.amplitude].dims == (DIMS.metabolite,)  # value stays named
+        # `g` is reported as a value only -- it is not one of the optimized parameters.
+        assert ds[VARS.lineshape_g].dims == (DIMS.metabolite,)
+        assert VARS.lineshape_g not in list(ds[DIMS.parameter].values)
+
+    def test_fit_components_sum_to_fit(self, fid, pk_path):
+        """The per-metabolite components carry the metabolite axis and sum back to `fit`."""
+        ds = self._fit(fid, pk_path)
+        assert ds[VARS.fit_components].dims == (DIMS.metabolite, DIMS.time)
+        assert list(ds[VARS.fit_components][DIMS.metabolite].values) == list(
+            ds[VARS.amplitude][DIMS.metabolite].values
+        )
+        xr.testing.assert_allclose(ds[VARS.fit_components].sum(DIMS.metabolite), ds[VARS.fit])
+
+    def test_fit_components_stacked(self, gapped_stack, pk_path):
+        """The stacked N-D branch lands the metabolite axis before the signal axis.
+
+        The gap also pins the sentinel: an unfitted voxel is NaN in the components,
+        so the sum is NaN there too -- never a spurious zero.
+        """
+        ds = gapped_stack.xmr.fit_amares(prior_knowledge=pk_path)
+        assert ds[VARS.fit_components].dims == ("voxel", DIMS.metabolite, DIMS.time)
+        # skipna=False, or xarray's NaN-skipping sum would turn the gap voxel's all-NaN
+        # components into a 0.0 that no longer matches `fit`'s NaN.
+        xr.testing.assert_allclose(
+            ds[VARS.fit_components].sum(DIMS.metabolite, skipna=False), ds[VARS.fit]
+        )
+        assert np.all(np.isnan(ds[VARS.fit_components].isel(voxel=1).values))
+        assert np.all(np.isfinite(ds[VARS.fit_components].isel(voxel=[0, 2]).values))
 
     def test_amplitude_sd_scales_crlb_invariant(self, fid, pk_path):
         """Amplitude sd tracks the signal scale (absolute); CRLB% (relative) does not."""
