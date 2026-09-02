@@ -67,7 +67,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
-import xmris  # registers the .xmr accessor
+import xmris  # registers the .xmr accessor  # noqa: F401
 from xmris.fitting.simulation import simulate_fid
 ```
 
@@ -689,14 +689,34 @@ statement that keeps them distinguishable.
 
 ```{code-cell} ipython3
 dmi_pk = {
-    "Water": {"amplitude": 100.0, "chem_shift": 4.8, "linewidth": 14.0,
-              "chem_shift_bounds": (4.5, 5.1), "linewidth_bounds": (5.0, 40.0)},
-    "Glc": {"amplitude": 20.0, "chem_shift": 3.8, "linewidth": 16.0,
-            "chem_shift_bounds": (3.5, 4.1), "linewidth_bounds": (5.0, 40.0)},
-    "Glx": {"amplitude": 10.0, "chem_shift": 2.35, "linewidth": 18.0,
-            "chem_shift_bounds": (2.05, 2.65), "linewidth_bounds": (5.0, 45.0)},
-    "Baseline": {"amplitude": 400.0, "chem_shift": 3.5, "linewidth": 200.0,
-                 "chem_shift_bounds": (3.0, 4.0), "linewidth_bounds": (120.0, 400.0)},
+    "Water": {
+        "amplitude": 100.0,
+        "chem_shift": 4.8,
+        "linewidth": 14.0,
+        "chem_shift_bounds": (4.5, 5.1),
+        "linewidth_bounds": (5.0, 40.0),
+    },
+    "Glc": {
+        "amplitude": 20.0,
+        "chem_shift": 3.8,
+        "linewidth": 16.0,
+        "chem_shift_bounds": (3.5, 4.1),
+        "linewidth_bounds": (5.0, 40.0),
+    },
+    "Glx": {
+        "amplitude": 10.0,
+        "chem_shift": 2.35,
+        "linewidth": 18.0,
+        "chem_shift_bounds": (2.05, 2.65),
+        "linewidth_bounds": (5.0, 45.0),
+    },
+    "Baseline": {
+        "amplitude": 400.0,
+        "chem_shift": 3.5,
+        "linewidth": 200.0,
+        "chem_shift_bounds": (3.0, 4.0),
+        "linewidth_bounds": (120.0, 400.0),
+    },
 }
 
 ds_free = dmi.xmr.fit_amares(dmi_pk)
@@ -737,10 +757,16 @@ pd.DataFrame(
         "true": [dmi_truth[n][0] for n in dmi_names],
         "free phase": ds_free["amplitude"].mean("voxel").sel(metabolite=dmi_names).values,
         "tied phase": ds_dmi["amplitude"].mean("voxel").sel(metabolite=dmi_names).values,
-        "worst CRLB% free": ds_free["crlb"].sel(parameter="amplitude").max("voxel")
-        .sel(metabolite=dmi_names).values,
-        "worst CRLB% tied": ds_dmi["crlb"].sel(parameter="amplitude").max("voxel")
-        .sel(metabolite=dmi_names).values,
+        "worst CRLB% free": ds_free["crlb"]
+        .sel(parameter="amplitude")
+        .max("voxel")
+        .sel(metabolite=dmi_names)
+        .values,
+        "worst CRLB% tied": ds_dmi["crlb"]
+        .sel(parameter="amplitude")
+        .max("voxel")
+        .sel(metabolite=dmi_names)
+        .values,
     },
     index=dmi_names,
 ).round(1)
@@ -753,7 +779,10 @@ obviously not a measurement.
 ```{code-cell} ipython3
 print("global phase, per voxel :", ds_dmi["phase"].sel(metabolite="Water").values.round(1))
 print("            simulated   :", dmi_phase.round(1))
-print("B0 offset, per voxel    :", (ds_dmi["chem_shift"].sel(metabolite="Water").values - 4.8).round(3))
+print(
+    "B0 offset, per voxel    :",
+    (ds_dmi["chem_shift"].sel(metabolite="Water").values - 4.8).round(3),
+)
 print("            simulated   :", dmi_b0.round(3))
 ```
 
@@ -769,7 +798,12 @@ question the summed model can answer on its own — a good total can hide a back
 eaten a metabolite. `fit_components` is what makes the decomposition inspectable.
 
 ```{code-cell} ipython3
-dmi_colors = {"Water": "tab:blue", "Glc": "tab:orange", "Glx": "tab:green", "Baseline": "tab:purple"}
+dmi_colors = {
+    "Water": "tab:blue",
+    "Glc": "tab:orange",
+    "Glx": "tab:green",
+    "Baseline": "tab:purple",
+}
 
 fig, axes = plt.subplots(2, 2, figsize=(11, 7), sharex=True)
 for ax, v in zip(axes.ravel(), ds_dmi.voxel.values):
@@ -779,9 +813,7 @@ for ax, v in zip(axes.ravel(), ds_dmi.voxel.values):
     vox["data"].xmr.to_spectrum().xmr.to_ppm().real.plot(
         ax=ax, color="black", alpha=0.4, lw=2.0, label="data"
     )
-    vox["fit"].xmr.to_spectrum().xmr.to_ppm().real.plot(
-        ax=ax, color="tab:red", lw=1.2, label="fit"
-    )
+    vox["fit"].xmr.to_spectrum().xmr.to_ppm().real.plot(ax=ax, color="tab:red", lw=1.2, label="fit")
     for m in vox.metabolite.values:
         vox["fit_components"].sel(metabolite=m).xmr.to_spectrum().xmr.to_ppm().real.plot(
             ax=ax, color=dmi_colors[str(m)], lw=1.0, ls=(0, (4, 1.5)), label=str(m)
@@ -839,22 +871,30 @@ plt.show()
 # 1. Every peak, the broad background included, comes back at its simulated size.
 for _n, (_amp, _ppm, _lw) in dmi_truth.items():
     np.testing.assert_allclose(
-        ds_dmi["amplitude"].sel(metabolite=_n).values, _amp, rtol=0.25,
+        ds_dmi["amplitude"].sel(metabolite=_n).values,
+        _amp,
+        rtol=0.25,
         err_msg=f"{_n} amplitude was not recovered",
     )
     np.testing.assert_allclose(
-        ds_dmi["linewidth"].sel(metabolite=_n).values, _lw, rtol=0.25,
+        ds_dmi["linewidth"].sel(metabolite=_n).values,
+        _lw,
+        rtol=0.25,
         err_msg=f"{_n} linewidth was not recovered -- did the peaks trade area with the baseline?",
     )
 assert (ds_dmi["fit_status"].values == 0).all()
 
 # 2. The two per-voxel nuisance parameters are recovered.
 np.testing.assert_allclose(
-    ds_dmi["phase"].sel(metabolite="Water").values, dmi_phase, atol=3.0,
+    ds_dmi["phase"].sel(metabolite="Water").values,
+    dmi_phase,
+    atol=3.0,
     err_msg="the global receiver phase was not recovered",
 )
 np.testing.assert_allclose(
-    ds_dmi["chem_shift"].sel(metabolite="Water").values - carrier, dmi_b0, atol=0.03,
+    ds_dmi["chem_shift"].sel(metabolite="Water").values - carrier,
+    dmi_b0,
+    atol=0.03,
     err_msg="the global B0 offset was not recovered",
 )
 
@@ -865,8 +905,12 @@ assert np.abs(_phases - _phases[:, :1]).max() < 1e-6, (
     f"the phases were not tied: spread {np.abs(_phases - _phases[:, :1]).max():.3f} deg"
 )
 
+
 # 4. The point of the section: tying beats four free phases on the weakest peak.
-_err = lambda d: float(np.abs(d["amplitude"].sel(metabolite="Glx").values - 10.0).sum())
+def _err(d):
+    return float(np.abs(d["amplitude"].sel(metabolite="Glx").values - 10.0).sum())
+
+
 assert _err(ds_dmi) < _err(ds_free), (
     f"tied phase ({_err(ds_dmi):.2f}) did not beat free phase ({_err(ds_free):.2f}) on Glx"
 )
